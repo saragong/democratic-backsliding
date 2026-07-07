@@ -1,0 +1,14 @@
+aut_ep_id,country_text_id,country_name,ep_start,ep_end,poly_start,poly_end,n_bse_definitions_capturing,bse_definitions_capturing,captured_by_any_bse
+BIH_2004_2007,BIH,Bosnia and Herzegovina,2004,2007,0.647,0.566,2,LibComp (M+1/4sd); LibDem (M+1/4sd),TRUE
+BRA_2015_2019,BRA,Brazil,2015,2019,0.861,0.691,0,None,FALSE
+BWA_2015_2022,BWA,Botswana,2015,2022,0.69,0.573,0,None,FALSE
+CZE_2013_2021,CZE,Czechia,2013,2021,0.863,0.789,0,None,FALSE
+ECU_2007_2013,ECU,Ecuador,2007,2013,0.671,0.538,8,LibComp (M-1/4sd); LibComp (M-1/8sd); LibComp (M+1/8sd); LibComp (Mean); LibDem (M-1/8sd); LibDem (M+1/4sd); LibDem (M+1/8sd); LibDem (Mean),TRUE
+GHA_2013_2021,GHA,Ghana,2013,2021,0.75,0.659,0,None,FALSE
+GTM_2018_2022,GTM,Guatemala,2018,2022,0.602,0.509,6,LibComp (M+1/4sd); LibComp (M+1/8sd); LibComp (Mean); LibDem (M+1/4sd); LibDem (M+1/8sd); LibDem (Mean),TRUE
+KOR_2008_2014,KOR,South Korea,2008,2014,0.759,0.705,0,None,FALSE
+KOR_2019_2023,KOR,South Korea,2019,2023,0.842,0.722,0,None,FALSE
+LSO_2015_2017,LSO,Lesotho,2015,2017,0.597,0.501,1,LibDem (M+1/4sd),TRUE
+MDA_2013_2017,MDA,Moldova,2013,2017,0.638,0.503,1,LibDem (M+1/4sd),TRUE
+POL_2016_2021,POL,Poland,2016,2021,0.731,0.587,0,None,FALSE
+SVN_2012_2021,SVN,Slovenia,2012,2021,0.847,0.715,0,None,FALSE

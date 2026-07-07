@@ -1,0 +1,7 @@
+country_text_id,country,entry_year,exit_year,variant,n_ert_matches,any_ert,any_outcome_1,any_outcome_2,any_outcome_4,matched_outcomes
+ISR,Israel,1996,1999,Right,0,FALSE,FALSE,FALSE,FALSE,
+ISR,Israel,2009,2020,Right,0,FALSE,FALSE,FALSE,FALSE,
+JPN,Japan,2001,2006,Right,0,FALSE,FALSE,FALSE,FALSE,
+NZL,New Zealand,1975,1984,Right,0,FALSE,FALSE,FALSE,FALSE,
+TWN,Taiwan,2000,2008,Right,0,FALSE,FALSE,FALSE,FALSE,
+ZAF,South Africa,2009,2018,Left,0,FALSE,FALSE,FALSE,FALSE,

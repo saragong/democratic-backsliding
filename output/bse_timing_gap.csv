@@ -1,0 +1,71 @@
+bse_definition,country_name,ep_start,breakdown_year,ep_end,gap_years
+ERT regime,Benin,2018,2019,2021,1
+ERT regime,Burkina Faso,2014,2015,2015,1
+ERT regime,Burkina Faso,2018,2022,2025,4
+ERT regime,Bangladesh,2002,2002,2007,0
+ERT regime,Bolivia,2006,2019,2020,13
+ERT regime,Ivory Coast,2020,2020,2025,0
+ERT regime,Fiji,2000,2000,2001,0
+ERT regime,Guinea-Bissau,2022,2022,2022,0
+ERT regime,Honduras,2006,2009,2010,3
+ERT regime,Hungary,2006,2018,2025,12
+ERT regime,India,2009,2017,2025,8
+ERT regime,Sri Lanka,2004,2005,2006,1
+ERT regime,Moldova,1998,2005,2006,7
+ERT regime,Madagascar,1997,2000,2002,3
+ERT regime,Maldives,2010,2013,2017,3
+ERT regime,North Macedonia,2005,2011,2012,6
+ERT regime,Mali,2008,2012,2013,4
+ERT regime,Mauritius,2014,2023,2023,9
+ERT regime,Malawi,1999,2000,2005,1
+ERT regime,Niger,2009,2009,2010,0
+ERT regime,Niger,2015,2023,2025,8
+ERT regime,Nicaragua,1996,2007,2025,11
+ERT regime,Philippines,2001,2004,2005,3
+ERT regime,Philippines,2016,2016,2025,0
+ERT regime,Papua New Guinea,2007,2008,2013,1
+ERT regime,Palestine/West Bank,2006,2007,2008,1
+ERT regime,Solomon Islands,1998,2000,2001,2
+ERT regime,El Salvador,2018,2021,2025,3
+ERT regime,Serbia,2010,2014,2025,4
+ERT regime,Thailand,2003,2006,2007,3
+ERT regime,Tunisia,2014,2022,2022,8
+ERT regime,Türkiye,2005,2013,2017,8
+ERT regime,Ukraine,2010,2010,2014,0
+ERT regime,Venezuela,1998,2002,2018,4
+ERT regime,Zambia,2011,2013,2019,2
+ROW,Benin,2018,2019,2021,1
+ROW,Burkina Faso,2014,2015,2015,1
+ROW,Burkina Faso,2018,2022,2025,4
+ROW,Bangladesh,2002,2002,2007,0
+ROW,Bolivia,2006,2019,2020,13
+ROW,Ivory Coast,2020,2020,2025,0
+ROW,Fiji,2000,2000,2001,0
+ROW,Guinea-Bissau,2022,2022,2022,0
+ROW,Honduras,2006,2009,2010,3
+ROW,Hungary,2006,2018,2025,12
+ROW,India,2009,2017,2025,8
+ROW,Sri Lanka,2004,2005,2006,1
+ROW,Moldova,1998,2005,2006,7
+ROW,Madagascar,1997,2000,2002,3
+ROW,Maldives,2010,2013,2017,3
+ROW,North Macedonia,2005,2011,2012,6
+ROW,Mali,2008,2012,2013,4
+ROW,Mauritius,2014,2023,2023,9
+ROW,Malawi,1999,2000,2005,1
+ROW,Niger,2009,2009,2010,0
+ROW,Niger,2015,2023,2025,8
+ROW,Nicaragua,1996,2007,2025,11
+ROW,Philippines,2001,2004,2005,3
+ROW,Philippines,2016,2016,2025,0
+ROW,Papua New Guinea,2007,2008,2013,1
+ROW,Palestine/West Bank,2006,2007,2008,1
+ROW,Solomon Islands,1998,2000,2001,2
+ROW,El Salvador,2018,2021,2025,3
+ROW,Serbia,2010,2014,2025,4
+ROW,Thailand,2003,2006,2007,3
+ROW,Tunisia,2014,2022,2022,8
+ROW,Türkiye,2005,2013,2017,8
+ROW,Ukraine,2010,2010,2014,0
+ROW,Venezuela,1998,2002,2018,4
+ROW,Zambia,2011,2013,2019,2

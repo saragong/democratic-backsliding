@@ -1,0 +1,34 @@
+country,entry_year,exit_year,variant,ep_start,ep_end,outcome_agg,outcome_label,entry_before_ep,years_populist_precedes
+Germany,1933,1945,Right,1923,1939,1,Breakdown,FALSE,-10
+Indonesia,2014,2020,Left,2009,2025,1,Breakdown,FALSE,-5
+India,2014,2020,Right,2009,2025,1,Breakdown,FALSE,-5
+Brazil,2019,2020,Right,2015,2019,2,Erosion only,FALSE,-4
+Hungary,2010,2020,Right,2006,2025,1,Breakdown,FALSE,-4
+Argentina,1946,1955,Left,1943,1945,3,NA,FALSE,-3
+Chile,1927,1938,Left,1924,1925,3,NA,FALSE,-3
+Ecuador,1934,1935,Right,1932,1936,3,NA,FALSE,-2
+Italy,1922,1943,Right,1921,1926,3,NA,FALSE,-1
+Venezuela,1999,2020,Left,1998,2018,1,Breakdown,FALSE,-1
+Bolivia,2006,2019,Left,2006,2020,1,Breakdown,TRUE,0
+Brazil,1930,1945,Left,1930,1931,3,NA,TRUE,0
+Ecuador,1960,1961,Right,1960,1964,3,NA,TRUE,0
+Ecuador,2007,2017,Left,2007,2013,2,Erosion only,TRUE,0
+United Kingdom,2019,2020,Right,2019,2025,4,Uncertain / ongoing,TRUE,0
+Philippines,2016,2020,Right,2016,2025,1,Breakdown,TRUE,0
+Italy,2018,2020,Right,2019,2025,4,Uncertain / ongoing,TRUE,1
+Poland,2015,2020,Right,2016,2021,2,Erosion only,TRUE,1
+Argentina,1928,1930,Left,1930,1931,3,NA,TRUE,2
+Argentina,1973,1976,Left,1975,1977,3,NA,TRUE,2
+Ecuador,1968,1972,Right,1970,1973,3,NA,TRUE,2
+Mexico,2018,2020,Left,2020,2025,1,Breakdown,TRUE,2
+Thailand,2001,2006,Right,2003,2007,1,Breakdown,TRUE,2
+Turkey,2003,2020,Right,2005,2017,1,Breakdown,TRUE,2
+Argentina,1946,1955,Left,1949,1956,3,NA,TRUE,3
+Philippines,1998,2001,Left,2001,2005,1,Breakdown,TRUE,3
+Chile,1920,1925,Left,1924,1925,3,NA,TRUE,4
+Greece,2015,2019,Left,2020,2025,4,Uncertain / ongoing,TRUE,5
+India,1966,1977,Left,1971,1975,1,Breakdown,TRUE,5
+South Korea,2003,2008,Right,2008,2014,2,Erosion only,TRUE,5
+Peru,1985,2000,Mixed,1990,1992,1,Breakdown,TRUE,5
+Bolivia,1952,1964,Left,1964,1965,3,NA,TRUE,12
+Indonesia,1945,1966,Left,1957,1966,3,NA,TRUE,12

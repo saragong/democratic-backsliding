@@ -1,0 +1,18 @@
+definition_family,strictness,bse_definition,threshold_display,n_ert_episodes,n_bse_episodes,n_overlap,pct_bse_in_ert,pct_bse_not_in_ert,pct_ert_in_bse,pct_ert_not_in_bse,n_countries,n_matched_ert_ep,n_no_ert_match,n_ert_ep_missed,n_ert_missed_breakdown,n_ert_missed_erosion,n_ep_row_breakdown,n_ep_erosion_only,n_ep_ongoing
+ROW,NA,ROW,ROW,67,55,37,67.3,32.7,55.2,44.8,41,37,18,30,6,13,35,0,2
+ERT regime,NA,ERT regime,ERT regime,67,43,35,81.4,18.6,52.2,47.8,37,35,8,32,6,13,35,0,0
+Polyarchy,-2,Polyarchy (M-1/4sd),mean − σ/4,67,50,14,28,72,20.9,79.1,37,14,36,53,27,13,14,0,0
+Polyarchy,-1,Polyarchy (M-1/8sd),mean − σ/8,67,55,21,38.2,61.8,31.3,68.7,40,21,34,46,20,13,21,0,0
+Polyarchy,0,Polyarchy (Mean),mean,67,61,27,44.3,55.7,40.3,59.7,42,27,34,40,15,13,26,0,1
+Polyarchy,1,Polyarchy (M+1/8sd),mean + σ/8,67,58,34,58.6,41.4,50.7,49.3,45,34,24,33,8,13,33,0,1
+Polyarchy,2,Polyarchy (M+1/4sd),mean + σ/4,67,54,36,66.7,33.3,53.7,46.3,39,36,18,31,6,13,35,0,1
+LibDem,-2,LibDem (M-1/4sd),mean − σ/4,67,53,24,47.2,52.8,35.8,64.2,37,25,28,43,18,13,24,0,1
+LibDem,-1,LibDem (M-1/8sd),mean − σ/8,67,43,27,62.8,37.2,40.3,59.7,34,27,16,40,16,12,25,1,1
+LibDem,0,LibDem (Mean),mean,67,46,32,69.6,30.4,47.8,52.2,38,32,14,35,12,11,29,2,1
+LibDem,1,LibDem (M+1/8sd),mean + σ/8,67,44,32,75,25,47.8,52.2,35,33,11,35,12,11,30,2,1
+LibDem,2,LibDem (M+1/4sd),mean + σ/4,67,49,35,71.4,28.6,52.2,47.8,39,35,14,32,12,8,29,5,1
+LibComp,-2,LibComp (M-1/4sd),mean − σ/4,67,50,14,28,72,20.9,79.1,33,14,36,53,28,12,13,1,0
+LibComp,-1,LibComp (M-1/8sd),mean − σ/8,67,46,18,39.1,60.9,26.9,73.1,31,18,28,49,25,12,16,1,1
+LibComp,0,LibComp (Mean),mean,67,49,21,46.9,53.1,31.3,68.7,32,23,26,46,22,11,21,2,0
+LibComp,1,LibComp (M+1/8sd),mean + σ/8,67,43,21,51.2,48.8,31.3,68.7,33,22,21,46,22,11,20,2,0
+LibComp,2,LibComp (M+1/4sd),mean + σ/4,67,46,20,45.7,54.3,29.9,70.1,31,21,25,47,24,11,18,2,1
