@@ -41,9 +41,9 @@ panel <- readRDS(file.path(data_dir, "funke_panel.rds"))
 
 funke_countries <- distinct(panel, country_text_id, country)
 
-# ERT autocratization episodes originating from a democracy (aut_ep_prch == 1)
+# ERT autocratization episodes, all aut_ep==1 (regardless of prior regime type)
 aut_eps <- ert |>
-  filter(aut_ep == 1, aut_ep_prch == 1) |>
+  filter(aut_ep == 1) |>
   group_by(aut_ep_id) |>
   summarise(
     country_text_id = first(country_text_id),
