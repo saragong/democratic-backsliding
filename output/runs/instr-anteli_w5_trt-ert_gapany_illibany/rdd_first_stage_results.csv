@@ -1,0 +1,2 @@
+spec,treatment,n_first_stage,first_stage_coef,first_stage_se,first_stage_pval,first_stage_bandwidth
+instr-anteli_w5_trt-ert_gapany_illibany,backsliding_Nyr,1347,-0.020136351956414944,0.060770109077613835,0.7403779365248088,21.008880652196613

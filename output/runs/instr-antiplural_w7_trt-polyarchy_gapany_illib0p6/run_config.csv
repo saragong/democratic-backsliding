@@ -1,0 +1,11 @@
+slug,key,value
+instr-antiplural_w7_trt-polyarchy_gapany_illib0p6,instrument,v2xpa_antiplural
+instr-antiplural_w7_trt-polyarchy_gapany_illib0p6,window,7
+instr-antiplural_w7_trt-polyarchy_gapany_illib0p6,treatment,polyarchy_decline
+instr-antiplural_w7_trt-polyarchy_gapany_illib0p6,score_gap_min,-Inf
+instr-antiplural_w7_trt-polyarchy_gapany_illib0p6,illiberal_cutoff,0.6
+instr-antiplural_w7_trt-polyarchy_gapany_illib0p6,incl_election_year,TRUE
+instr-antiplural_w7_trt-polyarchy_gapany_illib0p6,score_gap_spec,-Inf
+instr-antiplural_w7_trt-polyarchy_gapany_illib0p6,score_gap_form,none
+instr-antiplural_w7_trt-polyarchy_gapany_illib0p6,illiberal_cutoff_spec,0.6
+instr-antiplural_w7_trt-polyarchy_gapany_illib0p6,illiberal_cutoff_form,absolute

@@ -1,0 +1,2 @@
+spec,n_first_stage,first_stage_coef,first_stage_se,first_stage_pval,first_stage_bandwidth
+baseline_scoregap_ge_0_illib_gt_0p5,709,0.020630350290777533,0.11103912465824382,0.8526066830815044,23.47162302473042

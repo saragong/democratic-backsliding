@@ -1,0 +1,132 @@
+country_name,ep_start,ep_end,outcome_label,prch_label,ddcg_event_years
+Türkiye,1954,1961,Autocracy deepening,No,NA
+Indonesia,1957,1966,Autocracy deepening,No,NA
+Ghana,1958,1966,Autocracy deepening,No,NA
+Iraq,1958,1968,Autocracy deepening,No,NA
+Burma/Myanmar,1958,1963,Autocracy deepening,No,1962
+Cuba,1959,1961,Autocracy deepening,No,NA
+Laos,1959,1965,Autocracy deepening,No,NA
+Ecuador,1960,1964,Autocracy deepening,No,1961
+South Korea,1961,1962,Autocracy deepening,No,1961
+Nepal,1961,1961,Autocracy deepening,No,NA
+Argentina,1962,1962,Autocracy deepening,No,NA
+Republic of the Congo,1962,1968,Autocracy deepening,No,1963
+Greece,1962,1968,Autocracy deepening,No,1967
+Central African Republic,1963,1966,Autocracy deepening,No,NA
+Syria,1963,1970,Autocracy deepening,No,NA
+Togo,1963,1968,Autocracy deepening,No,NA
+Uruguay,1963,1974,Democratic breakdown,Yes,1972
+Republic of Vietnam,1963,1964,Autocracy deepening,No,NA
+Benin,1964,1966,Autocracy deepening,No,NA
+Bolivia,1964,1965,Autocracy deepening,No,NA
+Brazil,1964,1965,Autocracy deepening,No,1964
+Dominican Republic,1964,1964,Autocracy deepening,No,NA
+Mali,1964,1969,Autocracy deepening,No,NA
+Panama,1964,1969,Autocracy deepening,No,1968
+Somalia,1964,1970,Autocracy deepening,No,1969
+Zanzibar,1964,1964,Autocracy deepening,No,NA
+Burundi,1965,1967,Autocracy deepening,No,NA
+Burkina Faso,1965,1967,Autocracy deepening,No,NA
+Democratic Republic of the Congo,1965,1966,Autocracy deepening,No,NA
+Algeria,1965,1966,Autocracy deepening,No,NA
+Argentina,1966,1967,Democratic breakdown,Yes,NA
+Philippines,1966,1973,Autocracy deepening,No,1965
+Uganda,1966,1972,Autocracy deepening,No,NA
+Sierra Leone,1967,1968,Autocracy deepening,No,1967
+Guyana,1968,1974,Autocracy deepening,No,NA
+Peru,1968,1969,Autocracy deepening,No,1968
+Lesotho,1969,1971,Autocracy deepening,No,NA
+Malaysia,1969,1970,Autocracy deepening,No,NA
+Sudan,1969,1969,Autocracy deepening,No,1969
+Zambia,1969,1974,Autocracy deepening,No,NA
+Benin,1970,1973,Autocracy deepening,No,NA
+Ecuador,1970,1973,Autocracy deepening,No,NA
+Cambodia,1970,1975,Autocracy deepening,No,NA
+Sri Lanka,1970,1989,Democratic breakdown,Yes,NA
+Equatorial Guinea,1971,1973,Autocracy deepening,No,NA
+India,1971,1975,Democratic breakdown,Yes,NA
+Chile,1972,1974,Democratic breakdown,Yes,1973
+Ghana,1972,1973,Autocracy deepening,No,1972
+Madagascar,1972,1973,Autocracy deepening,No,NA
+Seychelles,1972,1978,Autocracy deepening,No,NA
+Honduras,1973,1973,Autocracy deepening,No,NA
+Rwanda,1973,1974,Autocracy deepening,No,NA
+Eswatini,1973,1974,Autocracy deepening,No,NA
+Bahrain,1974,1976,Autocracy deepening,No,NA
+Argentina,1975,1977,Autocracy deepening,No,1976
+Bangladesh,1975,1976,Autocracy deepening,No,1974
+Laos,1975,1976,Autocracy deepening,No,NA
+Suriname,1975,1975,Democratic erosion,Yes,NA
+Kuwait,1976,1976,Autocracy deepening,No,NA
+Thailand,1976,1977,Autocracy deepening,No,1976
+Pakistan,1977,1978,Autocracy deepening,No,1977
+Mauritania,1978,1979,Autocracy deepening,No,NA
+Zimbabwe,1978,1978,Autocracy deepening,No,NA
+Burkina Faso,1980,1981,Autocracy deepening,No,1980
+Liberia,1980,1981,Autocracy deepening,No,NA
+Suriname,1980,1981,Democratic breakdown,Yes,1980
+Türkiye,1980,1981,Democratic breakdown,Yes,1980
+Ghana,1981,1982,Autocracy deepening,No,1981
+Bangladesh,1982,1983,Autocracy deepening,No,NA
+Nigeria,1983,1984,Autocracy deepening,No,1984
+Kuwait,1986,1986,Autocracy deepening,No,NA
+Burundi,1987,1988,Autocracy deepening,No,NA
+Fiji,1987,1988,Democratic breakdown,Yes,1987
+Sudan,1989,1990,Autocracy deepening,No,1989
+Peru,1990,1992,Democratic breakdown,Yes,1992
+Estonia,1991,1992,Democratic breakdown,Yes,NA
+Suriname,1991,1991,Autocracy deepening,No,1990
+Thailand,1991,1991,Autocracy deepening,No,1991
+Algeria,1992,1993,Autocracy deepening,No,NA
+Haiti,1992,1992,Autocracy deepening,No,1991
+Tajikistan,1992,1995,Autocracy deepening,No,NA
+Armenia,1993,1997,Democratic breakdown,Yes,1996
+Azerbaijan,1993,1996,Autocracy deepening,No,1993
+The Gambia,1993,1995,Autocracy deepening,No,1994
+Russia,1993,2014,Autocracy deepening,No,2004
+Rwanda,1993,1995,Autocracy deepening,No,NA
+Belarus,1994,2001,Democratic breakdown,Yes,1995
+Republic of the Congo,1994,1998,Autocracy deepening,No,1997
+Lesotho,1994,1995,Democratic breakdown,Yes,NA
+Niger,1996,1996,Democratic breakdown,Yes,1996
+Nicaragua,1996,2025,Democratic breakdown,Yes,NA
+Madagascar,1997,2002,Democratic breakdown,Yes,NA
+Ukraine,1997,2000,Democratic breakdown,Yes,NA
+Moldova,1998,2006,Democratic breakdown,Yes,NA
+Solomon Islands,1998,2001,Democratic breakdown,Yes,2000
+Venezuela,1998,2018,Democratic breakdown,Yes,2009
+Comoros,1999,2000,Autocracy deepening,No,1999
+Malawi,1999,2005,Democratic breakdown,Yes,NA
+Niger,1999,1999,Autocracy deepening,No,NA
+Pakistan,1999,2000,Autocracy deepening,No,1999
+Ivory Coast,2000,2000,Autocracy deepening,No,NA
+Fiji,2000,2001,Democratic breakdown,Yes,NA
+North Macedonia,2000,2001,Autocracy deepening,No,NA
+Nepal,2000,2003,Autocracy deepening,No,2002
+Haiti,2001,2004,Autocracy deepening,No,2000
+Philippines,2001,2005,Democratic breakdown,Yes,NA
+Bangladesh,2002,2007,Democratic breakdown,Yes,2007
+Central African Republic,2003,2004,Autocracy deepening,No,2003
+Liberia,2003,2004,Autocracy deepening,No,NA
+Thailand,2003,2007,Democratic breakdown,Yes,2006
+Bosnia and Herzegovina,2004,2007,Democratic erosion,Yes,NA
+Sri Lanka,2004,2006,Democratic breakdown,Yes,NA
+North Macedonia,2005,2012,Democratic breakdown,Yes,NA
+Türkiye,2005,2017,Democratic breakdown,Yes,NA
+Bolivia,2006,2020,Democratic breakdown,Yes,NA
+Fiji,2006,2007,Autocracy deepening,No,2006
+Honduras,2006,2010,Democratic breakdown,Yes,NA
+Hungary,2006,2025,Democratic breakdown,Yes,NA
+Palestine/West Bank,2006,2008,Democratic breakdown,Yes,NA
+Ecuador,2007,2013,Democratic erosion,Yes,NA
+Papua New Guinea,2007,2013,Democratic breakdown,Yes,NA
+South Korea,2008,2014,Democratic erosion,Yes,NA
+Mali,2008,2013,Democratic breakdown,Yes,NA
+Indonesia,2009,2025,Democratic breakdown,Yes,NA
+India,2009,2025,Democratic breakdown,Yes,NA
+Madagascar,2009,2010,Autocracy deepening,No,2009
+Niger,2009,2010,Democratic breakdown,Yes,2009
+Burundi,2010,2016,Autocracy deepening,No,NA
+Maldives,2010,2017,Democratic breakdown,Yes,NA
+Serbia,2010,2025,Democratic breakdown,Yes,NA
+Ukraine,2010,2014,Democratic breakdown,Yes,NA

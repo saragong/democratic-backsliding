@@ -32,6 +32,10 @@ library(here)
 library(countrycode)
 library(gt)
 
+# Shared instrument/treatment metadata (ILLIBERALISM_VARS, INSTRUMENT_DISPLAY,
+# ...) and table helpers, also used by scripts 12-16.
+source(here::here("scripts", "rdd_helpers.R"))
+
 data_dir <- here::here("data")
 elections_dir <- file.path(data_dir, "elections_database")
 out_dir <- here::here("output")
@@ -40,16 +44,64 @@ out_dir <- here::here("output")
 # Toggles
 # ------------------------------------------------------------------------------
 
-ELECTION_TYPE <- "both" # "presidential" | "parliamentary" | "both" -- "both" unions the two spines (see Step 1)
-BACKSLIDING_WINDOW_YEARS <- 5 # years post-election to look for a backsliding start
-ILLIBERALISM_VAR <- "v2xpa_antiplural" # "v2xpa_antiplural" | "v2xpa_popul" | "ep_galtan"
-START_YEAR_SOURCE <- "ert" # "ert" | "ddcg" | "llm" -- see Step 4b below
-SAMPLE_YEARS <- "all" # "all" | "ddcg_comparable" -- restrict elections to DDCG's coverage window (see DDCG_START/DDCG_END) for a robustness sample comparable to DDCG-based prior work
+# Every toggle is set with `if (!exists(...))` so a driver script (14, 15) can
+# source() this file into an environment that already defines some of them and
+# have those overrides respected. Running the script standalone is unchanged --
+# the defaults below apply.
+
+# "presidential" | "parliamentary" | "both" -- "both" unions the two spines (see Step 1)
+if (!exists("ELECTION_TYPE")) ELECTION_TYPE <- "both"
+# years post-election to look for a backsliding start
+if (!exists("BACKSLIDING_WINDOW_YEARS")) BACKSLIDING_WINDOW_YEARS <- 5
+# Which party-level score defines "the illiberal one" of the top 2, and so the
+# sign of the running variable. All five are V-Party party-year variables:
+#   v2xpa_antiplural  anti-pluralism index          [0,1]
+#   v2xpa_popul       populism index                [0,1]
+#   ep_galtan         CHES-merged GAL-TAN score
+#   v2pariglef_neg    economic left-right, NEGATED so economic LEFT scores high
+#   v2paanteli        anti-elitism
+# Note the differing scales: v2pariglef/v2paanteli are expert-scale variables,
+# NOT [0,1] indices like the v2xpa_* ones, so any absolute cutoff on the score
+# (12_rdd_analysis.R's ILLIBERAL_CUTOFF) has to be set per instrument -- see
+# the quantile-based option there.
+if (!exists("ILLIBERALISM_VAR")) ILLIBERALISM_VAR <- "v2xpa_antiplural"
+# "ert" | "ddcg" | "llm" -- see Step 4b below
+if (!exists("START_YEAR_SOURCE")) START_YEAR_SOURCE <- "ert"
+# "all" | "ddcg_comparable" -- restrict elections to DDCG's coverage window (see
+# DDCG_START/DDCG_END) for a robustness sample comparable to DDCG-based prior work
+if (!exists("SAMPLE_YEARS")) SAMPLE_YEARS <- "all"
+
+# Does the post-election treatment window open IN the election year, or the
+# year after?
+#
+#   TRUE  (default) -- treatment window is [election_year, election_year + N]
+#   FALSE            -- treatment window is (election_year, election_year + N]
+#
+# TRUE is the default because it is what actually aligns treatment with the
+# outcomes. window_change() measures every outcome from (election_year - 1) to
+# (election_year + N), so the outcome window has always spanned the election
+# year; under FALSE the treatment window did not, and the two were a year out of
+# step with each other.
+#
+# The argument for FALSE, which this script used to hardcode: ERT and DDCG both
+# date events to a calendar year only, and elections are spread through the year
+# (48% Jan-Jun, 52% Jul-Dec in this spine), so an episode dated to the election
+# year may well have begun BEFORE the vote -- reverse causation rather than
+# treatment. That ambiguity is real and unresolvable from annual data, but it
+# costs 31 treated elections on the ERT arm (142 -> 173, +22%) and 38 on the
+# union arm, which is a lot to give up on a first stage this underpowered.
+# FALSE is kept so the earlier results stay reproducible.
+#
+# Whichever way this is set, the pre- and post-election windows stay a clean
+# partition with no overlap and no gap: prior_backsliding covers the N years
+# immediately before the treatment window opens.
+if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- TRUE
+}
+stopifnot(is.logical(TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR))
 
 stopifnot(ELECTION_TYPE %in% c("presidential", "parliamentary", "both"))
-stopifnot(
-  ILLIBERALISM_VAR %in% c("v2xpa_antiplural", "v2xpa_popul", "ep_galtan")
-)
+stopifnot(ILLIBERALISM_VAR %in% ILLIBERALISM_VARS)
 stopifnot(START_YEAR_SOURCE %in% c("ert", "ddcg", "llm"))
 stopifnot(SAMPLE_YEARS %in% c("all", "ddcg_comparable"))
 
@@ -407,8 +459,23 @@ vparty_con <- unz(
   "CPD_V-Party_CSV_v2/V-Dem-CPD-Party-V2.csv"
 )
 v_party <- read_csv(vparty_con, show_col_types = FALSE) |>
-  select(v2paid, year, v2xpa_antiplural, v2xpa_popul, ep_galtan) |>
-  filter(!is.na(v2paid))
+  select(
+    v2paid,
+    year,
+    v2xpa_antiplural,
+    v2xpa_popul,
+    ep_galtan,
+    v2pariglef,
+    v2paanteli
+  ) |>
+  filter(!is.na(v2paid)) |>
+  # v2pariglef runs right-positive in V-Party ("economic left-right position",
+  # higher = further right). Every other candidate instrument here is oriented
+  # so that HIGHER = the side hypothesized to erode democracy, and the ask is
+  # to treat economic LEFT as the high end, so negate it. Carried as its own
+  # column (rather than flipping v2pariglef in place) so the raw variable stays
+  # available and the orientation is visible at every use site.
+  mutate(v2pariglef_neg = -v2pariglef)
 
 # Matching each top2 row's party_id to a V-Party score is a two-stage
 # lookup: party_id -> parties_database row -> vdem_id_1 -> V-Party. The
@@ -440,7 +507,9 @@ match_vparty <- function(vdem_id_1, target_year) {
   empty_result <- tibble(
     v2xpa_antiplural = NA_real_,
     v2xpa_popul = NA_real_,
-    ep_galtan = NA_real_
+    ep_galtan = NA_real_,
+    v2pariglef_neg = NA_real_,
+    v2paanteli = NA_real_
   )
   if (is.na(vdem_id_1)) {
     return(empty_result)
@@ -451,7 +520,7 @@ match_vparty <- function(vdem_id_1, target_year) {
   }
   cand |>
     slice_max(year, n = 1, with_ties = FALSE) |>
-    select(v2xpa_antiplural, v2xpa_popul, ep_galtan)
+    select(all_of(ILLIBERALISM_VARS))
 }
 
 vparty_scores <- map2_dfr(
@@ -480,6 +549,27 @@ top2_for_scoring <- top2_scored |>
   filter(sum(!is.na(illiberalism_score)) == 2) |> # both candidates must have a score
   ungroup()
 
+# Carry EVERY candidate instrument's score for both top-2 members through to the
+# election level, not just the active ILLIBERALISM_VAR. Script 16 needs all of
+# them to compare how much the instrument definitions actually differ, and
+# recomputing the party match there would duplicate ~200 lines of join logic.
+# Ordered by SHARE (winner first), not by any score, so "__winner"/"__loser"
+# mean the same thing for every instrument. Ties are impossible for
+# parliamentary (dropped in Step 1) and vanishingly rare for presidential, but
+# arrange() breaking a tie arbitrarily is harmless here since both members then
+# carry the same share.
+all_scores_wide <- top2_for_scoring |>
+  group_by(election_id) |>
+  arrange(desc(final_share), .by_group = TRUE) |>
+  summarise(
+    across(
+      all_of(ILLIBERALISM_VARS),
+      list(winner = ~ .x[1], loser = ~ .x[2]),
+      .names = "{.col}__{.fn}"
+    ),
+    .groups = "drop"
+  )
+
 elections_scored <- top2_for_scoring |>
   group_by(election_id) |>
   arrange(desc(illiberalism_score), .by_group = TRUE) |>
@@ -500,7 +590,8 @@ elections_scored <- top2_for_scoring |>
   mutate(
     running_var = illiberal_share - other_share,
     score_gap = illiberal_score - other_score
-  )
+  ) |>
+  left_join(all_scores_wide, by = "election_id")
 
 # score_gap_z: score_gap standardized against the variability of
 # illiberalism_score itself, pooling BOTH top-2 members across EVERY
@@ -517,8 +608,16 @@ elections_scored <- top2_for_scoring |>
 # matter how genuinely high-contrast their races were. Pooling party-years
 # instead uses ~2x the observations per country and isn't self-referential
 # to the gap variable, so it doesn't have that hard ceiling.
+# One row per COUNTRY, which is what the comment above describes and what the
+# join below requires. Grouping by (country_text_id, party_id) -- as this did
+# previously -- computed each PARTY's own within-party SD and then left_join()ed
+# it on country_text_id alone, fanning every election out against every party in
+# its country (1,347 elections became 6,602 rows) and attaching an arbitrary
+# party's SD to each copy. Both the stated intent ("pooling BOTH top-2 members
+# across every scored election in that country") and the ceiling argument that
+# motivated it require the country-level pool.
 country_score_sd <- top2_for_scoring |>
-  group_by(country_text_id, party_id) |>
+  group_by(country_text_id) |>
   summarise(
     n_party_years = sum(!is.na(illiberalism_score)),
     sd_country_score = sd(illiberalism_score, na.rm = TRUE),
@@ -526,7 +625,7 @@ country_score_sd <- top2_for_scoring |>
   )
 
 elections_scored <- elections_scored |>
-  left_join(country_score_sd, by = "country_text_id") |>
+  left_join(country_score_sd, by = "country_text_id", relationship = "many-to-one") |>
   mutate(
     score_gap_z = if_else(
       n_party_years > 1 & sd_country_score > 0,
@@ -607,9 +706,26 @@ combined_panel <- readRDS(file.path(data_dir, "combined_panel.rds"))
 
 # Value of `var` for `country` in `yr`, or NA if that country-year isn't in
 # the panel.
+#
+# This used to be a dplyr::filter() over all ~20k panel rows on every call.
+# With 1,347 elections x ~19 (variable, year) lookups that was ~25k full table
+# scans per build, and this script is now run 13+ times (once per instrument x
+# window combination) -- so index the panel once into a hash keyed on
+# "ISO3 year" and make each lookup O(1). Columns are pulled out of the data
+# frame into a plain list of vectors up front too, since `[[` on a tibble is
+# itself not free at this call count.
+panel_row_index <- setNames(
+  seq_len(nrow(combined_panel)),
+  paste(combined_panel$country_text_id, combined_panel$year)
+)
+panel_cols <- as.list(combined_panel)
+
 panel_value <- function(country, yr, var) {
-  row <- combined_panel |> filter(country_text_id == country, year == yr)
-  if (nrow(row) == 0) NA_real_ else row[[var]][1]
+  # Single-bracket, not [[ ]]: `[[` on a named vector ERRORS for a name that
+  # isn't present, while `[` returns NA -- and a missing country-year is the
+  # normal case here (elections run past the panel's coverage on both ends).
+  i <- panel_row_index[paste(country, yr)]
+  if (is.na(i)) NA_real_ else panel_cols[[var]][[i]]
 }
 
 # Change in `var` from (election_year - 1) to (election_year + N); if
@@ -649,9 +765,20 @@ window_change <- function(
   if (log_transform) log(growth_factor) else growth_factor - 1
 }
 
+# Every outcome is a change over the identical (election_year - 1) ->
+# (election_year + N) window as the treatment, so re-running with a different N
+# moves treatment and every outcome consistently.
+#
+# The three growth measures are all log-level differences of a log GDP per
+# capita series, so they are directly comparable and can share one plot panel:
+#   ln_gdp_pc      Penn World Table 11.0  (the original)
+#   ln_gdp_pc_wb   World Bank             (outcomes.dta logGDPc_wb)
+#   ln_gdp_pc_imf  IMF WEO                (log of outcomes.dta GDPc_imfweo)
 build_outcomes <- function(country, election_year) {
   tibble(
     Y_gdp_growth = window_change(country, election_year, "ln_gdp_pc"),
+    Y_gdp_growth_wb = window_change(country, election_year, "ln_gdp_pc_wb"),
+    Y_gdp_growth_imf = window_change(country, election_year, "ln_gdp_pc_imf"),
     Y_inflation = window_change(
       country,
       election_year,
@@ -663,7 +790,21 @@ build_outcomes <- function(country, election_year) {
     Y_trade_pct_gdp = window_change(country, election_year, "trade_pct_gdp"),
     Y_top10_share = window_change(country, election_year, "top10_share"),
     Y_gini_disp = window_change(country, election_year, "gini_disp"),
-    Y_gini_mkt = window_change(country, election_year, "gini_mkt")
+    Y_gini_mkt = window_change(country, election_year, "gini_mkt"),
+    # Fiscal. deficit_pct_gdp is oriented in 01f so that positive = LARGER
+    # deficit, matching the "higher = worse" direction of the other outcomes.
+    Y_debt = window_change(country, election_year, "debt_pct_gdp"),
+    Y_deficit = window_change(country, election_year, "deficit_pct_gdp"),
+    # V-Dem institutional subcomponents. Note these run the OTHER way from the
+    # economic outcomes: higher = more constrained executive = healthier
+    # democracy, so a negative RD estimate is the "backsliding" sign here.
+    Y_checks_balances = window_change(country, election_year, "checks_balances"),
+    Y_jucon = window_change(country, election_year, "v2x_jucon"),
+    Y_legcon = window_change(country, election_year, "v2xlg_legcon"),
+    Y_hos_power = window_change(country, election_year, "hos_power_linear"),
+    Y_hog_power = window_change(country, election_year, "hog_power_linear"),
+    Y_hos_power_vdem = window_change(country, election_year, "hos_power_vdem"),
+    Y_hog_power_vdem = window_change(country, election_year, "hog_power_vdem")
   )
 }
 
@@ -671,23 +812,57 @@ build_outcomes <- function(country, election_year) {
 # falls in (election_year, election_year + N]? Also record prior_backsliding
 # and the earliest triggering episode ID.
 backsliding_for_election <- function(country, election_year) {
+  # The single place the window convention is applied. Both the ERT arm and the
+  # DDCG arm below read window_start, so the two sources can never drift onto
+  # different conventions -- which would matter, since backsliding_union_Nyr is
+  # their pmax() and any apparent power gain would then partly be the wider
+  # window rather than the extra events.
+  window_start <- if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) {
+    election_year
+  } else {
+    election_year + 1
+  }
+  window_end <- election_year + BACKSLIDING_WINDOW_YEARS
+
   # ERT episodes that started in the post-election window
   post_matches <- episode_years |>
     filter(
       country_text_id == country,
-      start_year_used > election_year,
-      start_year_used <= election_year + BACKSLIDING_WINDOW_YEARS
+      start_year_used >= window_start,
+      start_year_used <= window_end
     ) |>
     arrange(start_year_used)
-  # ERT episodes that started within the same BACKSLIDING_WINDOW_YEARS
-  # span before the election -- a backsliding episode from decades earlier
-  # isn't a relevant confound for this specific election.
+  # ERT episodes that started in the BACKSLIDING_WINDOW_YEARS immediately
+  # before the treatment window opens -- a backsliding episode from decades
+  # earlier isn't a relevant confound for this specific election. Anchored to
+  # window_start rather than election_year so the pre- and post-windows abut
+  # exactly, with no year counted twice or skipped, under either convention.
   prior_matches <- episode_years |>
     filter(
       country_text_id == country,
-      start_year_used > election_year - BACKSLIDING_WINDOW_YEARS,
-      start_year_used <= election_year
+      start_year_used >= window_start - BACKSLIDING_WINDOW_YEARS,
+      start_year_used < window_start
     )
+
+  # DDCG (Acemoglu et al. 2019) reversal events in the same post-election
+  # window. DDCG's panel only runs 1960-2010, so outside that span this is
+  # always 0 -- ddcg_covered below records whether the window was even in
+  # scope, so the union treatment's extra power isn't misread as coming from
+  # elections DDCG never could have contributed to.
+  ddcg_years_in_window <- window_start:window_end
+  ddcg_hits <- vapply(
+    ddcg_years_in_window,
+    function(y) {
+      v <- panel_value(country, y, "revevent")
+      isTRUE(!is.na(v) && v == 1)
+    },
+    logical(1)
+  )
+
+  # Continuous treatment: how far V-Dem polyarchy FELL over the same
+  # (election_year - 1) -> (election_year + N) window, negated so that, like
+  # the binary treatments, higher = more backsliding.
+  polyarchy_decline <- -window_change(country, election_year, "v2x_polyarchy")
 
   tibble(
     backsliding_Nyr = as.integer(nrow(post_matches) > 0),
@@ -696,7 +871,13 @@ backsliding_for_election <- function(country, election_year) {
     } else {
       NA_character_
     },
-    prior_backsliding = as.integer(nrow(prior_matches) > 0)
+    prior_backsliding = as.integer(nrow(prior_matches) > 0),
+    backsliding_ddcg_Nyr = as.integer(any(ddcg_hits)),
+    ddcg_covered = as.integer(
+      max(ddcg_years_in_window) >= DDCG_START &&
+        min(ddcg_years_in_window) <= DDCG_END
+    ),
+    polyarchy_decline = polyarchy_decline
   )
 }
 
@@ -714,7 +895,14 @@ treatment_outcomes <- pmap_dfr(
   }
 )
 
-elections_full <- bind_cols(elections_scored, treatment_outcomes)
+elections_full <- bind_cols(elections_scored, treatment_outcomes) |>
+  # The extended treatment (to-do 4): an ERT autocratization episode OR a DDCG
+  # democratic reversal in the post-election window. Computed here rather than
+  # made a build-time toggle so a single build serves all three treatment
+  # definitions and 12_rdd_analysis.R can switch between them for free.
+  mutate(
+    backsliding_union_Nyr = pmax(backsliding_Nyr, backsliding_ddcg_Nyr)
+  )
 
 n_matched_panel <- sum(
   !is.na(elections_full$Y_gdp_growth) | elections_full$backsliding_Nyr == 1
@@ -723,6 +911,24 @@ cat(sprintf(
   "Step 4: %d treated elections (backsliding_Nyr==1); %d with prior_backsliding==1\n",
   sum(elections_full$backsliding_Nyr),
   sum(elections_full$prior_backsliding)
+))
+n_added <- sum(
+  elections_full$backsliding_union_Nyr == 1 & elections_full$backsliding_Nyr == 0
+)
+cat(sprintf(
+  "Step 4: DDCG reversals add %d treated elections on top of ERT (%d -> %d); %d elections have a window overlapping DDCG's %d-%d coverage at all\n",
+  n_added,
+  sum(elections_full$backsliding_Nyr),
+  sum(elections_full$backsliding_union_Nyr),
+  sum(elections_full$ddcg_covered),
+  DDCG_START,
+  DDCG_END
+))
+cat(sprintf(
+  "Step 4: polyarchy_decline non-missing for %d elections (mean %.4f, sd %.4f)\n",
+  sum(!is.na(elections_full$polyarchy_decline)),
+  mean(elections_full$polyarchy_decline, na.rm = TRUE),
+  sd(elections_full$polyarchy_decline, na.rm = TRUE)
 ))
 
 # ------------------------------------------------------------------------------
@@ -752,32 +958,81 @@ cat(sprintf(
 # Save + summary
 # ------------------------------------------------------------------------------
 
-saveRDS(elections_final, file.path(data_dir, "rdd_analysis_data.rds"))
+# Cache one build per (instrument, window) pair. The treatment definitions and
+# every outcome are all computed in a single pass, so this is the only axis the
+# build actually varies along -- 12_rdd_analysis.R and the driver scripts read
+# these files back rather than rebuilding.
+build_dir <- file.path(data_dir, "rdd_build")
+dir.create(build_dir, showWarnings = FALSE, recursive = TRUE)
+# The window convention changes the treatment columns, so it has to be part of
+# the build's identity or a TRUE build and a FALSE build would silently
+# overwrite each other. Only the non-default (FALSE) convention gets a suffix,
+# keeping the default filenames clean.
+build_suffix <- if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else "_exclyr"
+build_path <- file.path(
+  build_dir,
+  sprintf(
+    "rdd_%s_w%d%s.rds",
+    ILLIBERALISM_VAR, BACKSLIDING_WINDOW_YEARS, build_suffix
+  )
+)
+# Record the convention on the object itself, so 12_rdd_analysis.R can read it
+# back and label its run folder accordingly rather than having to be told.
+attr(elections_final, "includes_election_year") <-
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR
+saveRDS(elections_final, build_path)
+message("Saved ", build_path)
+
+# Party-level companion: the two top-2 finishers of every scored election, with
+# every candidate instrument's score. 16_instrument_overlap.R needs this grain
+# (a party-year observation, not an election) for its Jaccard heatmaps, and
+# re-deriving it there would mean duplicating the whole Party Facts -> V-Dem ->
+# V-Party matching chain above.
+parties_path <- sub("\\.rds$", "_parties.rds", build_path)
+saveRDS(
+  top2_for_scoring |>
+    select(
+      election_id, election_type, country_text_id, country_name, election_year,
+      party_id, candidate, final_share, all_of(ILLIBERALISM_VARS)
+    ),
+  parties_path
+)
+message("Saved ", parties_path)
+
+# Also keep writing the historical default location, so anything still pointing
+# at it (and a standalone run of 12_rdd_analysis.R) keeps working.
+if (
+  ILLIBERALISM_VAR == "v2xpa_antiplural" && BACKSLIDING_WINDOW_YEARS == 5 &&
+    ELECTION_TYPE == "both" && START_YEAR_SOURCE == "ert" &&
+    SAMPLE_YEARS == "all" && TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR
+) {
+  saveRDS(elections_final, file.path(data_dir, "rdd_analysis_data.rds"))
+  message("Saved data/rdd_analysis_data.rds (default configuration)")
+}
 
 cat("\n=== Summary ===\n")
 cat(sprintf("Election type: %s\n", ELECTION_TYPE))
 cat(sprintf("Backsliding window: %d years\n", BACKSLIDING_WINDOW_YEARS))
 cat(sprintf("Illiberalism variable: %s\n", ILLIBERALISM_VAR))
 cat(sprintf("Start-year source: %s\n", START_YEAR_SOURCE))
+cat(sprintf(
+  "Treatment window: [%s, election_year + %d]\n",
+  if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) {
+    "election_year"
+  } else {
+    "election_year + 1"
+  },
+  BACKSLIDING_WINDOW_YEARS
+))
 cat(sprintf("N elections (final): %d\n", nrow(elections_final)))
 cat(sprintf("N treated (backsliding_Nyr==1): %d\n", n_treated))
 cat("\nNon-missing counts per outcome:\n")
-outcome_cols <- c(
-  "Y_gdp_growth",
-  "Y_inflation",
-  "Y_unemployment",
-  "Y_trade_pct_gdp",
-  "Y_top10_share",
-  "Y_gini_disp",
-  "Y_gini_mkt"
-)
+outcome_cols <- grep("^Y_", names(elections_final), value = TRUE)
 print(colSums(!is.na(elections_final[outcome_cols])))
 cat(sprintf(
   "\nBermeo-match coverage (of treated): %.1f%%\n",
   100 * n_bermeo_matched / n_treated
 ))
-
-message("Saved data/rdd_analysis_data.rds")
 
 # ------------------------------------------------------------------------------
 # Step 6 -- diagnostic: ERT episode match accounting
@@ -797,10 +1052,12 @@ matched_ids <- unique(
   elections_full$matched_aut_ep_id[!is.na(elections_full$matched_aut_ep_id)]
 )
 
-# Mirrors backsliding_for_election()'s post_matches condition exactly, from
-# the episode's point of view: election_year must be in
-# [start_year_used - N, start_year_used) for this episode to be a candidate
-# treatment for that election.
+# Mirrors backsliding_for_election()'s post_matches condition exactly, from the
+# episode's point of view: for this episode to be a candidate treatment for an
+# election, election_year must be in [start_year_used - N, start_year_used) --
+# or [start_year_used - N, start_year_used] when the treatment window includes
+# the election year, since an episode starting in the election year itself then
+# counts.
 classify_episode <- function(ep_id, country, start_year_used) {
   if (ep_id %in% matched_ids) {
     return("Matched")
@@ -813,7 +1070,11 @@ classify_episode <- function(ep_id, country, start_year_used) {
     filter(
       country_text_id == country,
       election_year >= win_lo,
-      election_year < win_hi
+      if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) {
+        election_year <= win_hi
+      } else {
+        election_year < win_hi
+      }
     ) |>
     distinct(election_year)
 
@@ -967,6 +1228,15 @@ gt_ert_miss_table <- ert_miss_table |>
   opt_row_striping() |>
   apply_table_style()
 
-write_csv(ert_miss_table, file.path(out_dir, "rdd_ert_miss_table.csv"))
-gtsave(gt_ert_miss_table, file.path(out_dir, "rdd_ert_miss_table.html"))
-message("Saved output/rdd_ert_miss_table.csv/.html")
+# Written into the per-build folder rather than a flat output/ file, so
+# different instrument/window builds don't overwrite each other's accounting.
+miss_dir <- file.path(out_dir, "runs", "_builds", sprintf(
+  "%s_w%d%s",
+  ILLIBERALISM_VAR,
+  BACKSLIDING_WINDOW_YEARS,
+  build_suffix
+))
+dir.create(miss_dir, showWarnings = FALSE, recursive = TRUE)
+write_csv(ert_miss_table, file.path(miss_dir, "ert_miss_table.csv"))
+gtsave(gt_ert_miss_table, file.path(miss_dir, "ert_miss_table.html"))
+message("Saved ", file.path(miss_dir, "ert_miss_table.csv/.html"))

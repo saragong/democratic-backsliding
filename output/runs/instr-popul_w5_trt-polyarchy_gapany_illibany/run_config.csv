@@ -1,0 +1,11 @@
+slug,key,value
+instr-popul_w5_trt-polyarchy_gapany_illibany,instrument,v2xpa_popul
+instr-popul_w5_trt-polyarchy_gapany_illibany,window,5
+instr-popul_w5_trt-polyarchy_gapany_illibany,treatment,polyarchy_decline
+instr-popul_w5_trt-polyarchy_gapany_illibany,score_gap_min,-Inf
+instr-popul_w5_trt-polyarchy_gapany_illibany,illiberal_cutoff,-Inf
+instr-popul_w5_trt-polyarchy_gapany_illibany,incl_election_year,TRUE
+instr-popul_w5_trt-polyarchy_gapany_illibany,score_gap_spec,-Inf
+instr-popul_w5_trt-polyarchy_gapany_illibany,score_gap_form,none
+instr-popul_w5_trt-polyarchy_gapany_illibany,illiberal_cutoff_spec,-Inf
+instr-popul_w5_trt-polyarchy_gapany_illibany,illiberal_cutoff_form,none

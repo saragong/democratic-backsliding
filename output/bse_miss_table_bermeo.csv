@@ -1,0 +1,68 @@
+country_name,ep_start,ep_end,outcome_short,ROW,ERT_regime,Polyarchy,LibDem,LibComp,matched,bermeo_category_primary,bermeo_category_secondary,description
+Belarus,1994,2001,Breakdown,NA,NA,NA,NA,NA,FALSE,Executive coup,Executive aggrandizement,"Lukashenko used successive referenda to strip the elected parliament of power and concentrate authority in the presidency, completing the transformation of a young post-Soviet democracy into personalist authoritarian rule."
+Nicaragua,1996,2025,Breakdown,2007,2007,2007200820122013,199920062007,200220062007,TRUE,Executive aggrandizement,Strategic harassment,"Ortega engineered a pact with Aleman to divide control of Nicaragua's courts and electoral institutions, laying groundwork for his 2006 comeback; once back in office he eliminated term limits, packed institutions, and violently suppressed protests, culminating in his wife's 2025 installation as co-president."
+Madagascar,1997,2002,Breakdown,2000,2000,2002,2002,2003,TRUE,Election-day fraud,Strategic harassment,"Ratsiraka's patronage-based authoritarian rule continued through a disputed December 2001 election whose official count denied Ravalomanana an outright majority, triggering a six-month constitutional crisis before Ratsiraka fled the country."
+Ukraine,1997,2000,Breakdown,NA,NA,2000,1999,NA,TRUE,Executive aggrandizement,Election-day fraud,Kuchma used a fraud-marred 1999 re-election and manipulated 2000 referendum to try to expand presidential power at parliament's expense; parliament's refusal to implement the results checked full consolidation.
+Moldova,1998,2006,Breakdown,2005,2005,2005,20012005,NA,TRUE,Strategic harassment,Executive aggrandizement,"The Communist Party's growth to an outright constitutional supermajority concentrated unprecedented power in a single party controlling both the presidency and parliament, entrenched through continued state-media dominance."
+Solomon Islands,1998,2001,Breakdown,2000,2000,20002001,2000,20002001,TRUE,Open-ended coup,NA,Ethnic tension culminated in a June 2000 coup in which a militia forced out elected PM Ulufa'alu at gunpoint; parliament replaced him under duress before a peace agreement began disarmament.
+Venezuela,1998,2018,Breakdown,2002,2002,2003200620112013,200020012002,2000,TRUE,Executive aggrandizement,Strategic harassment,"Chavez converted his 1998 win into unchecked power via a 1999 Constituent Assembly rewriting the constitution, then over two decades used patronage, court-packing, and electoral manipulation to erode checks, culminating under Maduro's fraud-marred 2018 re-election."
+Malawi,1999,2005,Breakdown,2000,2000,20002005,2000,NA,TRUE,Executive aggrandizement,Strategic harassment,"Muluzi sought UDF/executive dominance via a failed 2002 third-term bid; though blocked, he engineered the succession of Mutharika via the contested 2004 election, whose subsequent break from UDF left executive power personalized."
+Fiji,2000,2001,Breakdown,2000,2000,2000,2000,2000,TRUE,Open-ended coup,Promissory coup,"George Speight's armed takeover of parliament ousted Indo-Fijian PM Chaudhry; the military ultimately deposed Speight, restored order, and organized new 2001 elections, but the coup marked a decisive break along ethnic lines."
+Philippines,2001,2005,Breakdown,2004,2004,2005,2004,NA,TRUE,Election-day fraud,Executive aggrandizement,"Arroyo, who assumed the presidency via the 2001 EDSA II ouster of Estrada, was accused of rigging her 2004 re-election through the ""Hello Garci"" scandal; her allies blocked impeachment, cementing an unaccountable executive."
+Bangladesh,2002,2007,Breakdown,2002,2002,200220062007,2002,NA,TRUE,Strategic harassment,Open-ended coup,"The BNP government pursued harsh crackdowns against opposition figures, with extrajudicial killings shielded by an indemnity law; this chronic harassment culminated in a January 2007 military-backed takeover that suspended the election."
+Thailand,2003,2007,Breakdown,2006,2006,2006,20042006,2006,TRUE,Promissory coup,Open-ended coup,"Thailand's military ousted PM Thaksin in a September 2006 coup while abroad, explicitly promising a swift return to civilian rule; the junta delivered on its promise, holding elections in December 2007, though only after banning Thaksin's party."
+Bosnia and Herzegovina,2004,2007,Erosion only,NA,NA,NA,2007,2004,TRUE,Other/unclear,Executive aggrandizement,"Bosnia's erosion reflects continued heavy-handed international ""protectorate"" governance displacing domestic democratic accountability, alongside the failure of constitutional reform and the rise of nationalist leader Dodik."
+Sri Lanka,2004,2006,Breakdown,2005,2005,20052006,20052006,20052007,TRUE,Executive aggrandizement,NA,"President Rajapaksa reversed the peace process after his contested 2005 election, allying with hardline nationalists; the LTTE's 2006 reservoir closure triggered renewed war, entrenching executive and military authority."
+North Macedonia,2005,2012,Breakdown,2011,2011,20112013,2009201120122013,2013,TRUE,Strategic harassment,Executive aggrandizement,"Gruevski's party won a disputed-adjacent 2006 election after irregularity-marred 2005 local elections, using consecutive victories through 2011 to tilt media, pack security institutions, and marginalize opposition."
+Türkiye,2005,2017,Breakdown,2013,2013,2013201420152016,20102011201320145e3,2013201420152016,TRUE,Executive aggrandizement,Strategic harassment,"Erdogan's AKP incrementally dismantled institutional checks through legal, referendum-based channels; the failed 2016 coup triggered mass purges, and the 2017 referendum formally converted Turkey to a presidential system concentrating power in Erdogan."
+Bolivia,2006,2020,Breakdown,2019,2019,20192020,201420182019,20062009201020165e7,TRUE,Executive aggrandizement,Election-day fraud,"Morales concentrated executive power through a 2009 constitution and a 2017 Tribunal ruling overturning a 2016 anti-reelection referendum; his disputed 2019 re-election, found fraudulent by the OAS, triggered his resignation and an unelected interim government."
+Honduras,2006,2010,Breakdown,2009,2009,20092010,200620092010,2010,TRUE,Promissory coup,Open-ended coup,"Honduras's Supreme Court and Congress, backed by the military, removed elected President Zelaya after he defied a court order barring a referendum; framed as defense of legality with a promise to hold elections, the episode concluded with Lobo's 2010 inauguration."
+Hungary,2006,2025,Breakdown,2018,2018,20182021,201820202023,NA,TRUE,Executive aggrandizement,Strategic harassment,"After winning a two-thirds supermajority, Orban's government rewrote Hungary's constitution and systematically weakened judicial independence, media pluralism, and electoral fairness through ostensibly legal institutional changes over more than a decade."
+Palestine/West Bank,2006,2008,Breakdown,2007,2007,2007,20062007,2007,TRUE,Executive coup,Executive aggrandizement,"Hamas won the 2006 legislative election, but conflict with Fatah culminated in Hamas's 2007 Gaza takeover; Abbas dissolved the unity government and ruled the West Bank through an emergency decree-appointed government."
+Ecuador,2007,2013,Erosion only,NA,NA,NA,200820102013,200720082009,TRUE,Executive aggrandizement,Strategic harassment,"Correa used a 2007 Constituent Assembly, which bypassed the existing opposition-controlled Congress, to produce a 2008 constitution substantially expanding presidential powers, driving significant executive-driven erosion without full collapse."
+Papua New Guinea,2007,2013,Breakdown,2008,2008,20082012,20072010,NA,TRUE,Executive aggrandizement,Open-ended coup,"PNG's 2011-2012 constitutional crisis pitted a parliament-installed PM against the courts and the removed incumbent, with O'Neill repeatedly defying Supreme Court orders before the dispute was resolved by the ballot box in 2012."
+South Korea,2008,2014,Erosion only,NA,NA,NA,NA,NA,FALSE,Strategic harassment,NA,"South Korea's intelligence service illegally intervened in the 2012 presidential election to help the ruling-party candidate via covert online manipulation, revealing significant erosion in electoral fairness without a full authoritarian breakdown."
+Mali,2008,2013,Breakdown,2012,2012,20122013,2012,20122013,TRUE,Promissory coup,Open-ended coup,A mutiny over resourcing for the war against Tuareg rebels toppled elected president Toure; the junta promised to restore constitutional order and eventually ceded power to a transitional government before 2013 elections.
+Indonesia,2009,2025,Breakdown,NA,NA,NA,20222023,NA,TRUE,Executive aggrandizement,Strategic harassment,"Starting with the 2019 gutting of the KPK's independence and culminating in the 2023 court ruling clearing the way for Jokowi's son to become vice president, Indonesia's checking institutions were progressively hollowed out through nominally legal channels."
+India,2009,2025,Breakdown,2017,2017,2017201920202023,2017201820192023,NA,TRUE,Executive aggrandizement,Strategic harassment,"Under Modi, India's elected executive progressively weakened checks through ostensibly legal means -- the Article 370 abrogation, capture of referee institutions, and opaque political financing -- ranking India among the most significant recent autocratizers."
+Niger,2009,2010,Breakdown,2009,2009,20092010,20092010,20092010,TRUE,Executive aggrandizement,Promissory coup,"President Tandja attempted to extend his rule past term limits via an illegitimate referendum, prompting a February 2010 military coup; the coup leaders explicitly promised a return to elected government and delivered within a year."
+Maldives,2010,2017,Breakdown,2013,2013,201320142015,201020122013,20122013,TRUE,Executive aggrandizement,Promissory coup,"A contested February 2012 transfer of power removed elected president Nasheed and installed Waheed, paving the way for Yameen's 2013 election and his subsequent systematic dismantling of judicial independence and opposition rights."
+Serbia,2010,2025,Breakdown,2014,2014,2014201620172021,20142016201820197e3,202020212023,TRUE,Executive aggrandizement,Strategic harassment,"Since SNS's 2012 rise to power, Vucic has progressively concentrated executive power, captured media and state institutions, and tilted successive elections, a shift international monitors describe as democracy to hybrid authoritarianism."
+Ukraine,2010,2014,Breakdown,2010,2010,20112014,20102012,2010,TRUE,Executive aggrandizement,Strategic harassment,"President Yanukovych used a compliant Constitutional Court to restore presidential powers, then pursued selective prosecution of opposition and manipulated electoral rules, before his rejection of EU integration triggered the Euromaidan revolution that ousted him."
+Zambia,2011,2019,Breakdown,2013,2013,201320162017,201320162017,NA,TRUE,NA,NA,NA
+Slovenia,2012,2021,Erosion only,NA,NA,NA,NA,NA,FALSE,NA,NA,NA
+Czechia,2013,2021,Erosion only,NA,NA,NA,NA,NA,FALSE,NA,NA,NA
+Ghana,2013,2021,Erosion only,NA,NA,NA,NA,NA,FALSE,NA,NA,NA
+Croatia,2013,2025,Ongoing,NA,NA,NA,NA,NA,FALSE,NA,NA,NA
+Moldova,2013,2017,Erosion only,NA,NA,NA,2018,NA,TRUE,NA,NA,NA
+Burkina Faso,2014,2015,Breakdown,2015,2015,2015,2015,NA,TRUE,NA,NA,NA
+Mauritius,2014,2023,Breakdown,2023,2023,2023,20222023,NA,TRUE,NA,NA,NA
+Tunisia,2014,2022,Breakdown,2022,2022,2022,2022,2022,TRUE,NA,NA,NA
+Brazil,2015,2019,Erosion only,NA,NA,NA,NA,NA,FALSE,NA,NA,NA
+Botswana,2015,2022,Erosion only,NA,NA,NA,NA,NA,FALSE,NA,NA,NA
+Lesotho,2015,2017,Erosion only,NA,NA,NA,2017,NA,TRUE,NA,NA,NA
+Niger,2015,2025,Breakdown,2023,2023,2023,20222023,NA,TRUE,NA,NA,NA
+Mongolia,2016,2024,Breakdown,NA,NA,NA,NA,NA,FALSE,NA,NA,NA
+Peru,2016,2025,Ongoing,NA,NA,NA,NA,NA,FALSE,NA,NA,NA
+Philippines,2016,2025,Breakdown,2016,2016,20182019,2016201720182020,2018,TRUE,NA,NA,NA
+Poland,2016,2021,Erosion only,NA,NA,NA,NA,NA,FALSE,NA,NA,NA
+Georgia,2017,2025,Breakdown,NA,NA,NA,NA,NA,FALSE,NA,NA,NA
+Benin,2018,2021,Breakdown,2019,2019,20192020,20192020,2020,TRUE,NA,NA,NA
+Burkina Faso,2018,2025,Breakdown,2022,2022,2022,2022,2023,TRUE,NA,NA,NA
+Guatemala,2018,2022,Erosion only,NA,NA,NA,20212022,202120222023,TRUE,NA,NA,NA
+El Salvador,2018,2025,Breakdown,2021,2021,20212022,201920202021,20202021,TRUE,NA,NA,NA
+United Kingdom,2019,2025,Ongoing,NA,NA,NA,NA,NA,FALSE,NA,NA,NA
+Guyana,2019,2025,Ongoing,2021,NA,NA,202020212023,2023,TRUE,NA,NA,NA
+Italy,2019,2025,Ongoing,NA,NA,NA,NA,NA,FALSE,NA,NA,NA
+South Korea,2019,2023,Erosion only,NA,NA,NA,NA,NA,FALSE,NA,NA,NA
+Armenia,2020,2025,Ongoing,NA,NA,NA,NA,NA,FALSE,NA,NA,NA
+Ivory Coast,2020,2025,Breakdown,2020,2020,2021,20202021,20192020,TRUE,NA,NA,NA
+Greece,2020,2025,Ongoing,NA,NA,NA,NA,NA,FALSE,NA,NA,NA
+Mexico,2020,2025,Breakdown,NA,NA,NA,202120222023,2019202020212022,TRUE,NA,NA,NA
+Romania,2021,2025,Ongoing,NA,NA,NA,NA,NA,FALSE,NA,NA,NA
+Senegal,2021,2025,Ongoing,NA,NA,NA,NA,NA,FALSE,NA,NA,NA
+Ukraine,2021,2025,Ongoing,2022,NA,2022,2022,2022,TRUE,NA,NA,NA
+Guinea-Bissau,2022,2022,Breakdown,2022,2022,2022,2022,2022,TRUE,NA,NA,NA
+Moldova,2023,2025,Ongoing,NA,NA,NA,NA,NA,FALSE,NA,NA,NA
+Slovakia,2023,2025,Ongoing,NA,NA,NA,NA,NA,FALSE,NA,NA,NA
+Slovenia,2023,2025,Ongoing,NA,NA,NA,NA,NA,FALSE,NA,NA,NA

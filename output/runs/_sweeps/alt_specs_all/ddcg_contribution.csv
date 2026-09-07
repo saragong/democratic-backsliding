@@ -1,0 +1,6 @@
+instrument,n_elections,n_in_ddcg_coverage,n_treated_ert,n_treated_union,n_added_by_ddcg,pct_added
+Anti-pluralism (v2xpa_antiplural),1347,957,173,198,25,14.5
+Populism (v2xpa_popul),1347,957,173,198,25,14.5
+Economic left (negated v2pariglef),1343,953,173,198,25,14.5
+Anti-elitism (v2paanteli),1347,957,173,198,25,14.5
+GAL-TAN (ep_galtan),53,24,5,5,0,0

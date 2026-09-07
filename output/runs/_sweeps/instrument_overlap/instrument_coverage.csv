@@ -1,0 +1,6 @@
+instrument,variable,n_elections_scored,pct_of_spine
+Anti-pluralism (v2xpa_antiplural),v2xpa_antiplural,1347,100
+Populism (v2xpa_popul),v2xpa_popul,1347,100
+GAL-TAN (ep_galtan),ep_galtan,53,3.9
+Economic left (negated v2pariglef),v2pariglef_neg,1343,99.7
+Anti-elitism (v2paanteli),v2paanteli,1347,100

@@ -1,0 +1,2 @@
+n_ert_episodes,n_ddcg_events,n_overlap,pct_ddcg_in_ert,pct_ddcg_not_in_ert,pct_ert_in_ddcg,pct_ert_not_in_ddcg
+131,71,49,69,31,37.4,62.6

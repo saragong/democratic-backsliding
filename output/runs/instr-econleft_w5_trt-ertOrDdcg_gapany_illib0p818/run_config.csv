@@ -1,0 +1,11 @@
+slug,key,value
+instr-econleft_w5_trt-ertOrDdcg_gapany_illib0p818,instrument,v2pariglef_neg
+instr-econleft_w5_trt-ertOrDdcg_gapany_illib0p818,window,5
+instr-econleft_w5_trt-ertOrDdcg_gapany_illib0p818,treatment,backsliding_union_Nyr
+instr-econleft_w5_trt-ertOrDdcg_gapany_illib0p818,score_gap_min,-Inf
+instr-econleft_w5_trt-ertOrDdcg_gapany_illib0p818,illiberal_cutoff,0.818
+instr-econleft_w5_trt-ertOrDdcg_gapany_illib0p818,incl_election_year,TRUE
+instr-econleft_w5_trt-ertOrDdcg_gapany_illib0p818,score_gap_spec,-Inf
+instr-econleft_w5_trt-ertOrDdcg_gapany_illib0p818,score_gap_form,none
+instr-econleft_w5_trt-ertOrDdcg_gapany_illib0p818,illiberal_cutoff_spec,q50
+instr-econleft_w5_trt-ertOrDdcg_gapany_illib0p818,illiberal_cutoff_form,quantile

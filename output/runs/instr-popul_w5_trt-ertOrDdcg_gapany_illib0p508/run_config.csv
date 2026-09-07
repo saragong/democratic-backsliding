@@ -1,0 +1,11 @@
+slug,key,value
+instr-popul_w5_trt-ertOrDdcg_gapany_illib0p508,instrument,v2xpa_popul
+instr-popul_w5_trt-ertOrDdcg_gapany_illib0p508,window,5
+instr-popul_w5_trt-ertOrDdcg_gapany_illib0p508,treatment,backsliding_union_Nyr
+instr-popul_w5_trt-ertOrDdcg_gapany_illib0p508,score_gap_min,-Inf
+instr-popul_w5_trt-ertOrDdcg_gapany_illib0p508,illiberal_cutoff,0.508
+instr-popul_w5_trt-ertOrDdcg_gapany_illib0p508,incl_election_year,TRUE
+instr-popul_w5_trt-ertOrDdcg_gapany_illib0p508,score_gap_spec,-Inf
+instr-popul_w5_trt-ertOrDdcg_gapany_illib0p508,score_gap_form,none
+instr-popul_w5_trt-ertOrDdcg_gapany_illib0p508,illiberal_cutoff_spec,q50
+instr-popul_w5_trt-ertOrDdcg_gapany_illib0p508,illiberal_cutoff_form,quantile

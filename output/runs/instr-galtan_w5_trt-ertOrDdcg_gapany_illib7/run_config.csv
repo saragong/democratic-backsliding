@@ -1,0 +1,11 @@
+slug,key,value
+instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,instrument,ep_galtan
+instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,window,5
+instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,treatment,backsliding_union_Nyr
+instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,score_gap_min,-Inf
+instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,illiberal_cutoff,7
+instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,incl_election_year,TRUE
+instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,score_gap_spec,-Inf
+instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,score_gap_form,none
+instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,illiberal_cutoff_spec,q50
+instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,illiberal_cutoff_form,quantile

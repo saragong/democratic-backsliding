@@ -1,0 +1,11 @@
+slug,key,value
+instr-antiplural_w5_trt-ert_gap0_illib0p6,instrument,v2xpa_antiplural
+instr-antiplural_w5_trt-ert_gap0_illib0p6,window,5
+instr-antiplural_w5_trt-ert_gap0_illib0p6,treatment,backsliding_Nyr
+instr-antiplural_w5_trt-ert_gap0_illib0p6,score_gap_min,0
+instr-antiplural_w5_trt-ert_gap0_illib0p6,illiberal_cutoff,0.6
+instr-antiplural_w5_trt-ert_gap0_illib0p6,incl_election_year,TRUE
+instr-antiplural_w5_trt-ert_gap0_illib0p6,score_gap_spec,0
+instr-antiplural_w5_trt-ert_gap0_illib0p6,score_gap_form,absolute
+instr-antiplural_w5_trt-ert_gap0_illib0p6,illiberal_cutoff_spec,0.6
+instr-antiplural_w5_trt-ert_gap0_illib0p6,illiberal_cutoff_form,absolute

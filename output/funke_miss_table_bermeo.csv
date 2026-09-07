@@ -1,0 +1,249 @@
+country_name,ep_start,ep_end,outcome_short,funke_spell_years,matched,bermeo_category_primary,bermeo_category_secondary,description
+Cuba,1904,1907,NA,NA,FALSE,NA,NA,NA
+Ecuador,1906,1906,NA,NA,FALSE,NA,NA,NA
+Dominican Republic,1908,1917,NA,NA,FALSE,NA,NA,NA
+Belgium,1914,1915,Breakdown,NA,FALSE,NA,NA,NA
+Greece,1915,1917,NA,NA,FALSE,NA,NA,NA
+Costa Rica,1917,1917,NA,NA,FALSE,NA,NA,NA
+Hungary,1919,1919,NA,NA,FALSE,NA,NA,NA
+Peru,1919,1920,NA,NA,FALSE,NA,NA,NA
+Italy,1921,1926,NA,1922–1943,TRUE,NA,NA,NA
+Greece,1922,1923,NA,NA,FALSE,NA,NA,NA
+Germany,1923,1939,Breakdown,1933–1945,TRUE,NA,NA,NA
+Spain,1923,1924,NA,NA,FALSE,NA,NA,NA
+Chile,1924,1925,NA,1920–1925,TRUE,NA,NA,NA
+Greece,1925,1926,NA,NA,FALSE,NA,NA,NA
+Lithuania,1926,1927,Breakdown,NA,FALSE,NA,NA,NA
+Poland,1926,1931,Breakdown,NA,FALSE,NA,NA,NA
+Portugal,1926,1927,NA,NA,FALSE,NA,NA,NA
+Cuba,1929,1934,NA,NA,FALSE,NA,NA,NA
+Argentina,1930,1931,NA,1928–1930,TRUE,NA,NA,NA
+Austria,1930,1938,Breakdown,NA,FALSE,NA,NA,NA
+Bolivia,1930,1935,NA,NA,FALSE,NA,NA,NA
+Brazil,1930,1931,NA,1930–1945,TRUE,NA,NA,NA
+Czechia,1930,1940,Breakdown,NA,FALSE,NA,NA,NA
+Dominican Republic,1930,1931,NA,NA,FALSE,NA,NA,NA
+Malta,1930,1931,NA,NA,FALSE,NA,NA,NA
+El Salvador,1931,1932,NA,NA,FALSE,NA,NA,NA
+Ecuador,1932,1936,NA,1934–1935,TRUE,NA,NA,NA
+Estonia,1932,1935,Breakdown,NA,FALSE,NA,NA,NA
+Uruguay,1933,1933,Breakdown,NA,FALSE,NA,NA,NA
+Bulgaria,1934,1935,NA,NA,FALSE,NA,NA,NA
+Latvia,1934,1939,Breakdown,NA,FALSE,NA,NA,NA
+Malta,1934,1935,NA,NA,FALSE,NA,NA,NA
+Greece,1935,1937,NA,NA,FALSE,NA,NA,NA
+Spain,1936,1940,Breakdown,NA,FALSE,NA,NA,NA
+Albania,1937,1940,NA,NA,FALSE,NA,NA,NA
+Romania,1937,1940,NA,NA,FALSE,NA,NA,NA
+Finland,1939,1940,Erosion only,NA,FALSE,NA,NA,NA
+France,1939,1941,Breakdown,NA,FALSE,NA,NA,NA
+Hungary,1939,1945,NA,NA,FALSE,NA,NA,NA
+Belgium,1940,1941,Breakdown,NA,FALSE,NA,NA,NA
+Denmark,1940,1944,Breakdown,NA,FALSE,NA,NA,NA
+Luxembourg,1940,1941,Breakdown,NA,FALSE,NA,NA,NA
+Netherlands,1940,1941,Breakdown,NA,FALSE,NA,NA,NA
+Norway,1940,1943,Breakdown,NA,FALSE,NA,NA,NA
+Philippines,1941,1942,NA,NA,FALSE,NA,NA,NA
+Burma/Myanmar,1942,1943,NA,NA,FALSE,NA,NA,NA
+Argentina,1943,1945,NA,NA,FALSE,NA,NA,NA
+Colombia,1947,1950,NA,NA,FALSE,NA,NA,NA
+Hungary,1947,1949,NA,NA,FALSE,NA,NA,NA
+Costa Rica,1948,1948,NA,NA,FALSE,NA,NA,NA
+Czechia,1948,1954,NA,NA,FALSE,NA,NA,NA
+Peru,1948,1949,NA,NA,FALSE,NA,NA,NA
+Argentina,1949,1956,NA,1946–1955,TRUE,NA,NA,NA
+Syria,1949,1952,NA,NA,FALSE,NA,NA,NA
+Venezuela,1949,1949,NA,NA,FALSE,NA,NA,NA
+Cuba,1951,1953,NA,NA,FALSE,NA,NA,NA
+Egypt,1952,1953,NA,NA,FALSE,NA,NA,NA
+Iran,1953,1954,NA,NA,FALSE,NA,NA,NA
+Guatemala,1954,1955,NA,NA,FALSE,NA,NA,NA
+Türkiye,1954,1961,NA,NA,FALSE,Executive aggrandizement,Strategic harassment,"Adnan Menderes's Democrat Party government progressively used censorship, arrests of journalists, and pressure on courts and universities to suppress opposition through the late 1950s, prompting a May 1960 military coup that toppled and later executed Menderes, followed by a new constitution and 1961 elections."
+Honduras,1955,1955,NA,NA,FALSE,NA,NA,NA
+Indonesia,1957,1966,NA,1945–1966,TRUE,Executive coup,Promissory coup,"Sukarno's 1959 decree scrapped the elected Constituent Assembly in favor of a president-centric ""Guided Democracy,"" banning parties like Masyumi. This system collapsed in the crisis following the September 1965 attempted coup, which General Suharto exploited to sideline Sukarno via the March 1966 Supersemar transfer of power, ultimately installing himself as president by 1968."
+Ghana,1958,1966,NA,NA,FALSE,Executive aggrandizement,Strategic harassment,Kwame Nkrumah progressively dismantled Ghana's democratic checks via the 1958 Preventive Detention Act and a 1964 referendum making Ghana a one-party state with himself as president for life. Economic mismanagement and military discontent led to his February 1966 overthrow.
+Iraq,1958,1968,NA,NA,FALSE,Open-ended coup,NA,"Iraq's 1958-1968 decade was marked by a cascade of military coups d'etat, each replacing one authoritarian regime with another rather than restoring competitive politics."
+Malta,1958,1959,Breakdown,NA,FALSE,NA,NA,NA
+Burma/Myanmar,1958,1963,NA,NA,FALSE,Promissory coup,Open-ended coup,"Burma's parliamentary system was first interrupted in October 1958 when U Nu handed power to General Ne Win's ""caretaker government"" (a promissory coup that did restore elections in 1960). Ne Win seized power again permanently on 2 March 1962, abolishing the constitution and parliament outright."
+Sudan,1958,1959,NA,NA,FALSE,NA,NA,NA
+Syria,1958,1959,NA,NA,FALSE,NA,NA,NA
+Cuba,1959,1961,NA,NA,FALSE,Other/unclear,NA,"This episode captures a revolutionary transfer of power between two non-democratic regimes rather than backsliding from democracy: Castro's guerrilla movement toppled the Batista dictatorship, then progressively consolidated one-party communist rule."
+Laos,1959,1965,NA,NA,FALSE,Open-ended coup,NA,"Laos's fragile constitutional monarchy was repeatedly seized by rival military factions between 1959 and 1965, entrenching military power over civilian government."
+Ecuador,1960,1964,NA,1960–1961,TRUE,Open-ended coup,NA,Ecuador underwent two military coups in under three years that entrenched direct military rule and pursued unpopular austerity policies deepening authoritarian control through 1964.
+South Korea,1961,1962,NA,NA,FALSE,Open-ended coup,Executive aggrandizement,"Park Chung-hee's May 1961 coup toppled South Korea's fledgling Second Republic democracy, replacing it with military rule; the junta engineered a new constitution via referendum to legitimize Park's continued dominance."
+Nepal,1961,1961,NA,NA,FALSE,Open-ended coup,Executive aggrandizement,"King Mahendra's palace coup dissolved Nepal's first democratically elected government, replacing multiparty parliamentary democracy with direct royal rule institutionalized via the 1962 constitution."
+Argentina,1962,1962,NA,NA,FALSE,Open-ended coup,NA,"Army officers annulled provincial elections showing Peronist gains and ousted elected President Frondizi, installing a military-controlled civilian figurehead and continuing the proscription of Peronism."
+Republic of the Congo,1962,1968,NA,NA,FALSE,Executive aggrandizement,Open-ended coup,"The Republic of Congo's brief pluralist period gave way to entrenched one-party autocracy across the 1960s, culminating in a 1968 military coup installing Ngouabi's Marxist-Leninist regime."
+Greece,1962,1968,NA,NA,FALSE,Election-day fraud,Open-ended coup,"Greece's slide into military dictatorship began with the fraudulent 1961 election and the political paralysis it caused, culminating in the 21 April 1967 coup by right-wing colonels who abolished parliamentary democracy."
+Central African Republic,1963,1966,NA,NA,FALSE,Executive aggrandizement,Open-ended coup,"David Dacko converted the CAR into a one-party state, entrenching presidential power via constitutional amendment; this executive aggrandizement set the stage for Bokassa's New Year's Eve 1965 coup."
+Syria,1963,1970,NA,NA,FALSE,Open-ended coup,NA,"Beginning with the March 1963 Ba'athist coup, Syria underwent a chain of military coups and purges that eliminated its brief democratic era, ending with Hafez al-Assad's November 1970 Corrective Movement establishing the durable Assad-family dictatorship."
+Togo,1963,1968,NA,NA,FALSE,Open-ended coup,NA,"Togo's first president was assassinated in a 1963 military coup that installed a civilian government, itself toppled in a 1967 coup by Eyadema, who became president in April 1967, entrenching decades of one-man military rule."
+Uruguay,1963,1974,Breakdown,NA,FALSE,Executive coup,Executive aggrandizement,"Beginning with Pacheco Areco's emergency security powers against labor unrest in the late 1960s, Uruguay's elected government progressively ceded authority to the military, completed by Bordaberry's June 1973 self-coup dissolving Congress."
+Republic of Vietnam,1963,1964,NA,NA,FALSE,Open-ended coup,NA,"South Vietnam's autocratic trajectory deepened when a CIA-backed coup killed President Diem in November 1963, replacing his personalist dictatorship with a military junta that was itself overthrown within three months."
+Benin,1964,1966,NA,NA,FALSE,Open-ended coup,Other/unclear,"Dahomey's fragile post-1963 civilian coalition collapsed under mutual distrust, prompting army chief Soglo to seize power outright in November 1965 rather than merely broker a transition as in 1963."
+Bolivia,1964,1965,NA,1952–1964,TRUE,Open-ended coup,NA,"Vice President Barrientos turned against President Paz Estenssoro alongside army chief Ovando amid escalating labor unrest, launching an open military uprising that exiled the elected president within 24 hours."
+Brazil,1964,1965,NA,NA,FALSE,Open-ended coup,Executive aggrandizement,"A military rebellion against elected President Goulart escalated into a full ouster within days, installing a military-controlled presidency that within 18 months dissolved the party system entirely, launching the 1964-1985 military dictatorship."
+Dominican Republic,1964,1964,NA,NA,FALSE,Other/unclear,Executive aggrandizement,"Following the 1963 coup that overthrew Bosch, the ruling civilian junta disintegrated in 1964, leaving Reid Cabral as sole de facto strongman by controlling the security forces; this personalist consolidation set the stage for the 1965 civil war."
+Mali,1964,1969,NA,NA,FALSE,Executive aggrandizement,Open-ended coup,"Keita's already-authoritarian one-party regime deepened further in 1967 under the ""Active Revolution,"" culminating in Traore's November 1968 coup that overthrew Keita entirely and installed a military junta."
+Panama,1964,1969,NA,NA,FALSE,Open-ended coup,NA,"Arnulfo Arias was deposed by the National Guard within days of taking office; a subsequent power struggle within the junta left Omar Torrijos as sole military strongman by early 1969, beginning two decades of military dictatorship in Panama."
+Somalia,1964,1970,NA,NA,FALSE,Open-ended coup,Election-day fraud,"Somalia's slide into military dictatorship began with the fraudulent 1969 election, followed by Shermarke's assassination and Barre's coup, beginning 21 years of military dictatorship."
+Zanzibar,1964,1964,NA,NA,FALSE,Open-ended coup,Other/unclear,"A popular armed uprising overthrew Zanzibar's Sultan and installed a revolutionary one-party government, which soon merged with Tanganyika to form Tanzania."
+Burundi,1965,1967,NA,NA,FALSE,Open-ended coup,Executive coup,"A series of coups (1965, July 1966, November 1966) ended Burundi's monarchy and installed Micombero's republic under military-backed rule."
+Burkina Faso,1965,1967,NA,NA,FALSE,Open-ended coup,Strategic harassment,"President Yameogo's austerity measures triggered mass unrest that the military used as pretext to intervene, installing Lamizana's military government."
+Democratic Republic of the Congo,1965,1966,NA,NA,FALSE,Promissory coup,Executive aggrandizement,"Mobutu's 1965 coup was explicitly framed as a temporary restoration of order with a promise to return to democracy within five years, a promise he abandoned, entrenching one-man rule."
+Algeria,1965,1966,NA,NA,FALSE,Open-ended coup,Executive aggrandizement,Boumedienne's bloodless 1965 coup ousted Ben Bella and consolidated military-backed one-party rule in Algeria.
+Argentina,1966,1967,Breakdown,NA,FALSE,Open-ended coup,Executive aggrandizement,"General Ongania's 1966 coup ended Argentina's civilian constitutional government and installed an explicitly permanent military dictatorship, banning parties and shutting Congress."
+Philippines,1966,1973,NA,NA,FALSE,Executive coup,Executive aggrandizement,"Marcos gradually centralized power before declaring martial law in September 1972, abolishing Congress and banning parties; a lopsided 1973 plebiscite cemented his authoritarian rule for over a decade."
+Uganda,1966,1972,NA,NA,FALSE,Executive coup,Open-ended coup,"PM Obote's 1966 self-coup suspended Uganda's constitution and abolished the federal system, followed by Idi Amin's January 1971 military coup against Obote, which triggered further violent authoritarian consolidation."
+Sierra Leone,1967,1968,NA,NA,FALSE,Promissory coup,Open-ended coup,"A narrow opposition election win in March 1967 triggered a coup that annulled the results, then a countercoup, before a final 1968 coup finally seated the elected Stevens government."
+Guyana,1968,1974,NA,NA,FALSE,Strategic harassment,Election-day fraud,"Guyana's 1968 election was rigged by the incumbent PNC through voter-roll padding and overseas-ballot manipulation, converting a likely loss into a majority and entrenching one-party rule."
+Peru,1968,1969,NA,NA,FALSE,Open-ended coup,NA,"General Velasco's bloodless coup ousted elected President Belaunde, triggered by a disputed oil contract scandal; rather than promising elections, the junta declared a permanent revolutionary program."
+Lesotho,1969,1971,NA,NA,FALSE,Executive coup,Election-day fraud,"PM Jonathan staged a self-coup after losing the 1970 election, annulling the results and exiling the king who objected, inaugurating 16 years of unelected rule."
+Malaysia,1969,1970,NA,NA,FALSE,Executive coup,Strategic harassment,"Following deadly race riots tied to the 1969 election, Malaysia's government suspended Parliament and ruled by emergency decree for 21 months, permanently narrowing political debate even after resumption."
+Sudan,1969,1969,NA,NA,FALSE,Open-ended coup,NA,"A group of army officers overthrew Sudan's elected civilian government, ending its second democratic period and beginning 16 years of military-backed autocratic rule."
+Zambia,1969,1974,NA,NA,FALSE,Executive aggrandizement,Strategic harassment,"Kaunda dismantled Zambia's multiparty system through a sequence of ostensibly legal steps: a 1969 referendum weakening rights protections, a 1972 party ban, and a 1973 one-party constitution."
+Benin,1970,1973,NA,NA,FALSE,Open-ended coup,NA,"A fragile 1970 power-sharing arrangement among three rival politicians was toppled in October 1972 when Major Kerekou seized power in a military coup, installing a long-running military dictatorship."
+Ecuador,1970,1973,NA,1968–1972,TRUE,Executive coup,Open-ended coup,"Elected president Velasco suspended Congress and ruled by decree, deepening Ecuador's authoritarian drift; when a populist rival seemed poised to win 1972 elections, the military preempted this with a coup."
+Cambodia,1970,1975,NA,NA,FALSE,Open-ended coup,Election-day fraud,"The National Assembly ousted Sihanouk in March 1970 under military/elite pressure, and Lon Nol established the Khmer Republic, consolidating one-man rule through a fraud-tainted 1972 election before the republic's collapse to the Khmer Rouge in 1975."
+Sri Lanka,1970,1989,Breakdown,NA,FALSE,Executive aggrandizement,Strategic harassment,"Jayewardene's 1978 constitution created a powerful executive presidency; a 1982 referendum extended parliament's term without election and banned opposition MPs, while state responses to Tamil militancy and the JVP insurgency involved mass killings, moving Sri Lanka to full authoritarian breakdown by decade's end."
+Equatorial Guinea,1971,1973,NA,NA,FALSE,Executive coup,NA,"Having been freely elected in 1968, Macias Nguema used a series of decrees between 1971 and 1973 to dismantle Equatorial Guinea's constitutional order and install a personalist, one-party dictatorship."
+India,1971,1975,Breakdown,1966–1977,TRUE,Executive coup,Executive aggrandizement,"PM Gandhi responded to a court ruling invalidating her own election by declaring a national Emergency, suspending constitutional protections and jailing opposition politicians for 21 months before losing the 1977 elections she called."
+Chile,1972,1974,Breakdown,NA,FALSE,Open-ended coup,NA,Chile's elected socialist government was overthrown by a September 1973 military coup; Pinochet quickly sidelined the collegial junta structure to concentrate executive power in himself by late 1974.
+Ghana,1972,1973,NA,NA,FALSE,Open-ended coup,NA,"Ghana's Second Republic ended when Acheampong's coup deposed the elected Busia government in January 1972, suspending the constitution and banning parties, deepening the country's move away from multiparty democracy."
+Madagascar,1972,1973,NA,NA,FALSE,Open-ended coup,Executive aggrandizement,"Mass unrest forced Tsiranana to cede power to army chief Ramanantsoa; an October 1972 referendum eliminated the presidency and installed Ramanantsoa as unchecked head of state, ending the First Republic."
+Seychelles,1972,1978,NA,NA,FALSE,Open-ended coup,Executive aggrandizement,"A June 1977 armed coup ousted elected President Mancham and installed Rene, who suspended the constitution before a 1979 constitution formalized single-party rule and unopposed elections."
+Honduras,1973,1973,NA,NA,FALSE,Open-ended coup,NA,A bloodless military coup overthrew elected President Cruz and restored military rule; Lopez Arellano governed by decree until being removed in a subsequent internal military coup in April 1975.
+Rwanda,1973,1974,NA,NA,FALSE,Open-ended coup,NA,A July 1973 coup deposed President Kayibanda; Habyarimana then built a one-party totalitarian state via the MRND and a 1978 constitutional referendum.
+Eswatini,1973,1974,NA,NA,FALSE,Executive coup,NA,"King Sobhuza II unilaterally repealed the independence-era constitution and dissolved parliament, banning parties and ruling as absolute monarch until the 1978 tinkhundla constitution."
+Bahrain,1974,1976,NA,NA,FALSE,Executive coup,NA,"The Emir dissolved Bahrain's newly elected National Assembly after it blocked his State Security Law, suspending constitutional parliamentary rule for decades."
+Argentina,1975,1977,NA,1973–1976,TRUE,Open-ended coup,NA,"Isabel Peron's presidency, marked by state-of-siege repression and economic collapse, was overthrown by an open military coup in March 1976 installing a hardline dictatorship under Videla."
+Bangladesh,1975,1976,NA,NA,FALSE,Open-ended coup,NA,The assassination of founding president Mujibur Rahman in a military coup ended Bangladesh's brief democratic experiment; a chaotic sequence of coups through 1976 entrenched military-backed rule under Zia.
+Laos,1975,1976,NA,NA,FALSE,Open-ended coup,Executive aggrandizement,"The Pathet Lao used mass-pressure campaigns and legislative action to dismantle Laos's coalition government and monarchy, culminating in the December 1975 proclamation of the Lao PDR."
+Suriname,1975,1975,Erosion only,NA,FALSE,Other/unclear,NA,"Suriname's abrupt transition to independence was accompanied by mass emigration and instability rather than a classic coup or power-grab, likely explaining a mild erosion coding tied to decolonization itself."
+Kuwait,1976,1976,NA,NA,FALSE,Executive coup,Executive aggrandizement,"The Emir unilaterally suspended core constitutional provisions and shut down the elected National Assembly in August 1976, ending Kuwait's brief parliamentary experiment for five years."
+Thailand,1976,1977,NA,NA,FALSE,Open-ended coup,NA,"The October 1976 massacre and same-day coup ended Thailand's 1973-76 democratic interlude, installing a repressive royalist government replaced a year later by a second coup."
+Pakistan,1977,1978,NA,NA,FALSE,Promissory coup,Open-ended coup,"Zia's coup ousted elected PM Bhutto, framed as a temporary custodianship pending swift elections, but led instead to Bhutto's execution and 11 years of military rule."
+Mauritania,1978,1979,NA,NA,FALSE,Open-ended coup,NA,"Mauritania's army overthrew founding-president Daddah in a bloodless coup and installed an open-ended junta, beginning over a decade of continuous military government."
+Zimbabwe,1978,1978,NA,NA,FALSE,Strategic harassment,Executive aggrandizement,"Smith negotiated a power-sharing deal with moderate leaders that preserved white control of the security state while giving the appearance of participation, further tilting the playing field within an already-authoritarian regime."
+Burkina Faso,1980,1981,NA,NA,FALSE,Open-ended coup,NA,Burkina Faso's military ousted long-serving President Lamizana and installed an open-ended junta under Zerbo that grew increasingly authoritarian within months.
+Liberia,1980,1981,NA,NA,FALSE,Open-ended coup,NA,Indigenous NCOs led by Doe overthrew the Americo-Liberian-dominated Tolbert government and installed an open-ended junta that continued purging rivals via summary executions.
+Suriname,1980,1981,Breakdown,NA,FALSE,Open-ended coup,Promissory coup,"Sergeants led by Bouterse overthrew Suriname's elected government over pay/union grievances; the military progressively stripped away civilian checks, turning a democracy into a consolidated military dictatorship."
+Türkiye,1980,1981,Breakdown,NA,FALSE,Open-ended coup,NA,"General Evren's coup dissolved parliament and banned parties, ushering in three years of direct military rule before a controlled transition back to elected civilian government in 1983."
+Ghana,1981,1982,NA,NA,FALSE,Open-ended coup,NA,"Rawlings' second coup ousted Ghana's elected civilian government amid economic crisis, replacing it with the PNDC military-revolutionary regime."
+Bangladesh,1982,1983,NA,NA,FALSE,Open-ended coup,NA,"General Ershad's coup ousted Bangladesh's elected president and imposed martial law; Ershad took the presidency outright in late 1983, ruling as military head of state until 1990."
+Nigeria,1983,1984,NA,NA,FALSE,Open-ended coup,NA,"Nigeria's Second Republic ended when Buhari's coup deposed elected President Shagari, installing a Supreme Military Council that suspended the constitution and ruled by decree."
+Kuwait,1986,1986,NA,NA,FALSE,Executive coup,Executive aggrandizement,"The Emir suspended the constitution and dissolved the National Assembly in 1986, ruling by decree for roughly six years until a pro-democracy movement and post-Gulf War pressure forced restoration of parliament."
+Burundi,1987,1988,NA,NA,FALSE,Open-ended coup,NA,"Buyoya's coup deposed President Bagaza, and the new regime's early consolidation was tested by deadly ethnic violence, after which Buyoya broadened his government's ethnic balance."
+Fiji,1987,1988,Breakdown,NA,FALSE,Open-ended coup,NA,"The military overthrew the newly elected multiracial coalition government citing threats to indigenous Fijian political dominance; a second coup scuttled a compromise and Rabuka declared Fiji a republic, installing an interim, ethnically favored government."
+Sudan,1989,1990,NA,NA,FALSE,Open-ended coup,NA,A 1989 military coup backed by Islamist leader Turabi ended Sudan's fragile parliamentary period and installed a military-Islamist junta that purged and repressed the civil administration.
+Peru,1990,1992,Breakdown,1985–2000,TRUE,Executive coup,Executive aggrandizement,"Facing a hostile Congress and insurgency, elected President Fujimori staged a ""self-coup,"" dissolving Congress and suspending the constitution, then convened a hand-picked constituent assembly."
+Estonia,1991,1992,Breakdown,NA,FALSE,Other/unclear,Strategic harassment,"Restoring pre-1940 citizenship rules automatically enfranchised only pre-Soviet citizens and descendants, leaving a large share of Russian-speaking settlers stateless and outside the electorate, hitting the suffrage component of V-Dem's polyarchy index."
+Suriname,1991,1991,NA,NA,FALSE,Open-ended coup,NA,"Suriname's military deposed elected President Shankar by telephone on Christmas Eve 1990; international pressure forced free elections in May 1991, though Bouterse's military remained a powerful background actor."
+Thailand,1991,1991,NA,NA,FALSE,Open-ended coup,NA,"Thailand's military ousted the elected government of Chatichai Choonhavan, ending the country's longest period of elected civilian rule to that point."
+Algeria,1992,1993,NA,NA,FALSE,Open-ended coup,NA,"Algeria's military canceled elections the Islamist FIS was set to win, forced elected President Bendjedid to resign, and installed an unelected council, triggering a brutal civil war."
+Haiti,1992,1992,NA,NA,FALSE,Open-ended coup,NA,"Following the 1991 coup that ousted elected President Aristide, the military junta under Cedras consolidated brutal repressive rule through 1992, killing and displacing thousands of Aristide supporters."
+Tajikistan,1992,1995,NA,NA,FALSE,Open-ended coup,Other/unclear,"Tajikistan's civil war saw President Nabiyev forced to resign at gunpoint and replaced by Rahmon, whose government deepened authoritarian, ethnically-targeted repression; this is fundamentally a civil-war state collapse rather than a clean fit to Bermeo's categories."
+Armenia,1993,1997,Breakdown,NA,FALSE,Executive aggrandizement,Election-day fraud,"President Ter-Petrosyan banned Armenia's largest opposition party, then secured a disputed re-election marred by fraud allegations and a violent military crackdown on protesters."
+Azerbaijan,1993,1996,NA,NA,FALSE,Open-ended coup,Executive aggrandizement,"A June 1993 military mutiny toppled Azerbaijan's first elected president, paving the way for former Soviet-era leader Heydar Aliyev to seize the presidency via referendum and steadily consolidate authoritarian control."
+The Gambia,1993,1995,NA,NA,FALSE,Promissory coup,Open-ended coup,"Yahya Jammeh's 1994 coup ousted Gambia's long-serving elected president in a classic ""promissory coup,"" but the junta instead banned opposition parties and transformed itself into a ruling party, cementing 22 years of authoritarian rule."
+Russia,1993,2014,NA,NA,FALSE,Executive coup,Executive aggrandizement,"Yeltsin's violent 1993 dissolution of parliament established a super-presidential template that Putin systematically expanded after 2000, centralizing control over regions, media, courts and elections through the 2014 Crimea annexation."
+Rwanda,1993,1995,NA,NA,FALSE,Other/unclear,NA,"Rwanda's collapse from a stalled power-sharing transition into genocide, followed by the RPF's military conquest and one-party consolidation, does not map cleanly onto Bermeo's categories since it centers on genocide and civil-war conquest rather than an elected government losing power."
+Belarus,1994,2001,Breakdown,NA,FALSE,Executive coup,Executive aggrandizement,"Lukashenko used successive referenda to strip the elected parliament of power and concentrate authority in the presidency, completing the transformation of a young post-Soviet democracy into personalist authoritarian rule."
+Republic of the Congo,1994,1998,NA,NA,FALSE,Open-ended coup,NA,"Congo's elected government was violently overthrown when Sassou Nguesso's Cobra militia, backed by Angolan military intervention, seized Brazzaville and installed Sassou as president."
+Lesotho,1994,1995,Breakdown,NA,FALSE,Open-ended coup,NA,King Letsie III and allied officers staged a month-long coup to press for his father's reinstatement as monarch; domestic and SADC pressure forced restoration of the elected government within a month.
+Niger,1996,1996,Breakdown,NA,FALSE,Promissory coup,Strategic harassment,"Bare Mainassara's coup ousted Niger's elected president but was framed as a corrective intervention with a promise of prompt elections; those elections were then manipulated, turning a promissory coup into entrenched personal rule."
+Nicaragua,1996,2025,Breakdown,NA,FALSE,Executive aggrandizement,Strategic harassment,"Ortega engineered a pact with Aleman to divide control of Nicaragua's courts and electoral institutions, laying groundwork for his 2006 comeback; once back in office he eliminated term limits, packed institutions, and violently suppressed protests, culminating in his wife's 2025 installation as co-president."
+Madagascar,1997,2002,Breakdown,NA,FALSE,Election-day fraud,Strategic harassment,"Ratsiraka's patronage-based authoritarian rule continued through a disputed December 2001 election whose official count denied Ravalomanana an outright majority, triggering a six-month constitutional crisis before Ratsiraka fled the country."
+Ukraine,1997,2000,Breakdown,NA,FALSE,Executive aggrandizement,Election-day fraud,Kuchma used a fraud-marred 1999 re-election and manipulated 2000 referendum to try to expand presidential power at parliament's expense; parliament's refusal to implement the results checked full consolidation.
+Moldova,1998,2006,Breakdown,NA,FALSE,Strategic harassment,Executive aggrandizement,"The Communist Party's growth to an outright constitutional supermajority concentrated unprecedented power in a single party controlling both the presidency and parliament, entrenched through continued state-media dominance."
+Solomon Islands,1998,2001,Breakdown,NA,FALSE,Open-ended coup,NA,Ethnic tension culminated in a June 2000 coup in which a militia forced out elected PM Ulufa'alu at gunpoint; parliament replaced him under duress before a peace agreement began disarmament.
+Venezuela,1998,2018,Breakdown,1999–2020,TRUE,Executive aggrandizement,Strategic harassment,"Chavez converted his 1998 win into unchecked power via a 1999 Constituent Assembly rewriting the constitution, then over two decades used patronage, court-packing, and electoral manipulation to erode checks, culminating under Maduro's fraud-marred 2018 re-election."
+Comoros,1999,2000,NA,NA,FALSE,Open-ended coup,Executive aggrandizement,"Comoran army chief Azali seized power in a coup amid Anjouan secession violence, suspended the constitution, and concentrated power in himself, deepening the country's already-autocratic trajectory."
+Malawi,1999,2005,Breakdown,NA,FALSE,Executive aggrandizement,Strategic harassment,"Muluzi sought UDF/executive dominance via a failed 2002 third-term bid; though blocked, he engineered the succession of Mutharika via the contested 2004 election, whose subsequent break from UDF left executive power personalized."
+Niger,1999,1999,NA,NA,FALSE,Promissory coup,Open-ended coup,Niger's autocratic presidency was thrown into brief further deepening after Bare Mainassara's assassination; the military council promised a swift return to elected government and delivered by year's end.
+Pakistan,1999,2000,NA,NA,FALSE,Open-ended coup,Promissory coup,"Musharraf's coup ousted PM Sharif after Sharif tried to fire him, suspending the constitution; courts granted him three years to hold elections, but he entrenched his rule for nearly a decade."
+Ivory Coast,2000,2000,NA,NA,FALSE,Promissory coup,Election-day fraud,"A December 1999 coup ousted President Bedie amid promises to restore democracy, but the transition was compromised by exclusionary rules and Guei's attempt to falsify the 2000 election result, only overturned by street protests."
+Fiji,2000,2001,Breakdown,NA,FALSE,Open-ended coup,Promissory coup,"George Speight's armed takeover of parliament ousted Indo-Fijian PM Chaudhry; the military ultimately deposed Speight, restored order, and organized new 2001 elections, but the coup marked a decisive break along ethnic lines."
+North Macedonia,2000,2001,NA,NA,FALSE,Other/unclear,Executive aggrandizement,An ethnic-Albanian insurgency escalated into open conflict; PM Georgievski's government considered declaring a state of war for emergency powers before the crisis was resolved via the Ohrid Agreement. This is primarily an ethnic civil conflict rather than an executive power grab.
+Nepal,2000,2003,NA,NA,FALSE,Executive aggrandizement,Open-ended coup,"King Gyanendra, who ascended after the 2001 royal massacre, used the Maoist insurgency as pretext to sack PM Deuba and rule through royally-appointed premiers rather than an elected government."
+Haiti,2001,2004,NA,NA,FALSE,Strategic harassment,Election-day fraud,"Aristide's government, whose legitimacy was clouded by disputed 2000 elections, entrenched one-party dominance and used violence against opposition; a rebel uprising in 2004 forced his ouster."
+Philippines,2001,2005,Breakdown,1998–2001,TRUE,Election-day fraud,Executive aggrandizement,"Arroyo, who assumed the presidency via the 2001 EDSA II ouster of Estrada, was accused of rigging her 2004 re-election through the ""Hello Garci"" scandal; her allies blocked impeachment, cementing an unaccountable executive."
+Bangladesh,2002,2007,Breakdown,NA,FALSE,Strategic harassment,Open-ended coup,"The BNP government pursued harsh crackdowns against opposition figures, with extrajudicial killings shielded by an indemnity law; this chronic harassment culminated in a January 2007 military-backed takeover that suspended the election."
+Central African Republic,2003,2004,NA,NA,FALSE,Open-ended coup,Promissory coup,"Bozize's coup ousted elected President Patasse and suspended the constitution, but was followed by a two-year transitional process (constitution, referendum, elections) rather than indefinite military rule."
+Liberia,2003,2004,NA,NA,FALSE,Other/unclear,NA,"Liberia's 2003-2004 deepening reflects the chaotic tail end of civil war (Taylor's ouster, a peace deal, and rule by an unelected transitional government) rather than a backsliding-from-democracy dynamic."
+Thailand,2003,2007,Breakdown,2001–2006,TRUE,Promissory coup,Open-ended coup,"Thailand's military ousted PM Thaksin in a September 2006 coup while abroad, explicitly promising a swift return to civilian rule; the junta delivered on its promise, holding elections in December 2007, though only after banning Thaksin's party."
+Bosnia and Herzegovina,2004,2007,Erosion only,NA,FALSE,Other/unclear,Executive aggrandizement,"Bosnia's erosion reflects continued heavy-handed international ""protectorate"" governance displacing domestic democratic accountability, alongside the failure of constitutional reform and the rise of nationalist leader Dodik."
+Sri Lanka,2004,2006,Breakdown,NA,FALSE,Executive aggrandizement,NA,"President Rajapaksa reversed the peace process after his contested 2005 election, allying with hardline nationalists; the LTTE's 2006 reservoir closure triggered renewed war, entrenching executive and military authority."
+North Macedonia,2005,2012,Breakdown,NA,FALSE,Strategic harassment,Executive aggrandizement,"Gruevski's party won a disputed-adjacent 2006 election after irregularity-marred 2005 local elections, using consecutive victories through 2011 to tilt media, pack security institutions, and marginalize opposition."
+Türkiye,2005,2017,Breakdown,2003–2020,TRUE,Executive aggrandizement,Strategic harassment,"Erdogan's AKP incrementally dismantled institutional checks through legal, referendum-based channels; the failed 2016 coup triggered mass purges, and the 2017 referendum formally converted Turkey to a presidential system concentrating power in Erdogan."
+Bolivia,2006,2020,Breakdown,2006–2019,TRUE,Executive aggrandizement,Election-day fraud,"Morales concentrated executive power through a 2009 constitution and a 2017 Tribunal ruling overturning a 2016 anti-reelection referendum; his disputed 2019 re-election, found fraudulent by the OAS, triggered his resignation and an unelected interim government."
+Fiji,2006,2007,NA,NA,FALSE,Open-ended coup,NA,"Bainimarama led Fiji's fourth coup since 1987, ousting elected PM Qarase over alleged corruption; the military installed an interim government and elections were delayed for eight years."
+Honduras,2006,2010,Breakdown,NA,FALSE,Promissory coup,Open-ended coup,"Honduras's Supreme Court and Congress, backed by the military, removed elected President Zelaya after he defied a court order barring a referendum; framed as defense of legality with a promise to hold elections, the episode concluded with Lobo's 2010 inauguration."
+Hungary,2006,2025,Breakdown,2010–2020,TRUE,Executive aggrandizement,Strategic harassment,"After winning a two-thirds supermajority, Orban's government rewrote Hungary's constitution and systematically weakened judicial independence, media pluralism, and electoral fairness through ostensibly legal institutional changes over more than a decade."
+Palestine/West Bank,2006,2008,Breakdown,NA,FALSE,Executive coup,Executive aggrandizement,"Hamas won the 2006 legislative election, but conflict with Fatah culminated in Hamas's 2007 Gaza takeover; Abbas dissolved the unity government and ruled the West Bank through an emergency decree-appointed government."
+Ecuador,2007,2013,Erosion only,2007–2017,TRUE,Executive aggrandizement,Strategic harassment,"Correa used a 2007 Constituent Assembly, which bypassed the existing opposition-controlled Congress, to produce a 2008 constitution substantially expanding presidential powers, driving significant executive-driven erosion without full collapse."
+Papua New Guinea,2007,2013,Breakdown,NA,FALSE,Executive aggrandizement,Open-ended coup,"PNG's 2011-2012 constitutional crisis pitted a parliament-installed PM against the courts and the removed incumbent, with O'Neill repeatedly defying Supreme Court orders before the dispute was resolved by the ballot box in 2012."
+South Korea,2008,2014,Erosion only,2003–2008,TRUE,Strategic harassment,NA,"South Korea's intelligence service illegally intervened in the 2012 presidential election to help the ruling-party candidate via covert online manipulation, revealing significant erosion in electoral fairness without a full authoritarian breakdown."
+Mali,2008,2013,Breakdown,NA,FALSE,Promissory coup,Open-ended coup,A mutiny over resourcing for the war against Tuareg rebels toppled elected president Toure; the junta promised to restore constitutional order and eventually ceded power to a transitional government before 2013 elections.
+Indonesia,2009,2025,Breakdown,2014–2020,TRUE,Executive aggrandizement,Strategic harassment,"Starting with the 2019 gutting of the KPK's independence and culminating in the 2023 court ruling clearing the way for Jokowi's son to become vice president, Indonesia's checking institutions were progressively hollowed out through nominally legal channels."
+India,2009,2025,Breakdown,2014–2020,TRUE,Executive aggrandizement,Strategic harassment,"Under Modi, India's elected executive progressively weakened checks through ostensibly legal means -- the Article 370 abrogation, capture of referee institutions, and opaque political financing -- ranking India among the most significant recent autocratizers."
+Madagascar,2009,2010,NA,NA,FALSE,Open-ended coup,Promissory coup,"A months-long uprising culminated in the military forcing Ravalomanana from office and installing Rajoelina; internationally treated as an unconstitutional coup, the resulting transitional authority further entrenched autocratic rule."
+Niger,2009,2010,Breakdown,NA,FALSE,Executive aggrandizement,Promissory coup,"President Tandja attempted to extend his rule past term limits via an illegitimate referendum, prompting a February 2010 military coup; the coup leaders explicitly promised a return to elected government and delivered within a year."
+Burundi,2010,2016,NA,NA,FALSE,Executive aggrandizement,Strategic harassment,"Burundi's already non-democratic regime deepened as CNDD-FDD entrenched one-party dominance via an uncontested 2010 election, then Nkurunziza's legally-engineered third term triggered mass protests and severe repression eliminating remaining competition."
+Maldives,2010,2017,Breakdown,NA,FALSE,Executive aggrandizement,Promissory coup,"A contested February 2012 transfer of power removed elected president Nasheed and installed Waheed, paving the way for Yameen's 2013 election and his subsequent systematic dismantling of judicial independence and opposition rights."
+Serbia,2010,2025,Breakdown,NA,FALSE,Executive aggrandizement,Strategic harassment,"Since SNS's 2012 rise to power, Vucic has progressively concentrated executive power, captured media and state institutions, and tilted successive elections, a shift international monitors describe as democracy to hybrid authoritarianism."
+Ukraine,2010,2014,Breakdown,NA,FALSE,Executive aggrandizement,Strategic harassment,"President Yanukovych used a compliant Constitutional Court to restore presidential powers, then pursued selective prosecution of opposition and manipulated electoral rules, before his rejection of EU integration triggered the Euromaidan revolution that ousted him."
+Zambia,2011,2019,Breakdown,NA,FALSE,NA,NA,NA
+Guinea-Bissau,2012,2013,NA,NA,FALSE,NA,NA,NA
+Nepal,2012,2013,NA,NA,FALSE,NA,NA,NA
+Slovenia,2012,2021,Erosion only,NA,FALSE,NA,NA,NA
+Bangladesh,2013,2018,NA,NA,FALSE,NA,NA,NA
+Czechia,2013,2021,Erosion only,NA,FALSE,NA,NA,NA
+Egypt,2013,2014,NA,NA,FALSE,NA,NA,NA
+Ghana,2013,2021,Erosion only,NA,FALSE,NA,NA,NA
+Croatia,2013,2025,Ongoing,NA,FALSE,NA,NA,NA
+Moldova,2013,2017,Erosion only,NA,FALSE,NA,NA,NA
+Mauritania,2013,2025,NA,NA,FALSE,NA,NA,NA
+Thailand,2013,2014,NA,NA,FALSE,NA,NA,NA
+Yemen,2013,2016,NA,NA,FALSE,NA,NA,NA
+Burkina Faso,2014,2015,Breakdown,NA,FALSE,NA,NA,NA
+Libya,2014,2025,NA,NA,FALSE,NA,NA,NA
+Mauritius,2014,2023,Breakdown,NA,FALSE,NA,NA,NA
+Tunisia,2014,2022,Breakdown,NA,FALSE,NA,NA,NA
+Brazil,2015,2019,Erosion only,2019–2020,TRUE,NA,NA,NA
+Botswana,2015,2022,Erosion only,NA,FALSE,NA,NA,NA
+Comoros,2015,2020,NA,NA,FALSE,NA,NA,NA
+Lesotho,2015,2017,Erosion only,NA,FALSE,NA,NA,NA
+Niger,2015,2025,Breakdown,NA,FALSE,NA,NA,NA
+Pakistan,2015,2025,NA,NA,FALSE,NA,NA,NA
+Tanzania,2015,2021,NA,NA,FALSE,NA,NA,NA
+Hong Kong,2016,2025,NA,NA,FALSE,NA,NA,NA
+Cambodia,2016,2025,NA,NA,FALSE,NA,NA,NA
+Mongolia,2016,2024,Breakdown,NA,FALSE,NA,NA,NA
+Peru,2016,2025,Ongoing,NA,FALSE,NA,NA,NA
+Philippines,2016,2025,Breakdown,2016–2020,TRUE,NA,NA,NA
+Poland,2016,2021,Erosion only,2015–2020,TRUE,NA,NA,NA
+Georgia,2017,2025,Breakdown,NA,FALSE,NA,NA,NA
+Mozambique,2017,2025,NA,NA,FALSE,NA,NA,NA
+Chad,2017,2022,NA,NA,FALSE,NA,NA,NA
+Togo,2017,2025,NA,NA,FALSE,NA,NA,NA
+Benin,2018,2021,Breakdown,NA,FALSE,NA,NA,NA
+Burkina Faso,2018,2025,Breakdown,NA,FALSE,NA,NA,NA
+Gabon,2018,2024,NA,NA,FALSE,NA,NA,NA
+Guatemala,2018,2022,Erosion only,NA,FALSE,NA,NA,NA
+Lebanon,2018,2024,NA,NA,FALSE,NA,NA,NA
+Mali,2018,2025,NA,NA,FALSE,NA,NA,NA
+El Salvador,2018,2025,Breakdown,NA,FALSE,NA,NA,NA
+Central African Republic,2019,2025,NA,NA,FALSE,NA,NA,NA
+United Kingdom,2019,2025,Ongoing,2019–2020,TRUE,NA,NA,NA
+Guinea,2019,2025,NA,NA,FALSE,NA,NA,NA
+Guyana,2019,2025,Ongoing,NA,FALSE,NA,NA,NA
+Italy,2019,2025,Ongoing,2018–2020,TRUE,NA,NA,NA
+Kyrgyzstan,2019,2025,NA,NA,FALSE,NA,NA,NA
+South Korea,2019,2023,Erosion only,NA,FALSE,NA,NA,NA
+Armenia,2020,2025,Ongoing,NA,FALSE,NA,NA,NA
+Belarus,2020,2025,NA,NA,FALSE,NA,NA,NA
+Ivory Coast,2020,2025,Breakdown,NA,FALSE,NA,NA,NA
+Greece,2020,2025,Ongoing,NA,FALSE,NA,NA,NA
+Haiti,2020,2025,NA,NA,FALSE,NA,NA,NA
+Mexico,2020,2025,Breakdown,2018–2020,TRUE,NA,NA,NA

@@ -37,6 +37,8 @@ wid_ineq <- readRDS(file.path(data_dir, "wid_inequality.rds"))
 swiid <- readRDS(file.path(data_dir, "swiid_gini.rds"))
 ned_panel <- readRDS(file.path(data_dir, "ned_panel.rds"))
 archigos_panel <- readRDS(file.path(data_dir, "archigos_panel.rds"))
+et_outcomes <- readRDS(file.path(data_dir, "et_outcomes.rds"))
+vdem_sub <- readRDS(file.path(data_dir, "vdem_subcomponents.rds"))
 
 # --- Crosswalk (ERT → DDCG only; not needed for outcomes or NED) -------------
 
@@ -153,6 +155,44 @@ panel <- panel |>
       summarise(across(c(gini_disp, gini_mkt), mean, na.rm = TRUE),
                 .by = c(iso3c, year)),
     by = c("country_text_id" = "iso3c", "year")
+  )
+
+# --- Join the additional outcomes built in 01f --------------------------------
+# Both are already keyed on country_text_id/year (et_outcomes resolves
+# outcomes.dta's labelled ISO3 `id`; vdem_subcomponents comes straight from
+# V-Dem, which shares this key natively), so neither needs a crosswalk.
+#
+# ln_gdp_pc_wb / ln_gdp_pc_imf are alternative log GDP-per-capita series that
+# difference exactly like PWT's ln_gdp_pc above, so the RDD growth outcome can
+# be shown from three sources on one panel.
+
+panel <- panel |>
+  left_join(
+    et_outcomes |>
+      select(
+        country_text_id,
+        year,
+        ln_gdp_pc_wb,
+        ln_gdp_pc_imf,
+        debt_pct_gdp,
+        deficit_pct_gdp
+      ),
+    by = c("country_text_id", "year")
+  ) |>
+  left_join(
+    vdem_sub |>
+      select(
+        country_text_id,
+        year,
+        v2x_jucon,
+        v2xlg_legcon,
+        checks_balances,
+        hos_power_linear,
+        hog_power_linear,
+        hos_power_vdem,
+        hog_power_vdem
+      ),
+    by = c("country_text_id", "year")
   )
 
 # --- Join NED (on country_iso3, which maps COW codes to ERT country_text_id) --

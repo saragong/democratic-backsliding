@@ -1,37 +1,26 @@
 # ==============================================================================
 # Fuzzy RDD estimation: illiberal-party elections -> democratic backsliding
-# -> economic outcomes
+# -> economic, fiscal and institutional outcomes
 #
-# Loads data/rdd_analysis_data.rds (built by 11_build_rdd_data.R) and runs,
-# for every outcome, on the sample selected by the toggles below:
-#   - a first stage: rdrobust(y = backsliding_Nyr, x = running_var)
-#   - a fuzzy RD:    rdrobust(y = Y_<outcome>, x = running_var, fuzzy = backsliding_Nyr)
+# Loads a build produced by 11_build_rdd_data.R and runs, for every outcome, on
+# the sample selected by the toggles below:
+#   - a first stage: rdrobust(y = <treatment>, x = running_var)
+#   - a fuzzy RD:    rdrobust(y = Y_<outcome>, x = running_var, fuzzy = <treatment>)
 #   - a plain reduced-form RD on Y (fuzzy = NULL) for comparison
 #
-# Used to be baseline + three heterogeneity splits (illiberal_score above
-# the sample median, excluding indirectly-elected offices, and a Bermeo-
-# taxonomy category split) -- removed after finding (a) the illiberal-
-# score restriction meaningfully powers up the first stage (promoted to a
-# first-class sample-restriction toggle, ILLIBERAL_CUTOFF, rather than a
-# one-off comparison) and (b)/(c) didn't move the estimates much, so
-# weren't worth the added output/runtime.
+# Everything this script writes goes into ONE run folder,
+# output/runs/<slug>/, where the slug encodes the instrument, window,
+# treatment definition and both sample-restriction thresholds. Different
+# versions of the analysis therefore never overwrite each other, and each
+# folder is self-describing via its run_config.csv.
 #
-# Data: data/rdd_analysis_data.rds
-# Output (filenames get suffixes reflecting whichever of SCORE_GAP_MIN /
-# ILLIBERAL_CUTOFF are finite, so different threshold runs never overwrite
-# each other):
-#         output/rdd_results.csv (one row per outcome x spec)
-#         output/rdd_first_stage_results.csv (one row per spec -- the
-#         standalone first-stage table: N, coefficient, SE, p-value,
-#         bandwidth, the way a paper would report it, rather than folding
-#         the same first-stage numbers redundantly into every outcome row)
-#         output/rdd_plots/*.png -- baseline rdplot() for the first stage
-#         and every outcome (binned running-variable trend on each side of
-#         the cutoff, for visually checking the discontinuity)
-#         output/rdd_plots/*_table.html -- the first-stage and outcomes
-#         tables rendered as gt() tables (same convention as
-#         11_build_rdd_data.R's tables), econ-paper style (coefficient,
-#         SE in parentheses, significance stars)
+# Data:   data/rdd_build/rdd_<ILLIBERALISM_VAR>_w<N>.rds
+# Output: output/runs/<slug>/
+#           run_config.csv
+#           rdd_results.csv, rdd_first_stage_results.csv
+#           first_stage_table.html, outcomes_table.html
+#           plots/first_stage.png, plots/running_var_density.png,
+#           plots/outcomes_<panel>.png, plots/outcomes_all.png
 # ==============================================================================
 
 library(tidyverse)
@@ -40,588 +29,242 @@ library(here)
 library(patchwork)
 library(gt)
 
+source(here::here("scripts", "rdd_helpers.R"))
+
 data_dir <- here::here("data")
-out_dir <- here::here("output")
-dir.create(out_dir, showWarnings = FALSE)
-plots_dir <- file.path(out_dir, "rdd_plots")
-dir.create(plots_dir, showWarnings = FALSE)
 
 # ------------------------------------------------------------------------------
 # Toggles
+#
+# All set with `if (!exists(...))` so a driver script (14_window_sweep.R,
+# 15_alt_specs.R) can source() this file into an environment that already
+# defines some of them. Running standalone uses the defaults.
 # ------------------------------------------------------------------------------
 
-# Minimum standardized top-2 score gap (score_gap_z, built in
-# 11_build_rdd_data.R) an election must clear to be included. score_gap_z
-# = score_gap / sd(illiberalism_score across every top-2 party-year in
-# that country) -- i.e. the raw illiberal-vs-other gap scaled by how much
-# that country's own parties typically differ in ideology, pooling BOTH
-# top-2 members across every scored election in the country (not the
-# distribution of election-level gaps -- an earlier version did that and
-# had a mechanical ceiling: a 2-election country could never exceed |z| ~
-# 0.7 no matter how large its actual gaps were, since the gap was being
-# standardized against its own tiny sample). Since illiberal_score is
-# defined as the HIGHER of the top-2's scores, score_gap -- and therefore
-# score_gap_z -- is always >= 0, so SCORE_GAP_MIN <- 0 is a NO-OP (keeps
-# ~every election); meaningful thresholds start above 0, e.g. 1 means
-# "this election's gap is at least one country-scaled party-ideology-SD."
-# -Inf = no filter (every election, including the few countries with too
-# little data to compute their own score SD, where score_gap_z is NA).
-# Restricting the ENTIRE analysis (baseline, every heterogeneity split,
-# and all plots) this way tests whether the first stage is diluted by
-# low-contrast top-2 pairs -- in the full sample, 29% of elections have a
-# top-2 score_gap under 0.05, i.e. the two "top-2" parties are barely
-# distinguishable in illiberalism, so crossing the vote-share cutoff there
-# doesn't correspond to a real liberal/illiberal treatment contrast, just
-# noise. Unlike a one-off heterogeneity subsample, this runs the SAME full
-# plot pipeline as the main analysis (not just the results table) on the
-# restricted sample, so the discontinuity (or lack of one) can be
-# inspected visually.
-SCORE_GAP_MIN <- 0
-stopifnot(is.numeric(SCORE_GAP_MIN), length(SCORE_GAP_MIN) == 1)
-
-# Minimum illiberal_score (the WINNING/more-illiberal top-2 member's raw
-# level on ILLIBERALISM_VAR, e.g. v2xpa_antiplural in [0,1] -- not the
-# gap between the top-2, which SCORE_GAP_MIN above already restricts) an
-# election must clear to be included. Originally a one-off heterogeneity
-# comparison (elections above the SAMPLE MEDIAN illiberal_score); promoted
-# to a first-class sample restriction after finding it meaningfully powers
-# up the first stage -- restricting to elections where the illiberal
-# party actually clears an absolute ideological bar (not just edges out
-# the other top-2 member on a relative basis) seems to matter for whether
-# crossing the vote-share cutoff corresponds to a real change in governing
-# ideology. -Inf = no filter.
-ILLIBERAL_CUTOFF <- 0.6
-stopifnot(is.numeric(ILLIBERAL_CUTOFF), length(ILLIBERAL_CUTOFF) == 1)
-
-d <- readRDS(file.path(data_dir, "rdd_analysis_data.rds"))
-
-# Label every output (specs, plot/CSV filenames) with whichever thresholds
-# are active so different runs never silently overwrite each other.
-fmt_threshold_suffix <- function(prefix, value) {
-  if (is.finite(value)) {
-    paste0(
-      prefix,
-      gsub("-", "neg", gsub("\\.", "p", format(value, trim = TRUE)))
-    )
-  } else {
-    ""
-  }
-}
-score_gap_suffix <- fmt_threshold_suffix("_scoregap_ge_", SCORE_GAP_MIN)
-illiberal_suffix <- fmt_threshold_suffix("_illib_gt_", ILLIBERAL_CUTOFF)
-baseline_label <- paste0("baseline", score_gap_suffix, illiberal_suffix)
-
-if (is.finite(SCORE_GAP_MIN)) {
-  n_before <- nrow(d)
-  d <- d |> filter(!is.na(score_gap_z), score_gap_z >= SCORE_GAP_MIN)
-  cat(sprintf(
-    "SCORE_GAP_MIN = %s -- restricted from %d to %d elections (score_gap_z >= %s within-country)\n",
-    SCORE_GAP_MIN,
-    n_before,
-    nrow(d),
-    SCORE_GAP_MIN
-  ))
+# Which build to read: these two must match a build produced by
+# 11_build_rdd_data.R (they select the file, they don't re-derive anything).
+if (!exists("ILLIBERALISM_VAR")) ILLIBERALISM_VAR <- "v2xpa_antiplural"
+if (!exists("BACKSLIDING_WINDOW_YEARS")) BACKSLIDING_WINDOW_YEARS <- 5
+# Selects which build to read, and is echoed into the run slug. Set in
+# 11_build_rdd_data.R -- see the long comment there for what it does and why
+# TRUE is the default.
+if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- TRUE
 }
 
-if (is.finite(ILLIBERAL_CUTOFF)) {
-  n_before <- nrow(d)
-  d <- d |> filter(illiberal_score > ILLIBERAL_CUTOFF)
-  cat(sprintf(
-    "ILLIBERAL_CUTOFF = %s -- restricted from %d to %d elections (illiberal_score > %s)\n",
-    ILLIBERAL_CUTOFF,
-    n_before,
-    nrow(d),
-    ILLIBERAL_CUTOFF
-  ))
+# Which treatment the fuzzy RD instruments for:
+#   backsliding_Nyr        an ERT autocratization episode starts in the window
+#   backsliding_union_Nyr  that OR an Acemoglu et al. (DDCG) democratic reversal.
+#                          DDCG only covers 1960-2010, so this can only add
+#                          events for elections whose window overlaps that span.
+#   polyarchy_decline      continuous: the FALL in V-Dem polyarchy over the
+#                          window, negated so higher = more backsliding, exactly
+#                          like the two binary definitions. rdrobust's fuzzy=
+#                          argument is a Wald ratio either way, so no special
+#                          handling is needed -- but note the LATE is then "per
+#                          one unit of polyarchy decline", i.e. per a full 0-1
+#                          swing of the index, not per episode.
+if (!exists("TREATMENT_VAR")) TREATMENT_VAR <- "backsliding_Nyr"
+stopifnot(TREATMENT_VAR %in% names(TREATMENT_LABELS))
+
+# ---- Sample restrictions -----------------------------------------------------
+#
+# BOTH thresholds below accept THREE forms, and which one you mean is decided by
+# what you write -- there is no separate "type" switch to keep in sync:
+#
+#     0.6      ABSOLUTE  a value on the variable's own scale
+#     "q50"    QUANTILE  a percentile of the variable's distribution
+#     -Inf     NONE      no restriction
+#
+# Anything else is an error, not a fallback (see parse_threshold() in
+# rdd_helpers.R for why). Whichever form is used, the run prints a "Sample
+# restrictions" block naming the spec, how it was read, the absolute value it
+# resolved to, and how many elections it cost; the same information lands in the
+# run's run_config.csv and in every table subtitle.
+#
+# Use the QUANTILE form whenever you are comparing across instruments. The five
+# candidate instruments are not on a common scale (v2xpa_* are [0,1] indices,
+# v2pariglef_neg and v2paanteli are expert scales running about -2 to +4,
+# ep_galtan runs 4.5 to 9.4), so one absolute number means a different thing for
+# each -- and for ep_galtan an ILLIBERAL_CUTOFF of 0.6 sits below the whole
+# range and restricts nothing at all.
+
+# Minimum standardized top-2 score gap. score_gap_z = score_gap /
+# sd(illiberalism_score across every top-2 party-year in that country) -- the
+# raw illiberal-vs-other gap scaled by how much that country's own parties
+# typically differ in ideology. Since illiberal_score is defined as the HIGHER
+# of the top-2's scores, score_gap_z is always >= 0, so an absolute 0 is a
+# near-no-op; meaningful absolute thresholds start above 0. -Inf differs from 0
+# in one way worth knowing: it also keeps the countries with too little data to
+# compute their own score SD, where score_gap_z is NA.
+#
+# Restricting this way tests whether the first stage is diluted by low-contrast
+# top-2 pairs: in the full sample 29% of elections have a top-2 score_gap under
+# 0.05, i.e. the two parties are barely distinguishable in illiberalism, so
+# crossing the vote-share cutoff there isn't a real treatment contrast.
+# Compared with `>=` (a gap of exactly the threshold is kept).
+if (!exists("SCORE_GAP_MIN")) SCORE_GAP_MIN <- 0
+
+# Minimum illiberal_score -- the more-illiberal top-2 member's raw LEVEL, not
+# the gap between the two. Restricting to elections where that party clears an
+# ideological bar in absolute terms, rather than merely edging out the other
+# top-2 member, is the restriction that most moves the first stage.
+# Compared with `>` (strictly above the threshold).
+if (!exists("ILLIBERAL_CUTOFF")) ILLIBERAL_CUTOFF <- 0.6
+
+# Driver scripts that only need the numbers (14_window_sweep.R's secondary
+# treatment definitions, 15_alt_specs.R's grid) can set this FALSE to skip the
+# figures, which are the slow part of a run.
+if (!exists("MAKE_PLOTS")) MAKE_PLOTS <- TRUE
+
+# ------------------------------------------------------------------------------
+# Load + restrict
+# ------------------------------------------------------------------------------
+
+build_suffix <- if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else "_exclyr"
+build_path <- file.path(
+  data_dir,
+  "rdd_build",
+  sprintf(
+    "rdd_%s_w%d%s.rds",
+    ILLIBERALISM_VAR, BACKSLIDING_WINDOW_YEARS, build_suffix
+  )
+)
+if (!file.exists(build_path)) {
+  stop(
+    "No build at ", build_path, ".\n",
+    "Run 11_build_rdd_data.R with ILLIBERALISM_VAR = '", ILLIBERALISM_VAR,
+    "', BACKSLIDING_WINDOW_YEARS = ", BACKSLIDING_WINDOW_YEARS,
+    " and TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR = ",
+    TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, " first."
+  )
 }
+d <- readRDS(build_path)
+# Builds written before this toggle existed carry no attribute; they all used
+# the old exclude-the-election-year convention, so treat a missing attribute as
+# FALSE rather than assuming it matches the current default.
+build_incl <- attr(d, "includes_election_year") %||% FALSE
+if (!identical(build_incl, TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR)) {
+  stop(
+    "Build at ", build_path, " was made with ",
+    "TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR = ", build_incl,
+    " but this run asked for ", TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
+    ". Rebuild it with 11_build_rdd_data.R."
+  )
+}
+cat(sprintf("Loaded %s (%d elections)\n", basename(build_path), nrow(d)))
 
-# ------------------------------------------------------------------------------
-# Diagnostic: density of the running variable (on whatever sample
-# SCORE_GAP_MIN above selects). Standard RD sanity check: if elections
-# near the cutoff were somehow selected or sorted (e.g. the illiberal side
-# systematically squeaking out narrow wins/losses via manipulation), the
-# running variable's density would show bunching or a jump right at 0. A
-# smooth, continuous-looking density on both sides is consistent with the
-# "no precise sorting around the cutoff" identifying assumption a fuzzy RD
-# relies on -- this is a visual check only, not a formal manipulation test
-# (e.g. McCrary 2008 / Cattaneo-Jansson-Ma's rddensity).
-# ------------------------------------------------------------------------------
-
-density_plot_file <- paste0(
-  "running_var_density",
-  score_gap_suffix,
-  illiberal_suffix,
-  ".png"
+# Both specs are parsed and resolved against the FULL loaded build, before
+# either filter is applied. That ordering is load-bearing: resolving a quantile
+# after the other restriction had bitten would make the two axes interact, so
+# changing SCORE_GAP_MIN would silently move an ILLIBERAL_CUTOFF of "q50" too.
+score_gap_thr <- resolve_threshold(
+  parse_threshold(SCORE_GAP_MIN, "SCORE_GAP_MIN"),
+  d$score_gap_z, "SCORE_GAP_MIN"
+)
+illiberal_thr <- resolve_threshold(
+  parse_threshold(ILLIBERAL_CUTOFF, "ILLIBERAL_CUTOFF"),
+  d$illiberal_score, "ILLIBERAL_CUTOFF"
 )
 
-running_var_density_plot <- ggplot(d, aes(x = running_var)) +
-  geom_histogram(
-    aes(y = after_stat(density)),
-    bins = 60,
-    fill = "grey80",
-    color = "white"
-  ) +
-  geom_density(color = "darkblue", linewidth = 1) +
-  geom_vline(
-    xintercept = 0,
-    color = "red",
-    linetype = "dashed",
-    linewidth = 1
-  ) +
-  labs(
-    title = sprintf(
-      "Density of the running variable (%s, N = %d)",
-      baseline_label,
-      nrow(d)
-    ),
-    subtitle = "Dashed red line = RD cutoff.",
-    x = "Running variable (illiberal - other vote/seat share)",
-    y = "Density"
-  ) +
-  theme_minimal()
-
-ggsave(
-  file.path(plots_dir, density_plot_file),
-  running_var_density_plot,
-  width = 8,
-  height = 3
+# The run folder is named by the RESOLVED absolute values, not the specs, so a
+# "q50" run and a hand-written run at the same resolved number correctly share a
+# folder instead of duplicating. The specs as written are recorded alongside
+# them in run_config.csv, so the folder name is never the only record of how the
+# threshold was expressed.
+cfg <- list(
+  instrument = ILLIBERALISM_VAR,
+  window = BACKSLIDING_WINDOW_YEARS,
+  treatment = TREATMENT_VAR,
+  score_gap_min = score_gap_thr$absolute,
+  illiberal_cutoff = illiberal_thr$absolute,
+  incl_election_year = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
+  score_gap_spec = score_gap_thr$spec,
+  score_gap_form = score_gap_thr$kind,
+  illiberal_cutoff_spec = illiberal_thr$spec,
+  illiberal_cutoff_form = illiberal_thr$kind
 )
-cat(sprintf("Saved output/rdd_plots/%s\n", density_plot_file))
+slug <- run_slug(cfg)
+out_run <- run_dir(cfg)
+plots_dir <- file.path(out_run, "plots")
 
-outcome_vars <- c(
-  "Y_gdp_growth",
-  "Y_inflation",
-  "Y_unemployment",
-  "Y_trade_pct_gdp",
-  "Y_top10_share",
-  "Y_gini_disp",
-  "Y_gini_mkt"
-)
+cat("\nSample restrictions:\n")
+d <- apply_threshold(d, "score_gap_z", score_gap_thr, "SCORE_GAP_MIN", op = ">=")
+d <- apply_threshold(d, "illiberal_score", illiberal_thr, "ILLIBERAL_CUTOFF", op = ">")
+cat(sprintf("  %-16s %d elections\n\n", "FINAL SAMPLE", nrow(d)))
 
-# ------------------------------------------------------------------------------
-# Helpers
-# ------------------------------------------------------------------------------
-
-# Pull the robust bias-corrected coefficient/p-value/bandwidth out of an
-# rdrobust fit (or NA placeholders if the fit is NULL/failed).
-extract_rd <- function(fit) {
-  if (is.null(fit)) {
-    return(tibble(
-      N = NA_integer_,
-      coef = NA_real_,
-      se = NA_real_,
-      pval = NA_real_,
-      bw = NA_real_
-    ))
-  }
-  tibble(
-    N = sum(fit$N),
-    coef = unname(fit$coef["Robust", 1]),
-    se = unname(fit$se["Robust", 1]),
-    pval = unname(fit$pv["Robust", 1]),
-    bw = unname(fit$bws[1, 1])
+if (nrow(d) < RD_MIN_OBS) {
+  stop(
+    "Only ", nrow(d), " elections survive the sample restrictions -- too few to ",
+    "estimate anything. Check that the thresholds are on the right scale for ",
+    "instrument '", ILLIBERALISM_VAR, "'."
   )
 }
 
-# bwselect = "mserd" (Calonico, Cattaneo & Titiunik 2014's MSE-optimal,
-# common-bandwidth selector) is rdrobust()'s own default -- named
-# explicitly here so the bandwidth-selection method is documented in code,
-# not left as an implicit default, and so save_rdplot() below can request
-# the identical procedure when it separately re-fits to get a bandwidth
-# for plotting.
-RD_BWSELECT <- "mserd"
-
-# rdplot()'s default binselect = "esmv" (mimicking-variance evenly-spaced
-# bins) picks a relatively coarse number of bins per side on its own --
-# e.g. 24 left / 13 right for the full Y_gdp_growth sample. `scale`
-# multiplies that automatically-selected count (2 = twice as many bins per
-# side) rather than hand-picking a fixed nbins that wouldn't adapt across
-# very different subsample sizes (baseline N=1347 vs. a SCORE_GAP_MIN-
-# restricted N=221).
-RD_BIN_SCALE <- 2
-
-safe_rdrobust <- function(y, x, fuzzy = NULL) {
-  tryCatch(
-    {
-      # is.null(fuzzy) | !is.na(fuzzy) would silently collapse to logical(0)
-      # when fuzzy is NULL (!is.na(NULL) is zero-length), zeroing out `keep`
-      # via vectorized `&` -- branch explicitly instead.
-      fuzzy_ok <- if (is.null(fuzzy)) rep(TRUE, length(y)) else !is.na(fuzzy)
-      keep <- !is.na(y) & !is.na(x) & fuzzy_ok
-      if (sum(keep) < 20) {
-        return(NULL)
-      }
-      if (is.null(fuzzy)) {
-        rdrobust(y = y[keep], x = x[keep], bwselect = RD_BWSELECT)
-      } else {
-        rdrobust(
-          y = y[keep],
-          x = x[keep],
-          fuzzy = fuzzy[keep],
-          bwselect = RD_BWSELECT
-        )
-      }
+# One human-readable sentence describing the sample, reused in every table
+# subtitle so the restriction travels with the output rather than living only in
+# the folder name.
+restriction_label <- {
+  parts <- c(
+    if (score_gap_thr$kind != "none") {
+      sprintf("score_gap_z >= %.4g [%s]", score_gap_thr$absolute, score_gap_thr$spec)
     },
-    error = function(e) NULL
-  )
-}
-
-# Builds a 95% confidence ribbon around the local-linear fit, one side of
-# the cutoff at a time, by directly fitting the SAME weighted least-squares
-# regression rdrobust()/rdplot() use for the point estimate: OLS with
-# triangular-kernel weights (1 - |x|/h, clipped at 0) restricted to |x| <=
-# h. This is not an approximation -- verified against a live fit, the
-# weighted-OLS intercept-at-0 reproduces rdrobust()'s own "Conventional"
-# jump estimate exactly (both gave -0.04603014 for a test outcome). The
-# resulting ribbon uses the standard weighted-least-squares prediction SE,
-# which is NOT the same as CCT's more sophisticated bias-corrected
-# "Robust" SE reported in the results table -- this is a faithful
-# visualization of the conventional local-linear fit's uncertainty, not a
-# substitute for the table's formal inference.
-build_ci_ribbon <- function(y, x, h_left, h_right, x_zoom, n_grid = 100) {
-  fit_side <- function(side, bandwidth, grid) {
-    w <- pmax(1 - abs(x) / bandwidth, 0)
-    idx <- which(side & w > 0)
-    if (length(idx) < 3) {
-      return(NULL)
-    }
-    df <- data.frame(xx = x[idx], yy = y[idx], ww = w[idx])
-    fit <- tryCatch(lm(yy ~ xx, data = df, weights = ww), error = function(e) {
-      NULL
-    })
-    if (is.null(fit)) {
-      return(NULL)
-    }
-    pred <- predict(fit, newdata = data.frame(xx = grid), se.fit = TRUE)
-    tcrit <- qt(0.975, df = fit$df.residual)
-    tibble(
-      xx = grid,
-      ymin = pred$fit - tcrit * pred$se.fit,
-      ymax = pred$fit + tcrit * pred$se.fit
-    )
-  }
-  dplyr::bind_rows(
-    fit_side(x < 0, h_left, seq(-x_zoom, 0, length.out = n_grid)),
-    fit_side(x >= 0, h_right, seq(0, x_zoom, length.out = n_grid))
-  )
-}
-
-# rdrobust::rdplot() is the standard RD visualization: binned local means of
-# y against the running variable, with a separate local-polynomial fit on
-# each side of the cutoff -- lets you see the discontinuity (or lack of
-# one) directly, rather than just reading a coefficient/p-value off the
-# results table. pdf(NULL) swallows its default auto-print (rdplot() prints
-# to whatever device is open, which errors/hangs in a non-interactive
-# Rscript session with no device). Returns the finished ggplot object (or
-# NULL if there's too little data / the fit fails) -- callers decide
-# whether to ggsave() it standalone (save_rdplot(), for the first stage)
-# or combine several into one multi-panel figure (build_combined_outcomes_
-# plot(), for the outcomes).
-build_rdplot <- function(y, x, title, y_label, y.lim = NULL) {
-  keep <- !is.na(y) & !is.na(x)
-  if (sum(keep) < 20) {
-    message("Skipping plot (too few observations): ", title)
-    return(NULL)
-  }
-  y <- y[keep]
-  x <- x[keep]
-
-  # rdplot()'s own h defaults to spanning the FULL support of x on each
-  # side -- a much wider window than what rdrobust() actually uses for the
-  # point estimate/inference. Re-fit rdrobust() here (same RD_BWSELECT =
-  # "mserd" CCT procedure used in run_spec()) purely to pull its
-  # MSE-optimal bandwidth, then pass that same h into rdplot() so the
-  # plotted local-linear fit reflects the identical window the results
-  # table's estimate is actually computed from, rather than a
-  # wider/unrelated one. Falls back to rdplot()'s own default (full
-  # support) if that fit fails.
-  rd_fit <- safe_rdrobust(y, x)
-  h <- if (!is.null(rd_fit)) unname(rd_fit$bws["h", ]) else NULL
-  # Zoom the x-axis to exactly the optimal bandwidth -- the fitted line
-  # never extends past +/-h anyway, so padding the zoom out further (an
-  # earlier version used 3x) only wastes plot area on a region the
-  # estimate doesn't use.
-  x_zoom <- if (!is.null(h)) max(h) else max(abs(x), na.rm = TRUE)
-
-  h_left <- if (!is.null(h)) h[1] else NULL
-  h_right <- if (!is.null(h)) h[length(h)] else NULL
-  ribbon_data <- if (!is.null(h)) {
-    build_ci_ribbon(y, x, h_left, h_right, x_zoom)
-  } else {
-    NULL
-  }
-
-  # rdplot()'s x.lim only crops the DISPLAY viewport (coord_cartesian-style)
-  # -- bins outside that window still feed the automatic y-axis scaling.
-  # A single sparse, high-variance bin far from the cutoff (common with
-  # this sample's uneven coverage) can carry a mean wildly off from the
-  # visible region, which would silently squash the whole well-behaved
-  # area into a sliver. Probe with hide=TRUE (computes bins, skips
-  # rendering) to see only the bins that will actually be visible, and
-  # derive y.lim from those PLUS the ribbon's own extent -- unless the
-  # caller already passed an explicit y.lim (the first-stage plot
-  # hard-codes [0,1] since it's a probability, and shouldn't be overridden
-  # here).
-  if (is.null(y.lim)) {
-    bins_probe <- tryCatch(
-      rdplot(
-        y = y,
-        x = x,
-        p = 1,
-        h = h,
-        kernel = "triangular",
-        scale = RD_BIN_SCALE,
-        hide = TRUE
-      ),
-      error = function(e) NULL
-    )
-    if (!is.null(bins_probe)) {
-      visible <- bins_probe$vars_bins |>
-        dplyr::filter(abs(rdplot_mean_bin) <= x_zoom)
-      bounds <- c(visible$rdplot_mean_y, ribbon_data$ymin, ribbon_data$ymax)
-      bounds <- bounds[is.finite(bounds)]
-      if (length(bounds) > 0) {
-        rng <- range(bounds)
-        pad <- diff(rng) * 0.1
-        y.lim <- c(rng[1] - pad, rng[2] + pad)
-      }
-    }
-  }
-
-  tryCatch(
-    {
-      pdf(NULL)
-      fit <- rdplot(
-        y = y,
-        x = x,
-        title = title,
-        x.label = "Running variable (illiberal - other vote/seat share)",
-        y.label = y_label,
-        x.lim = c(-1, 1) * x_zoom,
-        # rdplot()'s default p=4 (quartic) fits a separate 4th-degree
-        # polynomial on each side of the cutoff -- with only ~15-20 binned
-        # points per side here, that's enough flexibility to snake through
-        # nearly every bin, producing the wildly oscillating "spine" seen
-        # at p=4. p=1 (local linear) matches what rdrobust() actually
-        # estimates for the point estimate/inference, so the plotted curve
-        # reflects the same model the results table reports, instead of a
-        # more flexible and misleading one. kernel="triangular" matches
-        # rdrobust()'s own default weighting (rdplot() otherwise defaults
-        # to "uniform") -- without this, the plotted fit used the right
-        # bandwidth and polynomial order but a different weighting scheme
-        # than the actual point estimate it's meant to visualize.
-        p = 1,
-        h = h,
-        kernel = "triangular",
-        scale = RD_BIN_SCALE,
-        y.lim = y.lim
-      )
-      dev.off()
-      # Per-bin CI whiskers were tried and dropped in favor of a single
-      # shaded confidence ribbon around the fit line itself (see
-      # build_ci_ribbon() above) -- less visual clutter, and it directly
-      # answers "how uncertain is the estimated jump" rather than "how
-      # uncertain is each individual bin's mean." Prepend (not append) the
-      # ribbon layer so it renders BEHIND the bin dots and fit line rather
-      # than covering them.
-      if (!is.null(ribbon_data) && nrow(ribbon_data) > 0) {
-        ribbon_layer <- geom_ribbon(
-          data = ribbon_data,
-          aes(x = xx, ymin = ymin, ymax = ymax),
-          inherit.aes = FALSE,
-          fill = "red",
-          alpha = 0.15
-        )
-        fit$rdplot$layers <- append(
-          fit$rdplot$layers,
-          list(ribbon_layer),
-          after = 0
-        )
-      }
-      fit$rdplot
-    },
-    error = function(e) {
-      if (!is.null(dev.list())) {
-        dev.off()
-      }
-      message(
-        "Skipping plot (rdplot failed): ",
-        title,
-        " -- ",
-        conditionMessage(e)
-      )
-      NULL
+    if (illiberal_thr$kind != "none") {
+      sprintf("illiberal_score > %.4g [%s]", illiberal_thr$absolute, illiberal_thr$spec)
     }
   )
+  if (length(parts) == 0) "all scored elections" else paste(parts, collapse = ", ")
 }
 
-# Thin wrapper around build_rdplot() for plots saved standalone (just the
-# first stage now -- the outcomes are combined into one multi-panel figure
-# by build_combined_outcomes_plot() below).
-save_rdplot <- function(y, x, file_name, title, y_label, y.lim = NULL) {
-  p <- build_rdplot(y, x, title, y_label, y.lim)
-  if (!is.null(p)) {
-    ggsave(file.path(plots_dir, file_name), p, width = 7, height = 3)
-  }
-  invisible(p)
-}
+sample_label <- sprintf("%s, N = %d", slug, nrow(d))
 
-# One combined figure for all outcomes in outcome_vars, arranged in a grid
-# via patchwork rather than one PNG per outcome -- each panel keeps its
-# own independently-selected bandwidth/bins (outcomes have different
-# missingness and variance, so a shared binning scheme across a facet_wrap
-# would be wrong here), but they're assembled into a single image with one
-# overall title.
-build_combined_outcomes_plot <- function(data, sample_label, ncol = 3) {
-  panels <- purrr::map(outcome_vars, function(oc) {
-    build_rdplot(data[[oc]], data$running_var, oc, oc)
-  })
-  panels <- purrr::compact(panels) # drop any outcome that failed/had too few obs
-  if (length(panels) == 0) {
-    return(NULL)
-  }
-  patchwork::wrap_plots(panels, ncol = ncol) +
-    patchwork::plot_annotation(
-      title = sprintf("Reduced-form RD by outcome (%s)", sample_label),
-      subtitle = "Shaded band = 95% CI of the local-linear fit"
-    )
-}
+# ------------------------------------------------------------------------------
+# Outcomes, grouped into plot panels
+#
+# The results TABLE stays one row per outcome (flat and scannable); the panel
+# grouping only controls the figures, where several same-unit series belong
+# together on one set of axes:
+#   growth       three log GDP-per-capita series (PWT / World Bank / IMF WEO),
+#                all log-differences over the same window, so directly comparable
+#   gini         the two SWIID Ginis, both 0-100 points
+#   fiscal       debt and deficit, both % of GDP
+#   institutions the V-Dem constraint/power indices, all on [0,1]
+# Every panel is single-unit by construction -- no panel ever mixes two scales.
+# ------------------------------------------------------------------------------
 
-# One RD plot per outcome (plus the first stage) for a given subsample --
-# called once for baseline; call again for any other spec worth visualizing.
-make_rd_plots <- function(data, spec_label, treatment_col = "backsliding_Nyr") {
-  # Label every plot with both the spec and the sample size it was
-  # estimated on, so a plot is self-describing without needing to cross-
-  # reference its filename or the console output.
-  sample_label <- sprintf("%s, N = %d", spec_label, nrow(data))
-  save_rdplot(
-    data[[treatment_col]],
-    data$running_var,
-    sprintf("%s_first_stage.png", spec_label),
-    sprintf("First stage (%s)", sample_label),
-    "P(backsliding within window)",
-    # treatment_col is a 0/1 probability -- fix the y-axis to its actual
-    # range instead of letting a wide-CI bin (common with small N) blow
-    # the scale out to +/-5, which was making every first-stage plot look
-    # far more zoomed-out than the data warrants.
-    y.lim = c(0, 1)
+outcome_vars <- unlist(lapply(OUTCOME_PANELS, names), use.names = FALSE)
+outcome_labels <- unlist(OUTCOME_PANELS, use.names = FALSE)
+names(outcome_labels) <- outcome_vars
+
+# Drop any outcome missing from this build (older builds, or a variable whose
+# source data didn't cover this sample at all) rather than erroring later.
+missing_outcomes <- setdiff(outcome_vars, names(d))
+if (length(missing_outcomes) > 0) {
+  warning(
+    "Build is missing outcomes, dropping: ",
+    paste(missing_outcomes, collapse = ", ")
   )
-  combined <- build_combined_outcomes_plot(data, sample_label, ncol = 3)
-  if (!is.null(combined)) {
-    n_rows <- ceiling(length(outcome_vars) / 2)
-    ggsave(
-      file.path(plots_dir, sprintf("%s_outcomes.png", spec_label)),
-      combined,
-      width = 16,
-      height = 2.5 * n_rows
-    )
-  }
+  OUTCOME_PANELS <- lapply(OUTCOME_PANELS, function(p) p[names(p) %in% names(d)])
+  OUTCOME_PANELS <- OUTCOME_PANELS[lengths(OUTCOME_PANELS) > 0]
+  outcome_vars <- setdiff(outcome_vars, missing_outcomes)
 }
 
-# Standard economics-paper table conventions: significance stars on the
-# coefficient, standard error in parentheses immediately after -- e.g.
-# "-0.045 (0.023)*".
-sig_stars <- function(pval) {
-  dplyr::case_when(
-    is.na(pval) ~ "",
-    pval < 0.01 ~ "***",
-    pval < 0.05 ~ "**",
-    pval < 0.10 ~ "*",
-    TRUE ~ ""
-  )
-}
+# ------------------------------------------------------------------------------
+# Estimation
+# ------------------------------------------------------------------------------
 
-fmt_est <- function(coef, se, pval, digits = 3) {
-  dplyr::if_else(
-    is.na(coef),
-    "--",
-    sprintf(
-      paste0("%.", digits, "f (%.", digits, "f)%s"),
-      coef,
-      se,
-      sig_stars(pval)
-    )
-  )
-}
-
-# Same gt() + gtsave() convention used in 11_build_rdd_data.R's tables --
-# saved as HTML rather than PNG, since PNG export needs a headless-browser
-# backend (webshot2/chromote, or webshot+PhantomJS) that isn't set up in
-# this environment. HTML also sizes to its content automatically, so there
-# is no manual width/clipping bookkeeping to get wrong.
-apply_table_style <- function(gt_tbl) {
-  gt_tbl |>
-    tab_options(
-      table.font.size = px(12),
-      table.border.top.style = "solid",
-      table.border.top.width = px(2),
-      table.border.top.color = "black",
-      table.border.bottom.style = "solid",
-      table.border.bottom.width = px(2),
-      table.border.bottom.color = "black",
-      column_labels.border.top.style = "solid",
-      column_labels.border.top.width = px(2),
-      column_labels.border.top.color = "black",
-      column_labels.border.bottom.style = "solid",
-      column_labels.border.bottom.width = px(1.5),
-      column_labels.border.bottom.color = "black",
-      table_body.hlines.style = "solid",
-      table_body.hlines.width = px(0.5),
-      table_body.hlines.color = "#cccccc"
-    )
-}
-
-SIG_FOOTNOTE <- "Significance: * p<0.10, ** p<0.05, *** p<0.01. SE in parentheses."
-
-save_table_html <- function(tbl, file_name, title) {
-  gt_tbl <- tbl |>
-    gt::gt() |>
-    gt::tab_header(title = title) |>
-    gt::tab_source_note(source_note = SIG_FOOTNOTE) |>
-    gt::opt_row_striping() |>
-    apply_table_style()
-  gt::gtsave(gt_tbl, file.path(plots_dir, file_name))
-  cat(sprintf("Saved output/rdd_plots/%s\n", file_name))
-}
-
-save_first_stage_table <- function(first_stage, file_name, title) {
-  tbl <- first_stage |>
-    transmute(
-      Spec = spec,
-      N = n_first_stage,
-      `First stage` = fmt_est(
-        first_stage_coef,
-        first_stage_se,
-        first_stage_pval
-      ),
-      Bandwidth = round(first_stage_bandwidth, 2)
-    )
-  save_table_html(tbl, file_name, title)
-}
-
-save_outcomes_table <- function(outcomes, file_name, title) {
-  tbl <- outcomes |>
-    transmute(
-      Outcome = outcome,
-      N = n_outcome,
-      `Reduced form` = fmt_est(rd_estimate, rd_se, rd_pval),
-      `Fuzzy RD (LATE)` = fmt_est(late_estimate, late_se, late_pval)
-    )
-  save_table_html(tbl, file_name, title)
-}
-
-# Estimates a full rdrobust() fit for the first stage (once per subsample)
-# plus a fuzzy RD for every outcome (reusing that same treatment_col), and
-# returns BOTH a standalone first-stage row (full N/coef/se/pval/bandwidth,
-# the way a paper's first-stage table would report it -- not just a
-# coefficient and p-value folded redundantly into every outcome row) and
+# Estimates the first stage once per subsample, then a reduced-form and a fuzzy
+# RD for every outcome reusing that same treatment column. Returns BOTH a
+# standalone first-stage row (the way a paper's first-stage table reports it,
+# rather than folding the same numbers redundantly into every outcome row) and
 # the per-outcome table.
-run_spec <- function(data, spec_label, treatment_col = "backsliding_Nyr") {
+run_spec <- function(data, spec_label, treatment_col = TREATMENT_VAR) {
   fs_fit <- safe_rdrobust(data[[treatment_col]], data$running_var)
   fs <- extract_rd(fs_fit)
 
   first_stage <- tibble(
     spec = spec_label,
+    treatment = treatment_col,
     n_first_stage = fs$N,
     first_stage_coef = fs$coef,
     first_stage_se = fs$se,
@@ -630,18 +273,21 @@ run_spec <- function(data, spec_label, treatment_col = "backsliding_Nyr") {
   )
 
   outcomes <- map_dfr(outcome_vars, function(oc) {
-    rf_fit <- safe_rdrobust(data[[oc]], data$running_var)
-    fuzzy_fit <- safe_rdrobust(
+    rf <- extract_rd(safe_rdrobust(data[[oc]], data$running_var))
+    late <- extract_rd(safe_rdrobust(
       data[[oc]],
       data$running_var,
       fuzzy = data[[treatment_col]]
-    )
-    rf <- extract_rd(rf_fit)
-    late <- extract_rd(fuzzy_fit)
+    ))
 
     tibble(
       outcome = oc,
+      outcome_label = unname(outcome_labels[oc]),
+      panel = names(OUTCOME_PANELS)[
+        vapply(OUTCOME_PANELS, function(p) oc %in% names(p), logical(1))
+      ][1],
       spec = spec_label,
+      treatment = treatment_col,
       n_first_stage = fs$N,
       first_stage_coef = fs$coef,
       first_stage_pval = fs$pval,
@@ -660,56 +306,346 @@ run_spec <- function(data, spec_label, treatment_col = "backsliding_Nyr") {
 }
 
 # ------------------------------------------------------------------------------
-# Baseline
+# Plotting
 # ------------------------------------------------------------------------------
 
-cat(sprintf("=== Baseline (%s) ===\n", baseline_label))
-results_baseline <- run_spec(d, baseline_label)
-save_first_stage_table(
-  results_baseline$first_stage,
-  sprintf("%s_first_stage_table.html", baseline_label),
-  sprintf("First stage (%s)", baseline_label)
+# The weighted least-squares regression rdrobust()/rdplot() use for the point
+# estimate: OLS with triangular-kernel weights (1 - |x|/h, clipped at 0)
+# restricted to |x| <= h, fitted separately on each side of the cutoff. This is
+# not an approximation -- the weighted-OLS intercept at 0 reproduces
+# rdrobust()'s own "Conventional" jump estimate exactly. The SEs are ordinary
+# WLS prediction SEs, NOT CCT's bias-corrected "Robust" SEs reported in the
+# table, so the ribbon visualizes the conventional fit's uncertainty rather
+# than substituting for the table's formal inference.
+side_fit <- function(y, x, side, bandwidth, grid) {
+  w <- pmax(1 - abs(x) / bandwidth, 0)
+  idx <- which(side & w > 0 & !is.na(y))
+  if (length(idx) < 3) {
+    return(NULL)
+  }
+  df <- data.frame(xx = x[idx], yy = y[idx], ww = w[idx])
+  fit <- tryCatch(lm(yy ~ xx, data = df, weights = ww), error = function(e) NULL)
+  if (is.null(fit)) {
+    return(NULL)
+  }
+  pred <- predict(fit, newdata = data.frame(xx = grid), se.fit = TRUE)
+  tcrit <- qt(0.975, df = fit$df.residual)
+  tibble(
+    xx = grid,
+    yhat = pred$fit,
+    ymin = pred$fit - tcrit * pred$se.fit,
+    ymax = pred$fit + tcrit * pred$se.fit
+  )
+}
+
+# Binned local means of y against the running variable, as rdplot() computes
+# them. hide = TRUE computes the bins without rendering (rdplot() otherwise
+# prints to whatever device is open, which errors in a non-interactive Rscript
+# session). binselect defaults to "esmv" (mimicking-variance, evenly spaced);
+# RD_BIN_SCALE multiplies its automatically-chosen bin count rather than
+# hardcoding an nbins that wouldn't adapt across very different subsample sizes.
+RD_BIN_SCALE <- 2
+
+binned_means <- function(y, x, bandwidth) {
+  probe <- tryCatch(
+    rdplot(
+      y = y, x = x, p = 1, h = bandwidth,
+      kernel = "triangular", scale = RD_BIN_SCALE, hide = TRUE
+    ),
+    error = function(e) NULL
+  )
+  if (is.null(probe)) {
+    return(NULL)
+  }
+  as_tibble(probe$vars_bins) |>
+    select(xx = rdplot_mean_bin, yy = rdplot_mean_y) |>
+    filter(is.finite(xx), is.finite(yy))
+}
+
+# One RD panel, one or more series sharing a single y-axis.
+#
+# All series in a panel share ONE bandwidth -- the MSE-optimal bandwidth of the
+# first (primary) series -- so the binning and the fitted window are identical
+# across series and the lines are visually comparable. Letting each series pick
+# its own bandwidth would make three curves drawn over different x-ranges look
+# like a substantive difference when it is a bandwidth difference.
+#
+# p = 1 (local linear) matches what rdrobust() actually estimates;
+# rdplot()'s own default p = 4 snakes through nearly every bin with only ~15-20
+# binned points per side. kernel = "triangular" matches rdrobust()'s weighting
+# (rdplot() otherwise defaults to uniform).
+build_panel_plot <- function(
+  data, series, title, y_label,
+  y_lim = NULL, show_legend = TRUE
+) {
+  x <- data$running_var
+  vars <- names(series)
+
+  primary_fit <- safe_rdrobust(data[[vars[1]]], x)
+  h <- if (!is.null(primary_fit)) max(unname(primary_fit$bws["h", ])) else NULL
+  if (is.null(h) || !is.finite(h)) {
+    h <- max(abs(x), na.rm = TRUE)
+  }
+
+  grid_left <- seq(-h, 0, length.out = 100)
+  grid_right <- seq(0, h, length.out = 100)
+
+  bins <- list()
+  fits <- list()
+  for (i in seq_along(vars)) {
+    v <- vars[i]
+    y <- data[[v]]
+    keep <- !is.na(y) & !is.na(x)
+    if (sum(keep) < RD_MIN_OBS) {
+      next
+    }
+    yk <- y[keep]
+    xk <- x[keep]
+    b <- binned_means(yk, xk, h)
+    if (!is.null(b)) {
+      bins[[v]] <- b |>
+        filter(abs(xx) <= h) |>
+        mutate(series = unname(series[v]))
+    }
+    f <- bind_rows(
+      side_fit(yk, xk, xk < 0, h, grid_left) |> mutate(side = "left"),
+      side_fit(yk, xk, xk >= 0, h, grid_right) |> mutate(side = "right")
+    )
+    if (nrow(f) > 0) {
+      fits[[v]] <- f |> mutate(series = unname(series[v]))
+    }
+  }
+
+  if (length(bins) == 0 && length(fits) == 0) {
+    message("Skipping panel (too few observations): ", title)
+    return(NULL)
+  }
+
+  bins_df <- bind_rows(bins)
+  fits_df <- bind_rows(fits)
+  # Fixed factor order so a series keeps its colour regardless of which
+  # series happen to survive in a given subsample.
+  lvls <- unname(series)
+  if (nrow(bins_df)) bins_df$series <- factor(bins_df$series, levels = lvls)
+  if (nrow(fits_df)) fits_df$series <- factor(fits_df$series, levels = lvls)
+
+  n_series <- length(lvls)
+  ribbon_alpha <- if (n_series >= 3) 0.09 else 0.14
+
+  if (is.null(y_lim)) {
+    bounds <- c(bins_df$yy, fits_df$ymin, fits_df$ymax)
+    bounds <- bounds[is.finite(bounds)]
+    if (length(bounds) > 0) {
+      rng <- range(bounds)
+      pad <- max(diff(rng) * 0.1, 1e-9)
+      y_lim <- c(rng[1] - pad, rng[2] + pad)
+    }
+  }
+
+  p <- ggplot() +
+    geom_vline(xintercept = 0, linetype = "dashed", colour = "grey35", linewidth = 0.4)
+
+  if (nrow(fits_df)) {
+    p <- p +
+      geom_ribbon(
+        data = fits_df,
+        aes(x = xx, ymin = ymin, ymax = ymax, group = interaction(series, side), fill = series),
+        alpha = ribbon_alpha, colour = NA
+      ) +
+      geom_line(
+        data = fits_df,
+        aes(x = xx, y = yhat, group = interaction(series, side), colour = series),
+        linewidth = 0.7
+      )
+  }
+  if (nrow(bins_df)) {
+    p <- p +
+      geom_point(
+        data = bins_df,
+        aes(x = xx, y = yy, colour = series, shape = series),
+        size = 1.6, alpha = 0.85
+      )
+  }
+
+  p +
+    scale_colour_manual(values = setNames(SERIES_COLORS[seq_len(n_series)], lvls), drop = FALSE) +
+    scale_fill_manual(values = setNames(SERIES_COLORS[seq_len(n_series)], lvls), drop = FALSE) +
+    scale_shape_manual(values = setNames(SERIES_SHAPES[seq_len(n_series)], lvls), drop = FALSE) +
+    coord_cartesian(xlim = c(-h, h), ylim = y_lim) +
+    labs(
+      title = title,
+      x = "Running variable (illiberal - other vote/seat share, pp)",
+      y = y_label,
+      colour = NULL, fill = NULL, shape = NULL
+    ) +
+    theme_bw(base_size = 9) +
+    theme(
+      panel.grid.minor = element_blank(),
+      panel.grid.major = element_line(colour = "grey92", linewidth = 0.3),
+      plot.title = element_text(size = 9, face = "bold"),
+      # A legend is always present for >= 2 series so identity is never carried
+      # by colour alone; a single-series panel is named by its own title.
+      legend.position = if (show_legend && n_series > 1) "bottom" else "none",
+      legend.key.size = unit(0.35, "cm"),
+      legend.margin = margin(t = -4)
+    )
+}
+
+make_rd_plots <- function(data, treatment_col = TREATMENT_VAR) {
+  # First stage. y.lim is fixed to [0,1] for the binary treatments (it's a
+  # probability, and a wide-CI bin at small N would otherwise blow the scale
+  # out); the continuous treatment gets an automatic scale.
+  fs_ylim <- if (treatment_col == "polyarchy_decline") NULL else c(0, 1)
+  fs_label <- if (treatment_col == "polyarchy_decline") {
+    "Polyarchy decline over window"
+  } else {
+    "P(backsliding within window)"
+  }
+  p_fs <- build_panel_plot(
+    data,
+    setNames("First stage", treatment_col),
+    sprintf("First stage: %s\n%s", TREATMENT_DISPLAY[[treatment_col]], sample_label),
+    fs_label,
+    y_lim = fs_ylim
+  )
+  if (!is.null(p_fs)) {
+    ggsave(file.path(plots_dir, "first_stage.png"), p_fs, width = 7, height = 3.6, dpi = 150)
+    cat("Saved plots/first_stage.png\n")
+  }
+
+  # One figure per outcome panel, plus a combined sheet. Each panel keeps its
+  # own independently-selected bandwidth and bins (outcomes differ in
+  # missingness and variance, so a shared binning across a facet_wrap would be
+  # wrong), assembled with patchwork rather than faceting.
+  panels <- list()
+  for (nm in names(OUTCOME_PANELS)) {
+    p <- build_panel_plot(
+      data,
+      OUTCOME_PANELS[[nm]],
+      unname(PANEL_TITLES[nm]),
+      unname(PANEL_YLABS[nm])
+    )
+    if (is.null(p)) {
+      next
+    }
+    panels[[nm]] <- p
+    ggsave(
+      file.path(plots_dir, sprintf("outcomes_%s.png", nm)),
+      p, width = 6, height = 3.6, dpi = 150
+    )
+  }
+  if (length(panels) > 0) {
+    combined <- wrap_plots(panels, ncol = 3) +
+      plot_annotation(
+        title = sprintf("Reduced-form RD by outcome (%s)", sample_label),
+        subtitle = "Shaded band = 95% CI of the local-linear fit (conventional, not bias-corrected)"
+      )
+    n_rows <- ceiling(length(panels) / 3)
+    ggsave(
+      file.path(plots_dir, "outcomes_all.png"),
+      combined, width = 16, height = 3.6 * n_rows, dpi = 150, limitsize = FALSE
+    )
+    cat(sprintf("Saved plots/outcomes_all.png (%d panels)\n", length(panels)))
+  }
+}
+
+# ------------------------------------------------------------------------------
+# Diagnostic: density of the running variable
+# Standard RD sanity check -- if elections near the cutoff were selected or
+# sorted (the illiberal side systematically squeaking out narrow wins), the
+# density would bunch or jump at 0. Visual only, not a formal manipulation test.
+# ------------------------------------------------------------------------------
+
+density_plot <- ggplot(d, aes(x = running_var)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 60, fill = "grey85", colour = "white") +
+  geom_density(colour = SERIES_COLORS[1], linewidth = 0.8) +
+  geom_vline(xintercept = 0, colour = "grey35", linetype = "dashed", linewidth = 0.4) +
+  labs(
+    title = sprintf("Density of the running variable (%s)", sample_label),
+    subtitle = "Dashed line = RD cutoff",
+    x = "Running variable (illiberal - other vote/seat share, pp)",
+    y = "Density"
+  ) +
+  theme_bw(base_size = 9) +
+  theme(panel.grid.minor = element_blank())
+
+if (MAKE_PLOTS) {
+  ggsave(file.path(plots_dir, "running_var_density.png"), density_plot, width = 8, height = 3, dpi = 150)
+  cat("Saved plots/running_var_density.png\n")
+}
+
+# ------------------------------------------------------------------------------
+# Run
+# ------------------------------------------------------------------------------
+
+cat(sprintf("\n=== %s ===\n", slug))
+results <- run_spec(d, slug)
+
+subtitle <- sprintf(
+  "Instrument: %s | Treatment: %s | Window: [%s, election_year + %d] | Sample: %s (N = %d)",
+  INSTRUMENT_DISPLAY[[ILLIBERALISM_VAR]],
+  TREATMENT_DISPLAY[[TREATMENT_VAR]],
+  if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "election_year" else "election_year + 1",
+  BACKSLIDING_WINDOW_YEARS,
+  restriction_label,
+  nrow(d)
 )
-save_outcomes_table(
-  results_baseline$outcomes,
-  sprintf("%s_outcomes_table.html", baseline_label),
-  sprintf("Reduced form / fuzzy RD by outcome (%s)", baseline_label)
+
+save_table_html(
+  results$first_stage |>
+    transmute(
+      Spec = spec,
+      N = n_first_stage,
+      `First stage` = fmt_est(first_stage_coef, first_stage_se, first_stage_pval),
+      Bandwidth = round(first_stage_bandwidth, 2)
+    ),
+  file.path(out_run, "first_stage_table.html"),
+  "First stage",
+  subtitle
 )
-make_rd_plots(d, baseline_label)
-cat(sprintf("Saved %s RD plots to %s/\n", baseline_label, plots_dir))
 
-# ------------------------------------------------------------------------------
-# Combine + save
-# ------------------------------------------------------------------------------
+save_table_html(
+  results$outcomes |>
+    transmute(
+      Panel = panel,
+      Outcome = outcome_label,
+      Variable = outcome,
+      N = n_outcome,
+      `Reduced form` = fmt_est(rd_estimate, rd_se, rd_pval),
+      `Fuzzy RD (LATE)` = fmt_est(late_estimate, late_se, late_pval)
+    ),
+  file.path(out_run, "outcomes_table.html"),
+  "Reduced form / fuzzy RD by outcome",
+  subtitle
+)
 
-all_results <- results_baseline$outcomes
-all_first_stage <- results_baseline$first_stage
+if (MAKE_PLOTS) {
+  make_rd_plots(d)
+}
 
-n_failed <- sum(is.na(all_results$late_estimate))
+write_csv(results$outcomes, file.path(out_run, "rdd_results.csv"))
+write_csv(results$first_stage, file.path(out_run, "rdd_first_stage_results.csv"))
+
+append_run_manifest(cfg, list(
+  n_elections = nrow(d),
+  n_treated = if (TREATMENT_VAR == "polyarchy_decline") NA else sum(d[[TREATMENT_VAR]], na.rm = TRUE),
+  first_stage_coef = round(results$first_stage$first_stage_coef, 4),
+  first_stage_pval = round(results$first_stage$first_stage_pval, 4)
+))
+
+n_failed <- sum(is.na(results$outcomes$late_estimate))
 cat(sprintf(
-  "\n=== Overall: %d / %d outcome x spec combinations produced a fuzzy RD estimate (%d skipped/failed -- too few observations near the cutoff or rdrobust's internal checks failed) ===\n",
-  nrow(all_results) - n_failed,
-  nrow(all_results),
-  n_failed
+  "\n%d / %d outcomes produced a fuzzy RD estimate (%d skipped -- too few observations near the cutoff, or rdrobust's internal checks failed)\n",
+  nrow(results$outcomes) - n_failed, nrow(results$outcomes), n_failed
 ))
-
-results_file <- paste0(
-  "rdd_results",
-  score_gap_suffix,
-  illiberal_suffix,
-  ".csv"
-)
-first_stage_file <- paste0(
-  "rdd_first_stage_results",
-  score_gap_suffix,
-  illiberal_suffix,
-  ".csv"
-)
-
-write_csv(all_results, file.path(out_dir, results_file))
-write_csv(all_first_stage, file.path(out_dir, first_stage_file))
-message(sprintf(
-  "Saved output/%s and output/%s",
-  results_file,
-  first_stage_file
+cat(sprintf(
+  "First stage: %s  (N = %d, bw = %.2f)\n",
+  fmt_est(
+    results$first_stage$first_stage_coef,
+    results$first_stage$first_stage_se,
+    results$first_stage$first_stage_pval
+  ),
+  results$first_stage$n_first_stage,
+  results$first_stage$first_stage_bandwidth
 ))
+message("All output written to ", out_run)

@@ -1,0 +1,2 @@
+spec,treatment,n_first_stage,first_stage_coef,first_stage_se,first_stage_pval,first_stage_bandwidth
+instr-galtan_w5_trt-polyarchy_gapany_illibany,polyarchy_decline,42,-0.048633157372300465,0.04295520424004009,0.25755745315101236,10.5093860995656

@@ -1,0 +1,19 @@
+outcome,outcome_label,panel,spec,treatment,n_first_stage,first_stage_coef,first_stage_pval,n_outcome,rd_estimate,rd_se,rd_pval,late_estimate,late_se,late_pval,bandwidth
+Y_gdp_growth,PWT,growth,instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,backsliding_union_Nyr,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Y_gdp_growth_wb,World Bank,growth,instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,backsliding_union_Nyr,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Y_gdp_growth_imf,IMF WEO,growth,instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,backsliding_union_Nyr,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Y_inflation,"CPI, cumulative log",inflation,instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,backsliding_union_Nyr,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Y_unemployment,Unemployment rate,unemployment,instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,backsliding_union_Nyr,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Y_trade_pct_gdp,Trade / GDP,trade,instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,backsliding_union_Nyr,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Y_top10_share,Top-10% income share,top10,instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,backsliding_union_Nyr,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Y_gini_disp,Disposable,gini,instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,backsliding_union_Nyr,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Y_gini_mkt,Market,gini,instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,backsliding_union_Nyr,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Y_debt,Debt / GDP,fiscal,instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,backsliding_union_Nyr,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Y_deficit,Deficit / GDP,fiscal,instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,backsliding_union_Nyr,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Y_checks_balances,Checks & balances,institutions,instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,backsliding_union_Nyr,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Y_jucon,Judicial constraints,institutions,instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,backsliding_union_Nyr,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Y_legcon,Legislative constraints,institutions,instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,backsliding_union_Nyr,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Y_hos_power,HOS,exec_power,instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,backsliding_union_Nyr,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Y_hog_power,HOG,exec_power,instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,backsliding_union_Nyr,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Y_hos_power_vdem,HOS (v2ex_hosw),exec_power_alt,instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,backsliding_union_Nyr,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Y_hog_power_vdem,HOG (v2ex_hogw),exec_power_alt,instr-galtan_w5_trt-ertOrDdcg_gapany_illib7,backsliding_union_Nyr,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
