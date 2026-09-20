@@ -56,6 +56,22 @@ if (!exists("ALT_WINDOW")) ALT_WINDOW <- 5
 # thresholds rather than of instruments, so it is not the default.
 if (!exists("ALT_SAMPLES")) ALT_SAMPLES <- c("all", "q50")
 if (!exists("ALT_OUTCOME")) ALT_OUTCOME <- "Y_gdp_growth"
+# Passed explicitly into every child script below: run_script_with() builds a
+# FRESH environment per call, so a toggle merely set in this script's scope
+# would not reach 11 or 12 and the grid would silently mix conventions.
+if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- TRUE
+}
+build_suffix <- if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else "_exclyr"
+
+# Every read of a build goes through this, so the suffix can never be forgotten
+# at one of the three call sites below.
+alt_build_path <- function(instr) {
+  file.path(
+    data_dir, "rdd_build",
+    sprintf("rdd_%s_w%d%s.rds", instr, ALT_WINDOW, build_suffix)
+  )
+}
 
 run_script_with <- function(script, overrides) {
   env <- new.env(parent = globalenv())
@@ -70,9 +86,7 @@ run_script_with <- function(script, overrides) {
 # ------------------------------------------------------------------------------
 
 for (instr in ALT_INSTRUMENTS) {
-  build_path <- file.path(
-    data_dir, "rdd_build", sprintf("rdd_%s_w%d.rds", instr, ALT_WINDOW)
-  )
+  build_path <- alt_build_path(instr)
   if (file.exists(build_path)) {
     cat(sprintf("[%s] build cached\n", instr))
     next
@@ -80,7 +94,9 @@ for (instr in ALT_INSTRUMENTS) {
   cat(sprintf("[%s] building...\n", instr))
   run_script_with("11_build_rdd_data.R", list(
     ILLIBERALISM_VAR = instr,
-    BACKSLIDING_WINDOW_YEARS = ALT_WINDOW
+    BACKSLIDING_WINDOW_YEARS = ALT_WINDOW,
+    TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR =
+      TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR
   ))
 }
 
@@ -100,6 +116,8 @@ for (samp in ALT_SAMPLES) {
         ILLIBERALISM_VAR = instr,
         BACKSLIDING_WINDOW_YEARS = ALT_WINDOW,
         TREATMENT_VAR = trt,
+        TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR =
+          TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
         SCORE_GAP_MIN = -Inf,
         ILLIBERAL_CUTOFF = cutoff_spec,
         # Only the reference cell gets figures; the rest contribute numbers.
@@ -116,9 +134,7 @@ for (samp in ALT_SAMPLES) {
   # script 12 uses -- a second, local copy of the quantile arithmetic would be
   # free to drift out of step with it and send us looking in the wrong folder.
   resolved_cutoff <- function(instr) {
-    d <- readRDS(file.path(
-      data_dir, "rdd_build", sprintf("rdd_%s_w%d.rds", instr, ALT_WINDOW)
-    ))
+    d <- readRDS(alt_build_path(instr))
     resolve_threshold(
       parse_threshold(cutoff_spec, "ILLIBERAL_CUTOFF"),
       d$illiberal_score, "ILLIBERAL_CUTOFF"
@@ -131,11 +147,9 @@ for (samp in ALT_SAMPLES) {
       map_dfr(ALT_TREATMENTS, function(trt) {
         cfg <- list(
           instrument = instr, window = ALT_WINDOW, treatment = trt,
-          score_gap_min = -Inf, illiberal_cutoff = cutoffs[[instr]]
+          score_gap_min = -Inf, illiberal_cutoff = cutoffs[[instr]],
+          incl_election_year = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR
         )
-        # run_slug() reads only the fields it needs, and defaults
-        # incl_election_year to TRUE when absent -- which is what these runs
-        # used, since none of them overrides it.
         path <- file.path(RUNS_ROOT, run_slug(cfg), file_name)
         if (!file.exists(path)) {
           warning("Missing run output: ", path)
@@ -147,7 +161,7 @@ for (samp in ALT_SAMPLES) {
     })
   }
 
-  out_dir <- sweep_dir(paste0("alt_specs_", samp))
+  out_dir <- sweep_dir(paste0("alt_specs_", samp, build_suffix))
   results <- collect("rdd_results.csv")
   first_stage <- collect("rdd_first_stage_results.csv")
   write_csv(results, file.path(out_dir, "alt_specs_results.csv"))
@@ -188,7 +202,11 @@ for (samp in ALT_SAMPLES) {
     n = fs_mat("n_first_stage"),
     path = file.path(out_dir, "grid_first_stage.html"),
     title = "First stage: instrument x treatment definition",
-    subtitle = sprintf("Window: %d yr. %s", ALT_WINDOW, sample_note),
+    subtitle = sprintf(
+      "Treatment window: [%s, election_year + %d]. %s",
+      if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "election_year" else "election_year + 1",
+      ALT_WINDOW, sample_note
+    ),
     row_label = "Instrument",
     note = paste(
       "The continuous treatment's coefficient is in polyarchy-index units, not",
@@ -234,7 +252,11 @@ for (samp in ALT_SAMPLES) {
       n = outcome_mat("n_outcome"),
       path = file.path(out_dir, sprintf("grid_gdp_%s.html", mt$prefix)),
       title = sprintf("%s on %s: instrument x treatment definition", mt$title, ALT_OUTCOME),
-      subtitle = sprintf("Window: %d yr. %s", ALT_WINDOW, sample_note),
+      subtitle = sprintf(
+        "Treatment window: [%s, election_year + %d]. %s",
+        if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "election_year" else "election_year + 1",
+        ALT_WINDOW, sample_note
+      ),
       row_label = "Instrument",
       note = if (mt$prefix == "rf") {
         "The reduced form does not use the treatment, so every column of this grid is identical by construction; it is shown as a check, not a comparison."
@@ -257,9 +279,7 @@ for (samp in ALT_SAMPLES) {
 # ------------------------------------------------------------------------------
 
 ddcg_rows <- map_dfr(ALT_INSTRUMENTS, function(instr) {
-  d <- readRDS(file.path(
-    data_dir, "rdd_build", sprintf("rdd_%s_w%d.rds", instr, ALT_WINDOW)
-  ))
+  d <- readRDS(alt_build_path(instr))
   tibble(
     instrument = unname(INSTRUMENT_DISPLAY[instr]),
     n_elections = nrow(d),
@@ -274,7 +294,7 @@ ddcg_rows <- map_dfr(ALT_INSTRUMENTS, function(instr) {
   )
 })
 
-ddcg_dir <- sweep_dir(paste0("alt_specs_", ALT_SAMPLES[1]))
+ddcg_dir <- sweep_dir(paste0("alt_specs_", ALT_SAMPLES[1], build_suffix))
 write_csv(ddcg_rows, file.path(ddcg_dir, "ddcg_contribution.csv"))
 save_table_html(
   ddcg_rows |>

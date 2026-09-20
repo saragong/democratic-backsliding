@@ -901,7 +901,13 @@ elections_full <- bind_cols(elections_scored, treatment_outcomes) |>
   # made a build-time toggle so a single build serves all three treatment
   # definitions and 12_rdd_analysis.R can switch between them for free.
   mutate(
-    backsliding_union_Nyr = pmax(backsliding_Nyr, backsliding_ddcg_Nyr)
+    backsliding_union_Nyr = pmax(backsliding_Nyr, backsliding_ddcg_Nyr),
+    # The continuous polyarchy treatment, binarised: did polyarchy decline over
+    # the window AT ALL, regardless of how far. Same quantity as
+    # polyarchy_decline at a coarser level of measurement, so the pair isolates
+    # what the magnitude information is worth -- the binary version discards it.
+    # Strictly positive: an exactly unchanged index is not a decline.
+    polyarchy_declined = as.integer(polyarchy_decline > 0)
   )
 
 n_matched_panel <- sum(
@@ -925,10 +931,11 @@ cat(sprintf(
   DDCG_END
 ))
 cat(sprintf(
-  "Step 4: polyarchy_decline non-missing for %d elections (mean %.4f, sd %.4f)\n",
+  "Step 4: polyarchy_decline non-missing for %d elections (mean %.4f, sd %.4f); polyarchy_declined == 1 for %d\n",
   sum(!is.na(elections_full$polyarchy_decline)),
   mean(elections_full$polyarchy_decline, na.rm = TRUE),
-  sd(elections_full$polyarchy_decline, na.rm = TRUE)
+  sd(elections_full$polyarchy_decline, na.rm = TRUE),
+  sum(elections_full$polyarchy_declined, na.rm = TRUE)
 ))
 
 # ------------------------------------------------------------------------------

@@ -1,0 +1,9 @@
+role,key,value
+fixed,instrument,v2xpa_antiplural
+fixed,window,5
+fixed,treatment_window_includes_election_year,FALSE
+fixed,depends_on_treatment,FALSE
+fixed,depends_on_outcome,FALSE
+fixed,n_elections_unrestricted,1347
+swept,restrictions,"R1, R2, R3, R4, R5"
+swept,samples,all elections; narrow window

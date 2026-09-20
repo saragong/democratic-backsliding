@@ -1,0 +1,2 @@
+spec,treatment,n_first_stage,n_first_stage_treated,first_stage_coef,first_stage_se,first_stage_pval,first_stage_bandwidth
+instr-econleft_w2_trt-ertOrDdcg_gapany_illibany_exclyr,backsliding_union_Nyr,1343,68,-0.010912380601644886,0.04249010606934971,0.7973164298284645,18.87535419767095

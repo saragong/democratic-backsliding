@@ -144,7 +144,10 @@ hold numbers only.
 | `_sweeps/window_sweep_<sample>/` | to-do 3: first stage / RD / fuzzy RD against window length, N = 1..10 |
 | `_sweeps/alt_specs_<sample>/` | to-dos 4-6: instrument x treatment-definition grids, plus what the DDCG extension actually adds |
 | `_sweeps/instrument_overlap/` | to-do 7: UpSet plots and Jaccard heatmaps measuring how much the instruments really differ |
-| `_legacy/` | pre-run-folder output, kept for reference; see its own README for two caveats |
+
+The pre-run-folder output that used to sit in `_legacy/` has been deleted. It is
+recoverable from the commit that preceded the cleanup, and the numbers in it
+reproduce directly by setting `TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR = FALSE`.
 
 ## Reproducing
 

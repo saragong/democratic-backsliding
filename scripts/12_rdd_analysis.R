@@ -152,6 +152,13 @@ if (!identical(build_incl, TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR)) {
     ". Rebuild it with 11_build_rdd_data.R."
   )
 }
+if (!TREATMENT_VAR %in% names(d)) {
+  stop(
+    "Build at ", build_path, " has no column '", TREATMENT_VAR,
+    "'. It predates that treatment definition -- rebuild it with ",
+    "11_build_rdd_data.R."
+  )
+}
 cat(sprintf("Loaded %s (%d elections)\n", basename(build_path), nrow(d)))
 
 # Both specs are parsed and resolved against the FULL loaded build, before
@@ -261,11 +268,17 @@ if (length(missing_outcomes) > 0) {
 run_spec <- function(data, spec_label, treatment_col = TREATMENT_VAR) {
   fs_fit <- safe_rdrobust(data[[treatment_col]], data$running_var)
   fs <- extract_rd(fs_fit)
+  # The first stage regresses the treatment ON the running variable, so its own
+  # y IS the treatment -- the treated count is over that same mask.
+  fs_treated <- rd_n_treated(
+    data[[treatment_col]], data$running_var, data[[treatment_col]]
+  )
 
   first_stage <- tibble(
     spec = spec_label,
     treatment = treatment_col,
     n_first_stage = fs$N,
+    n_first_stage_treated = fs_treated,
     first_stage_coef = fs$coef,
     first_stage_se = fs$se,
     first_stage_pval = fs$pval,
@@ -289,9 +302,15 @@ run_spec <- function(data, spec_label, treatment_col = TREATMENT_VAR) {
       spec = spec_label,
       treatment = treatment_col,
       n_first_stage = fs$N,
+      n_first_stage_treated = fs_treated,
       first_stage_coef = fs$coef,
       first_stage_pval = fs$pval,
       n_outcome = rf$N,
+      # Per outcome, not per spec: outcomes differ in missingness, so the
+      # treated count in each estimation sample differs too.
+      n_outcome_treated = rd_n_treated(
+        data[[oc]], data$running_var, data[[treatment_col]]
+      ),
       rd_estimate = rf$coef,
       rd_se = rf$se,
       rd_pval = rf$pval,
@@ -596,12 +615,14 @@ save_table_html(
     transmute(
       Spec = spec,
       N = n_first_stage,
+      `N treated` = n_first_stage_treated,
       `First stage` = fmt_est(first_stage_coef, first_stage_se, first_stage_pval),
       Bandwidth = round(first_stage_bandwidth, 2)
     ),
   file.path(out_run, "first_stage_table.html"),
   "First stage",
-  subtitle
+  subtitle,
+  note = paste(SIG_FOOTNOTE, TREATED_FOOTNOTE)
 )
 
 save_table_html(
@@ -611,12 +632,14 @@ save_table_html(
       Outcome = outcome_label,
       Variable = outcome,
       N = n_outcome,
+      `N treated` = n_outcome_treated,
       `Reduced form` = fmt_est(rd_estimate, rd_se, rd_pval),
       `Fuzzy RD (LATE)` = fmt_est(late_estimate, late_se, late_pval)
     ),
   file.path(out_run, "outcomes_table.html"),
   "Reduced form / fuzzy RD by outcome",
-  subtitle
+  subtitle,
+  note = paste(SIG_FOOTNOTE, TREATED_FOOTNOTE)
 )
 
 if (MAKE_PLOTS) {

@@ -51,13 +51,17 @@ ILLIBERALISM_VARS <- names(INSTRUMENT_LABELS)
 TREATMENT_LABELS <- c(
   backsliding_Nyr = "ert",
   backsliding_union_Nyr = "ertOrDdcg",
-  polyarchy_decline = "polyarchy"
+  polyarchy_decline = "polyarchy",
+  polyarchy_declined = "polyarchyBin"
 )
 
+# The last two are the same underlying quantity at two levels of measurement:
+# how far polyarchy fell over the window, and simply whether it fell at all.
 TREATMENT_DISPLAY <- c(
   backsliding_Nyr = "ERT autocratization episode starts within window",
   backsliding_union_Nyr = "ERT episode OR DDCG reversal within window",
-  polyarchy_decline = "Decline in V-Dem polyarchy over window (continuous)"
+  polyarchy_decline = "Size of V-Dem polyarchy decline over window (continuous)",
+  polyarchy_declined = "Any V-Dem polyarchy decline over window (binary)"
 )
 
 # Numbers inside a slug: "0.6" -> "0p6", "-1.5" -> "neg1p5", non-finite -> "any".
@@ -199,6 +203,14 @@ apply_table_style <- function(gt_tbl) {
 
 SIG_FOOTNOTE <- "Significance: * p<0.10, ** p<0.05, *** p<0.01. SE in parentheses."
 
+# The "N treated" column means something slightly different for the continuous
+# treatment, so any table carrying that column says so on its face.
+TREATED_FOOTNOTE <- paste(
+  "N treated counts, within each estimation sample, the elections with a",
+  "backsliding episode in the window; for the continuous treatment (decline in",
+  "V-Dem polyarchy) it counts elections where polyarchy strictly fell."
+)
+
 sig_stars <- function(pval) {
   dplyr::case_when(
     is.na(pval) ~ "",
@@ -266,6 +278,26 @@ diverging_fill <- function(values, max_abs = NULL) {
   out
 }
 
+# One grid cell: estimate with significance stars, then the standard error in
+# parentheses, then the subsample size -- the same ordering a regression table
+# uses, so the cell reads "coef*** (se)" before the bookkeeping.
+#
+# Single line rather than stacked: a literal "\n" renders as a space in HTML,
+# and wrapping every cell in gt::html() just to get a <br> is not worth it.
+grid_cell_text <- function(est, se, pval, n, digits = 3) {
+  dplyr::if_else(
+    is.na(est),
+    "--",
+    sprintf(
+      paste0("%.", digits, "f%s (%.", digits, "f)  (N=%s)"),
+      est,
+      sig_stars(pval),
+      se,
+      trimws(format(n, trim = TRUE, big.mark = ","))
+    )
+  )
+}
+
 # A coefficient grid: `est`, `se`, `pval` and `n` are matrices with matching
 # dimnames (rows = one restriction axis, cols = the other). Cell text is
 # "coef*** (N=123)"; cell fill is the diverging ramp on the coefficient.
@@ -283,19 +315,8 @@ color_grid_table <- function(
 ) {
   stopifnot(identical(dim(est), dim(pval)))
   max_abs <- suppressWarnings(max(abs(est[is.finite(est)])))
-  # Single line: a literal "\n" would render as a space in HTML, and pulling in
-  # gt::html() per cell just to get a <br> is not worth it for a two-part label.
   cell_text <- matrix(
-    dplyr::if_else(
-      is.na(as.vector(est)),
-      "--",
-      sprintf(
-        paste0("%.", digits, "f%s  (N=%s)"),
-        as.vector(est),
-        sig_stars(as.vector(pval)),
-        trimws(format(as.vector(n), trim = TRUE, big.mark = ","))
-      )
-    ),
+    grid_cell_text(as.vector(est), as.vector(se), as.vector(pval), as.vector(n), digits),
     nrow = nrow(est),
     dimnames = dimnames(est)
   )
@@ -315,6 +336,7 @@ color_grid_table <- function(
     apply_table_style() |>
     gt::tab_source_note(source_note = paste(
       SIG_FOOTNOTE,
+      "Cells show the coefficient with significance stars, the standard error in parentheses, then the subsample size.",
       "Cell colour = coefficient magnitude (green positive, red negative), on a symmetric scale.",
       "'--' = rdrobust could not fit (too few observations near the cutoff)."
     ))
@@ -500,6 +522,123 @@ apply_threshold <- function(data, var, parsed, name, op = c(">=", ">")) {
   out
 }
 
+# Several coefficient grids stacked into ONE table, one section per grid.
+#
+# The awkward part is that each grid has a different column axis -- 5 quantile
+# levels for a continuous restriction, 2 for a yes/no one, 3 for election type
+# -- so there is no single set of column headers that means the same thing in
+# every section. Rather than pad to a 15-column union (mostly blank) or throw
+# away the grid shape by going long, the columns are POSITIONAL (Level 1..k) and
+# each section opens with its own label row naming what its columns are. The
+# section header states the row axis and the column axis.
+#
+# `blocks` is a list of lists, each with: label, row_axis, col_axis, row_labels,
+# col_labels, and the est/se/pval/n matrices.
+#
+# The colour scale is shared across every section, on one symmetric domain, so a
+# hue means the same magnitude everywhere in the table.
+color_grid_blocks <- function(
+  blocks, path, title, subtitle = NULL, digits = 3, note = NULL
+) {
+  n_col_max <- max(vapply(blocks, function(b) length(b$col_labels), integer(1)))
+  col_ids <- paste0("C", seq_len(n_col_max))
+
+  all_est <- unlist(lapply(blocks, function(b) as.vector(b$est)))
+  max_abs <- suppressWarnings(max(abs(all_est[is.finite(all_est)])))
+
+  rows <- list()
+  fills <- list() # (row index, column id) -> colour, data cells only
+  label_row_ids <- integer(0)
+  r <- 0L
+
+  pad <- function(x) c(x, rep("", n_col_max - length(x)))
+
+  for (b in blocks) {
+    section <- sprintf(
+      "%s  (rows)   \u00d7   %s  (columns)", b$row_axis, b$col_axis
+    )
+
+    # The section's own column-label row.
+    r <- r + 1L
+    label_row_ids <- c(label_row_ids, r)
+    rows[[length(rows) + 1L]] <- c(
+      list(section = section, level = "columns:"),
+      setNames(as.list(pad(b$col_labels)), col_ids)
+    )
+
+    for (i in seq_along(b$row_labels)) {
+      r <- r + 1L
+      txt <- grid_cell_text(
+        b$est[i, ], b$se[i, ], b$pval[i, ], b$n[i, ], digits
+      )
+      rows[[length(rows) + 1L]] <- c(
+        list(section = section, level = b$row_labels[i]),
+        setNames(as.list(pad(txt)), col_ids)
+      )
+      cols_here <- diverging_fill(b$est[i, ], max_abs)
+      for (j in seq_along(cols_here)) {
+        fills[[length(fills) + 1L]] <- list(
+          row = r, col = col_ids[j], fill = cols_here[j],
+          na = is.na(b$est[i, j])
+        )
+      }
+    }
+  }
+
+  tbl <- dplyr::bind_rows(lapply(rows, tibble::as_tibble))
+
+  gt_tbl <- tbl |>
+    gt::gt(groupname_col = "section") |>
+    gt::tab_header(title = title, subtitle = subtitle) |>
+    gt::cols_label(.list = setNames(as.list(rep("", n_col_max)), col_ids)) |>
+    gt::cols_label(level = "") |>
+    gt::cols_align(align = "center", columns = dplyr::all_of(col_ids)) |>
+    gt::cols_align(align = "left", columns = "level") |>
+    apply_table_style() |>
+    gt::tab_options(
+      row_group.font.weight = "bold",
+      row_group.background.color = "#f0f0f0",
+      row_group.border.top.width = gt::px(2),
+      row_group.border.top.color = "black",
+      row_group.border.bottom.width = gt::px(1),
+      row_group.border.bottom.color = "#888888"
+    ) |>
+    gt::tab_source_note(source_note = paste(
+      SIG_FOOTNOTE,
+      "Cells show the coefficient with significance stars, the standard error in parentheses, then the subsample size.",
+      "Cell colour = coefficient magnitude (green positive, red negative), on one symmetric scale shared by every section.",
+      "'--' = rdrobust could not fit (too few observations near the cutoff)."
+    ))
+  if (!is.null(note)) {
+    gt_tbl <- gt_tbl |> gt::tab_source_note(source_note = note)
+  }
+
+  # Column-label rows read as sub-headers, not data.
+  gt_tbl <- gt_tbl |>
+    gt::tab_style(
+      style = list(
+        gt::cell_text(style = "italic", color = "#333333", size = gt::px(11)),
+        gt::cell_fill(color = "#fafafa")
+      ),
+      locations = gt::cells_body(rows = label_row_ids)
+    )
+
+  for (f in fills) {
+    if (f$na) {
+      next
+    }
+    gt_tbl <- gt_tbl |>
+      gt::tab_style(
+        style = gt::cell_fill(color = f$fill),
+        locations = gt::cells_body(columns = f$col, rows = f$row)
+      )
+  }
+
+  gt::gtsave(gt_tbl, path)
+  cat(sprintf("Saved %s\n", path))
+  invisible(gt_tbl)
+}
+
 # ------------------------------------------------------------------------------
 # 4. Outcome panels and series palette
 #
@@ -573,6 +712,30 @@ SERIES_COLORS <- c("#0072B2", "#D55E00", "#009E73")
 SERIES_SHAPES <- c(16, 17, 15)
 
 
+# Coarser groupings than OUTCOME_PANELS, for figures that need one sheet per
+# family of outcomes rather than one per plot panel. OUTCOME_PANELS is about
+# which series share an axis (same units); this is about which outcomes a reader
+# wants to look at together.
+OUTCOME_FAMILIES <- list(
+  economic = c(
+    "Y_gdp_growth", "Y_gdp_growth_wb", "Y_gdp_growth_imf",
+    "Y_inflation", "Y_unemployment", "Y_trade_pct_gdp"
+  ),
+  inequality = c("Y_top10_share", "Y_gini_disp", "Y_gini_mkt"),
+  fiscal = c("Y_debt", "Y_deficit"),
+  institutions = c(
+    "Y_checks_balances", "Y_jucon", "Y_legcon",
+    "Y_hos_power", "Y_hog_power", "Y_hos_power_vdem", "Y_hog_power_vdem"
+  )
+)
+
+OUTCOME_FAMILY_TITLES <- c(
+  economic = "Economic outcomes",
+  inequality = "Inequality",
+  fiscal = "Public finances",
+  institutions = "Institutions and executive power"
+)
+
 # Flat outcome list, in panel order (NOT alphabetical), so facets and table rows
 # read in the same sequence as the figures.
 ALL_OUTCOME_VARS <- unlist(lapply(OUTCOME_PANELS, names), use.names = FALSE)
@@ -645,6 +808,35 @@ safe_rdrobust <- function(y, x, fuzzy = NULL) {
     # would silently discard perfectly good fits.
     error = function(e) NULL
   )
+}
+
+# How many of the observations a given rdrobust call actually used are treated.
+#
+# Must apply the SAME non-missing mask safe_rdrobust() applies, otherwise the
+# reported "N treated" would not be a subset of the reported "N" -- outcomes
+# differ in missingness, so a treated count taken over the whole sample would
+# exceed N for the sparser ones.
+#
+# For a 0/1 treatment this is just the number of 1s. For the CONTINUOUS
+# treatment (polyarchy_decline, the negated change in V-Dem polyarchy over the
+# window) there is no 0/1 split, but there is still a meaningful treated set:
+# the elections where polyarchy actually FELL, i.e. where the decline is
+# strictly positive. Exact zeros are untreated -- no change is no backsliding.
+# Reporting NA here instead, as an earlier version did, threw away the one
+# number that says how much of the sample carries any backsliding signal at all.
+rd_n_treated <- function(y, x, treatment) {
+  if (is.null(treatment)) {
+    return(NA_integer_)
+  }
+  keep <- !is.na(y) & !is.na(x) & !is.na(treatment)
+  vals <- treatment[keep]
+  if (length(vals) == 0) {
+    return(NA_integer_)
+  }
+  if (all(vals %in% c(0, 1))) {
+    return(as.integer(sum(vals)))
+  }
+  as.integer(sum(vals > 0))
 }
 
 # Pull the robust bias-corrected coefficient/SE/p-value/bandwidth out of an

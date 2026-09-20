@@ -1,0 +1,11 @@
+slug,key,value
+instr-popul_w7_trt-ertOrDdcg_gapany_illibany_exclyr,instrument,v2xpa_popul
+instr-popul_w7_trt-ertOrDdcg_gapany_illibany_exclyr,window,7
+instr-popul_w7_trt-ertOrDdcg_gapany_illibany_exclyr,treatment,backsliding_union_Nyr
+instr-popul_w7_trt-ertOrDdcg_gapany_illibany_exclyr,score_gap_min,-Inf
+instr-popul_w7_trt-ertOrDdcg_gapany_illibany_exclyr,illiberal_cutoff,-Inf
+instr-popul_w7_trt-ertOrDdcg_gapany_illibany_exclyr,incl_election_year,FALSE
+instr-popul_w7_trt-ertOrDdcg_gapany_illibany_exclyr,score_gap_spec,-Inf
+instr-popul_w7_trt-ertOrDdcg_gapany_illibany_exclyr,score_gap_form,none
+instr-popul_w7_trt-ertOrDdcg_gapany_illibany_exclyr,illiberal_cutoff_spec,-Inf
+instr-popul_w7_trt-ertOrDdcg_gapany_illibany_exclyr,illiberal_cutoff_form,none
