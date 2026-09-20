@@ -265,7 +265,27 @@ apply_table_style <- function(gt_tbl, font_size = 12) {
     )
 }
 
+# "-0.679 [-0.802, -0.555]***" -- estimate, robust 95% CI, significance. For
+# plot titles, where a CI says more than a standard error: a reader can see at
+# a glance whether the interval clears zero and how wide it is, which on a thin
+# subsample is the thing worth knowing.
+fmt_est_ci <- function(coef, lo, hi, pval, digits = 3) {
+  ifelse(
+    is.na(coef),
+    "--",
+    sprintf(
+      "%.*f [%.*f, %.*f]%s",
+      digits, coef, digits, lo, digits, hi, sig_stars(pval)
+    )
+  )
+}
+
 SIG_FOOTNOTE <- "Significance: * p<0.10, ** p<0.05, *** p<0.01. SE in parentheses."
+
+CI_FOOTNOTE <- paste(
+  "Brackets are rdrobust's robust (bias-corrected) 95% confidence interval,",
+  "the same inference the tables report."
+)
 
 # The "N treated" column means something slightly different for the continuous
 # treatment, so any table carrying that column says so on its face.
@@ -1046,6 +1066,8 @@ extract_rd <- function(fit) {
       coef = NA_real_,
       se = NA_real_,
       pval = NA_real_,
+      ci_lo = NA_real_,
+      ci_hi = NA_real_,
       bw = NA_real_
     ))
   }
@@ -1054,6 +1076,13 @@ extract_rd <- function(fit) {
     coef = unname(fit$coef["Robust", 1]),
     se = unname(fit$se["Robust", 1]),
     pval = unname(fit$pv["Robust", 1]),
+    # rdrobust's own robust interval rather than coef +/- 1.96*se. The two
+    # agree exactly today (checked), but taking the package's number means the
+    # interval stays correct if it ever changes how it forms one -- and the
+    # robust interval is NOT centred on the conventional estimate, so
+    # reconstructing it by hand from the wrong row is an easy mistake.
+    ci_lo = unname(fit$ci["Robust", 1]),
+    ci_hi = unname(fit$ci["Robust", 2]),
     bw = unname(fit$bws[1, 1])
   )
 }

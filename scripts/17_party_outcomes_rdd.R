@@ -11,8 +11,8 @@
 # cutoff, same estimator as the headline RD; only the OUTCOME changes, to a
 # property of the winner rather than a property of the country:
 #
-#   binary      is the winner also the MORE populist / more left / more TAN /
-#               more anti-elite / less minority-friendly of the two?
+#   binary      is the winner also the MORE populist / more left / more
+#               anti-elite / less minority-friendly of the two?
 #   continuous  the winner's own score on that index.
 #
 # Reading it: a coefficient near zero says the narrow anti-pluralist victory is
@@ -101,12 +101,23 @@ if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
   TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- FALSE
 }
 
-# Every party score except the one currently defining the running variable.
-# Including it would produce a mechanical result: illiberal_score is the max of
-# the two by construction, so "is the winner the more anti-pluralist one" is
-# exactly the treatment indicator and jumps from 0 to 1 at the cutoff.
+# Every party score except two.
+#
+# ILLIBERALISM_VAR itself is excluded because including it would produce a
+# mechanical result: illiberal_score is the max of the two by construction, so
+# "is the winner the more anti-pluralist one" is exactly the treatment
+# indicator and jumps from 0 to 1 at the cutoff.
+#
+# ep_galtan is excluded because it is too thinly coded to support this
+# analysis. It comes from the CHES merge and both top-2 members carry a score
+# in only about 4% of elections -- 53 of 1,347 pooled, and 0 to 21 usable
+# observations per decade x OECD cell against a CELL_MIN_N of 40, so every one
+# of the ten cells came back blank. The pooled estimate it did produce was
+# insignificant on n = 53 with a bandwidth less than half the others'.
+# Carrying it through only added an empty column to every grid and two blank
+# figures. Put it back by setting COMPARISON_SCORES explicitly.
 if (!exists("COMPARISON_SCORES")) {
-  COMPARISON_SCORES <- setdiff(PARTY_SCORE_VARS, ILLIBERALISM_VAR)
+  COMPARISON_SCORES <- setdiff(PARTY_SCORE_VARS, c(ILLIBERALISM_VAR, "ep_galtan"))
 }
 
 # Restriction levels swept on each axis. Quantiles of the FULL build, matching
@@ -143,10 +154,13 @@ if (!exists("CELL_YEAR_MAX")) CELL_YEAR_MAX <- VPARTY_YEAR_MAX
 # ~21 within a typical bandwidth, which is at the edge of what rdrobust will
 # attempt and well past what it will do reliably.
 #
-# Counted PER OUTCOME, not per cell: ep_galtan is scored for both top-2 members
-# in about 4% of elections, so its cells are nearly empty even where the cell
-# itself is large. Gating on the cell size alone would hand rdrobust a
-# 3-observation sample and draw a panel around whatever came back.
+# Counted PER OUTCOME, not per cell. Coverage differs by score, so a large
+# cell can still hold almost no usable observations for one of them -- which
+# is exactly what ruled ep_galtan out of COMPARISON_SCORES above. Gating on
+# cell size alone would hand rdrobust a 3-observation sample and draw a panel
+# around whatever came back. The remaining scores all clear the bar in every
+# cell, so this is now a guard rather than an active filter, but it is what
+# makes adding a thinly-coded score back safe.
 if (!exists("CELL_MIN_N")) CELL_MIN_N <- 40
 
 build_suffix <- if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else "_exclyr"
@@ -191,8 +205,9 @@ for (s in COMPARISON_SCORES) {
   w <- d_full[[paste0(s, "__winner")]]
   l <- d_full[[paste0(s, "__loser")]]
   # NA if either side is unscored, rather than FALSE: "we don't know which was
-  # higher" is not "the winner was not higher". ep_galtan is scored for both
-  # top-2 members in only ~4% of elections, so this matters.
+  # higher" is not "the winner was not higher". Coding it FALSE would silently
+  # push every unscored pair into the "winner does not score higher" bin and
+  # bias the level of the binary outcome downwards.
   d_full[[paste0("Zbin_", s)]] <- ifelse(is.na(w) | is.na(l), NA_real_,
                                          as.numeric(w > l))
   d_full[[paste0("Zcont_", s)]] <- w
@@ -219,7 +234,8 @@ FORMS <- list(
 estimate_cell <- function(data, var) {
   fit <- extract_rd(safe_rdrobust(data[[var]], data$running_var))
   tibble(
-    n = fit$N, est = fit$coef, se = fit$se, pval = fit$pval, bw = fit$bw
+    n = fit$N, est = fit$coef, se = fit$se, pval = fit$pval,
+    ci_lo = fit$ci_lo, ci_hi = fit$ci_hi, bw = fit$bw
   )
 }
 
@@ -283,8 +299,8 @@ REDUNDANCY_NOTE <- paste(
   "rows rather than independent evidence.",
   "v2paminor runs the opposite way from the other scores: HIGHER = more",
   "supportive of minority rights.",
-  "ep_galtan is scored for both top-2 members in only about 4% of elections,",
-  "so its N is far smaller than the rest."
+  "ep_galtan is excluded: both top-2 members carry a CHES GAL-TAN score in",
+  "only about 4% of elections, too few to fit per decade x OECD cell."
 )
 
 flat <- results |>
@@ -324,11 +340,11 @@ save_table_html(
 #      is enormous -- reads as weaker than a trivial expert-scale cell.
 #
 # Within the continuous form the columns are STILL on different scales
-# (v2xpa_* on [0, 1], v2pariglef_neg and v2paanteli on expert scales,
-# ep_galtan on 4.5-9.4), so its cells are reported in SD units of each score's
-# own distribution across top-2 parties. That makes both the number and the
-# colour comparable across columns; the raw estimates stay in the CSV and in
-# party_outcomes_table.html.
+# (v2xpa_popul on [0, 1], v2pariglef_neg and v2paanteli on expert scales
+# running about -2 to +4, v2paminor likewise), so its cells are reported in SD
+# units of each score's own distribution across top-2 parties. That makes both
+# the number and the colour comparable across columns; the raw estimates stay
+# in the CSV and in party_outcomes_table.html.
 # ------------------------------------------------------------------------------
 
 # Pooled SD of each score over both top-2 members of every scored election --
@@ -457,28 +473,45 @@ for (fm in names(FORMS)) {
   panels <- list()
   for (s in COMPARISON_SCORES) {
     v <- paste0(spec$prefix, s)
+    # Same convention as the cell figures: the estimate and its robust CI go
+    # in the panel title, so the figure can be read without the table.
+    e <- results |>
+      filter(level == "-Inf", axis == names(GAP_AXES)[1], form == fm, score == s)
+    ttl <- sprintf(
+      "%s%s",
+      unname(PARTY_SCORE_DISPLAY[s]),
+      if (nrow(e) == 1 && !is.na(e$est)) {
+        sprintf("\nRD %s", fmt_est_ci(e$est, e$ci_lo, e$ci_hi, e$pval))
+      } else {
+        ""
+      }
+    )
     p <- build_panel_plot(
       d_full,
       setNames(unname(PARTY_SCORE_LABELS[s]), v),
-      unname(PARTY_SCORE_DISPLAY[s]),
+      ttl,
       spec$ylab,
       y_lim = spec$ylim
     )
     if (!is.null(p)) panels[[s]] <- p
   }
   if (length(panels) == 0) next
-  combined <- wrap_plots(panels, ncol = 3) +
+  # 3 across reads well up to 6 panels, but leaves a lone panel stranded on a
+  # second row at exactly 4 -- which is the current count. Square it instead.
+  n_col <- if (length(panels) == 4) 2 else min(3, length(panels))
+  combined <- wrap_plots(panels, ncol = n_col) +
     plot_annotation(
       title = sprintf("%s (%s)", spec$title, INSTRUMENT_DISPLAY[[ILLIBERALISM_VAR]]),
       subtitle = paste(
-        "All scored elections. Shaded band = 95% CI of the local-linear fit",
-        "(conventional, not bias-corrected)."
+        "All scored elections. Panel titles give the RD estimate and its",
+        "robust 95% CI. Shaded band = 95% CI of the LOCAL-LINEAR FIT",
+        "(conventional, not bias-corrected), which is a different thing."
       )
     )
-  n_rows <- ceiling(length(panels) / 3)
+  n_rows <- ceiling(length(panels) / n_col)
   ggsave(
     file.path(plots_dir, sprintf("party_outcomes_%s.png", fm)),
-    combined, width = 15, height = 3.6 * n_rows + 0.6, dpi = 150,
+    combined, width = 5 * n_col, height = 3.8 * n_rows + 0.6, dpi = 150,
     limitsize = FALSE
   )
   cat(sprintf("Saved plots/party_outcomes_%s.png\n", fm))
@@ -582,8 +615,8 @@ cell_results <- pmap_dfr(
         # rather than silently absent from it.
         if (nu < CELL_MIN_N) {
           return(bind_cols(base, tibble(
-            n = NA_integer_, est = NA_real_, se = NA_real_,
-            pval = NA_real_, bw = NA_real_
+            n = NA_integer_, est = NA_real_, se = NA_real_, pval = NA_real_,
+            ci_lo = NA_real_, ci_hi = NA_real_, bw = NA_real_
           )))
         }
         bind_cols(base, estimate_cell(dd, var))
@@ -678,7 +711,24 @@ for (fm in names(FORMS)) {
       is_left <- i == 1
       is_bottom <- group == levels(d_cells$group)[nlevels(d_cells$group)]
       nu <- n_usable(group, decade, var)
-      title <- sprintf("%s \u00b7 %s (n = %d)", group, decade, nu)
+      est <- cell_results |>
+        filter(group == !!group, decade == !!decade, form == fm, score == sc)
+      # The estimate and its interval go in the TITLE rather than inside the
+      # panel. These cells are thin enough that their CI ribbons fill the
+      # plotting area, so a reader left to eyeball the jump reads noise; and a
+      # title is the one place guaranteed not to collide with the data.
+      title <- sprintf(
+        "%s \u00b7 %s (n = %d)%s",
+        group, decade, nu,
+        if (nrow(est) == 1 && !is.na(est$est)) {
+          sprintf(
+            "\nRD %s",
+            fmt_est_ci(est$est, est$ci_lo, est$ci_hi, est$pval)
+          )
+        } else {
+          ""
+        }
+      )
 
       # Axis titles only on the outer edge. Repeating the same two strings ten
       # times crowds the panels and, at this width, truncates them.
@@ -702,26 +752,6 @@ for (fm in names(FORMS)) {
       if (is.null(p)) {
         return(blank_panel(title, "too few near the cutoff"))
       }
-
-      # The estimate on the panel. These cells are thin and their CIs are wide
-      # enough to fill the panel, so a reader left to eyeball the jump will
-      # over-read noise; the number and its stars say what the fit actually
-      # found. Placed with Inf/-Inf so it sits in the corner whatever the
-      # panel's own y range turns out to be.
-      est <- cell_results |>
-        filter(group == !!group, decade == !!decade, form == fm, score == sc)
-      lab <- if (nrow(est) == 1 && !is.na(est$est)) {
-        sprintf("RD %s", fmt_est(est$est, est$se, est$pval))
-      } else {
-        NA_character_
-      }
-      if (!is.na(lab)) {
-        p <- p + annotate(
-          "label", x = -Inf, y = Inf, label = lab,
-          hjust = -0.05, vjust = 1.1, size = 2.4, colour = "grey15",
-          fill = "white", alpha = 0.75, label.size = 0
-        )
-      }
       trim_axes(p)
     })
 
@@ -740,8 +770,10 @@ for (fm in names(FORMS)) {
           strwrap(sprintf(paste(
             "Instrument: %s. Each panel is its own RD with its own bandwidth",
             "and binning; the y axis is shared across panels so they are",
-            "comparable. Shaded band = 95%% CI of the local-linear fit",
-            "(conventional, not bias-corrected). Full sample within each cell.",
+            "comparable. Panel titles give the RD estimate and its robust 95%%",
+            "CI. Shaded band = 95%% CI of the LOCAL-LINEAR FIT (conventional,",
+            "not bias-corrected), which is a different thing and is why the",
+            "two can disagree. Full sample within each cell.",
             "%d-%d; %d elections outside that window are in the pooled figures",
             "only."
           ), INSTRUMENT_DISPLAY[[ILLIBERALISM_VAR]],
