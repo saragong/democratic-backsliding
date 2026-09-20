@@ -504,8 +504,7 @@ for (fm in names(FORMS)) {
       title = sprintf("%s (%s)", spec$title, INSTRUMENT_DISPLAY[[ILLIBERALISM_VAR]]),
       subtitle = paste(
         "All scored elections. Panel titles give the RD estimate and its",
-        "robust 95% CI. Shaded band = 95% CI of the LOCAL-LINEAR FIT",
-        "(conventional, not bias-corrected), which is a different thing."
+        "robust 95% CI."
       )
     )
   n_rows <- ceiling(length(panels) / n_col)
@@ -771,9 +770,7 @@ for (fm in names(FORMS)) {
             "Instrument: %s. Each panel is its own RD with its own bandwidth",
             "and binning; the y axis is shared across panels so they are",
             "comparable. Panel titles give the RD estimate and its robust 95%%",
-            "CI. Shaded band = 95%% CI of the LOCAL-LINEAR FIT (conventional,",
-            "not bias-corrected), which is a different thing and is why the",
-            "two can disagree. Full sample within each cell.",
+            "CI. Full sample within each cell.",
             "%d-%d; %d elections outside that window are in the pooled figures",
             "only."
           ), INSTRUMENT_DISPLAY[[ILLIBERALISM_VAR]],
