@@ -37,7 +37,11 @@
 # Output: output/runs/_sweeps/party_outcome_rdd_<instr>_w<N><suffix>/
 #           party_outcome_results.csv    one row per score x form x restriction
 #           party_outcomes_table.html    the unrestricted sample, flat
-#           grid_party_outcomes.html     restriction x score colour grid
+#           grid_party_outcomes_binary.html      restriction x score colour
+#           grid_party_outcomes_continuous.html  grids, one per outcome form
+#                                        (continuous cells are in SD units --
+#                                        see that section for why they are two
+#                                        files rather than one)
 #           plots/party_outcomes_<form>.png
 # ==============================================================================
 
@@ -165,13 +169,19 @@ estimate_cell <- function(data, var) {
 # One restriction level: resolve against the FULL build (never the already-cut
 # frame -- otherwise the levels would not be the quantiles they claim to be),
 # apply, estimate every score x form.
+#
+# apply_threshold() rather than a hand-rolled filter, so these levels behave
+# exactly like every other restricted run in the pipeline and print what each
+# one cost. It also gets the no-restriction case right by construction: "none"
+# returns the data UNTOUCHED, whereas filtering on `>= -Inf` would quietly drop
+# the rows where the axis variable is NA -- which for score_gap_z is every
+# country with too few party-years to compute its own SD.
 run_level <- function(axis_var, spec) {
   thr <- resolve_threshold(
     parse_threshold(spec, axis_var), d_full[[axis_var]], axis_var
   )
-  dd <- d_full[!is.na(d_full[[axis_var]]) & d_full[[axis_var]] >= thr$absolute, ,
-               drop = FALSE]
-  if (thr$kind == "none") dd <- d_full
+  cat(sprintf("\n[%s = %s]\n", axis_var, thr$spec))
+  dd <- apply_threshold(d_full, axis_var, thr, axis_var, op = ">=")
 
   if (nrow(dd) < RD_MIN_OBS) {
     return(tibble())
@@ -239,13 +249,43 @@ save_table_html(
   note = paste(SIG_FOOTNOTE, REDUNDANCY_NOTE)
 )
 
-# ---- restriction x score grid -----------------------------------------------
+# ---- restriction x score grids ----------------------------------------------
+#
+# ONE FILE PER OUTCOME FORM, not one file with both. Two reasons, both about
+# color_grid_blocks():
+#
+#   1. It groups rows with gt(groupname_col = "section") and builds `section`
+#      from row_axis and col_axis alone -- it ignores each block's `label`.
+#      Four blocks that share a row/column axis therefore collapse into ONE
+#      row group with repeated row labels and nothing saying which is which.
+#      So the gap axis goes INTO row_axis, making the two sections distinct.
+#   2. It normalizes the colour scale over every block in the file ("one
+#      symmetric scale shared by every section", per its own footnote). The
+#      binary estimates are probabilities (|est| <= 0.68); the continuous ones
+#      include expert-scale indices reaching 2.14. Sharing a scale washes the
+#      binary cells out to near-white, so a 0.68 jump in probability -- which
+#      is enormous -- reads as weaker than a trivial expert-scale cell.
+#
+# Within the continuous form the columns are STILL on different scales
+# (v2xpa_* on [0, 1], v2pariglef_neg and v2paanteli on expert scales,
+# ep_galtan on 4.5-9.4), so its cells are reported in SD units of each score's
+# own distribution across top-2 parties. That makes both the number and the
+# colour comparable across columns; the raw estimates stay in the CSV and in
+# party_outcomes_table.html.
+# ------------------------------------------------------------------------------
 
-# One block per (gap axis x outcome form): rows are restriction levels, columns
-# are the comparison scores. Same idiom as 13_restriction_grid.R's pair grids.
-blocks <- list()
-for (ax in names(GAP_AXES)) {
-  for (fm in names(FORMS)) {
+# Pooled SD of each score over both top-2 members of every scored election --
+# the same grain the scores are measured at.
+score_sd <- vapply(COMPARISON_SCORES, function(s) {
+  sd(
+    c(d_full[[paste0(s, "__winner")]], d_full[[paste0(s, "__loser")]]),
+    na.rm = TRUE
+  )
+}, numeric(1))
+
+for (fm in names(FORMS)) {
+  blocks <- list()
+  for (ax in names(GAP_AXES)) {
     sub <- results |> filter(axis == ax, form == fm)
     if (nrow(sub) == 0) next
     lvls <- unique(sub$level)
@@ -258,7 +298,13 @@ for (ax in names(GAP_AXES)) {
       }
     }, character(1))
 
-    mat <- function(col) {
+    # Continuous estimates are rescaled to SD units; binary ones are already
+    # on a common (probability) scale and are left alone.
+    scale_by <- if (fm == "continuous") score_sd else setNames(
+      rep(1, length(COMPARISON_SCORES)), COMPARISON_SCORES
+    )
+
+    mat <- function(col, rescale = FALSE) {
       m <- matrix(
         NA_real_, nrow = length(lvls), ncol = length(COMPARISON_SCORES),
         dimnames = list(row_labels, unname(PARTY_SCORE_LABELS[COMPARISON_SCORES]))
@@ -266,30 +312,54 @@ for (ax in names(GAP_AXES)) {
       for (i in seq_along(lvls)) {
         for (j in seq_along(COMPARISON_SCORES)) {
           v <- sub |> filter(level == lvls[i], score == COMPARISON_SCORES[j])
-          if (nrow(v) == 1) m[i, j] <- v[[col]]
+          if (nrow(v) == 1) {
+            m[i, j] <- if (rescale) {
+              v[[col]] / scale_by[[COMPARISON_SCORES[j]]]
+            } else {
+              v[[col]]
+            }
+          }
         }
       }
       m
     }
     blocks[[length(blocks) + 1]] <- list(
-      label = sprintf("%s -- %s", unname(GAP_AXES[ax]), FORMS[[fm]]$title),
-      row_axis = "Restriction level",
+      label = unname(GAP_AXES[ax]),
+      # The gap axis lives here, not in `label`, because `label` is never
+      # rendered -- see the comment at the top of this section.
+      row_axis = unname(GAP_AXES[ax]),
       col_axis = "Comparison score",
       row_labels = row_labels,
       col_labels = unname(PARTY_SCORE_LABELS[COMPARISON_SCORES]),
-      est = mat("est"), se = mat("se"), pval = mat("pval"), n = mat("n")
+      est = mat("est", rescale = fm == "continuous"),
+      se = mat("se", rescale = fm == "continuous"),
+      pval = mat("pval"),
+      n = mat("n")
     )
   }
-}
+  if (length(blocks) == 0) next
 
-if (length(blocks) > 0) {
+  unit_note <- if (fm == "continuous") {
+    paste(
+      "Cells are in SD units of each score's own distribution across top-2",
+      "parties, so columns on different native scales are comparable.",
+      "Raw estimates are in party_outcome_results.csv and",
+      "party_outcomes_table.html."
+    )
+  } else {
+    "Cells are changes in probability, so all columns share a scale."
+  }
+
   color_grid_blocks(
     blocks,
-    path = file.path(out_dir, "grid_party_outcomes.html"),
-    title = "Reduced-form RD on the winner's other party scores, by illiberality-gap restriction",
+    path = file.path(out_dir, sprintf("grid_party_outcomes_%s.html", fm)),
+    title = sprintf(
+      "Reduced-form RD on the winner's other party scores -- %s",
+      FORMS[[fm]]$title
+    ),
     subtitle = subtitle_base,
     note = paste(
-      SIG_FOOTNOTE, REDUNDANCY_NOTE,
+      SIG_FOOTNOTE, unit_note, REDUNDANCY_NOTE,
       "Every cell is a different sample restriction a researcher could have",
       "chosen. Read the surface, not the best cell. No multiple-testing",
       "correction is applied."
