@@ -38,6 +38,7 @@ library(gt)
 library(patchwork)
 
 source(here::here("scripts", "rdd_helpers.R"))
+source(here::here("scripts", "vparty_helpers.R"))
 
 data_dir <- here::here("data")
 
@@ -624,47 +625,11 @@ parties_j_all <- parties |>
     by = "election_id"
   )
 
-# Equal-width bins are only meaningful for a variable actually scaled to [0, 1].
-# v2xpa_antiplural and v2xpa_popul are; v2pariglef_neg (about -1.9 to 3.8),
-# v2paanteli (-2.4 to 4.4) and ep_galtan (4.5 to 9.4) are not, and silently
-# binning them onto [0, 1] would drop nearly every observation out of range.
-bin_breaks <- function(x, var) {
-  if (JACCARD_BINS == "deciles") {
-    return(unique(quantile(x, probs = seq(0, 1, length.out = JACCARD_N_BINS + 1), na.rm = TRUE)))
-  }
-  rng <- range(x, na.rm = TRUE)
-  if (rng[1] < 0 || rng[2] > 1) {
-    stop(
-      "JACCARD_BINS = 'equal01' needs a variable on [0, 1], but ", var,
-      " ranges ", sprintf("%.2f to %.2f", rng[1], rng[2]),
-      ". Use JACCARD_BINS = 'deciles' for expert-scale variables.",
-      call. = FALSE
-    )
-  }
-  seq(0, 1, length.out = JACCARD_N_BINS + 1)
-}
-
-# Cell (i, j) = |bin_a == i AND bin_b == j| / |bin_a == i OR bin_b == j|.
-# A perfectly redundant pair of measures would light the diagonal and nothing
-# else. Bins are fixed up front, so an EMPTY bin still gets its row/column and
-# renders as NA rather than silently shifting the grid.
-jaccard_matrix <- function(df, n_a, n_b, lab_a, lab_b) {
-  m <- matrix(NA_real_, nrow = n_a, ncol = n_b)
-  for (i in seq_len(n_a)) {
-    for (j in seq_len(n_b)) {
-      in_a <- df$bin_a == i
-      in_b <- df$bin_b == j
-      union_n <- sum(in_a | in_b, na.rm = TRUE)
-      m[i, j] <- if (union_n == 0) {
-        NA_real_
-      } else {
-        sum(in_a & in_b, na.rm = TRUE) / union_n
-      }
-    }
-  }
-  dimnames(m) <- list(lab_a, lab_b)
-  m
-}
+# bin_breaks() and jaccard_matrix() are in vparty_helpers.R, shared with
+# 18_vparty_jaccard_panels.R, which runs the same computation over raw V-Party
+# rather than over the top-2 spine. They take the bin mode and count as
+# arguments; this script's JACCARD_BINS / JACCARD_N_BINS are passed in at the
+# call sites below.
 
 JACCARD_SAMPLES <- list(
   all = list(label = "All top-2 finishers", fn = function(df) df),
@@ -697,8 +662,8 @@ for (pair in JACCARD_PAIRS) {
   parties_pair <- parties_j_all |>
     filter(if_all(all_of(pair), \(x) !is.na(x)))
 
-  brk_a <- bin_breaks(parties_pair[[var_a]], var_a)
-  brk_b <- bin_breaks(parties_pair[[var_b]], var_b)
+  brk_a <- bin_breaks(parties_pair[[var_a]], var_a, JACCARD_BINS, JACCARD_N_BINS)
+  brk_b <- bin_breaks(parties_pair[[var_b]], var_b, JACCARD_BINS, JACCARD_N_BINS)
   n_a <- length(brk_a) - 1L
   n_b <- length(brk_b) - 1L
   # Label each bin by its interval, not by an opaque "D3" -- the whole point of

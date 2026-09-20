@@ -1,15 +1,26 @@
 # ==============================================================================
-# Shared helpers for the fuzzy-RDD pipeline (scripts 11-16).
+# Shared helpers for the fuzzy-RDD pipeline (scripts 11-17).
 #
-# Three groups of things live here:
+# Six groups of things live here:
 #   1. Run-folder machinery -- every analysis run (a combination of instrument,
 #      window, treatment definition and sample restrictions) gets its own
 #      output/runs/<slug>/ directory, so the many "versions" of the analysis
 #      stop colliding in a flat output/ distinguished only by filename suffix.
+#      Also the instrument / party-score / treatment registries.
 #   2. gt() table styling + econ-paper coefficient formatting, previously
 #      copy-pasted between 11_build_rdd_data.R and 12_rdd_analysis.R.
-#   3. rdrobust wrappers (safe_rdrobust / extract_rd), needed identically by
+#   3. Sample-restriction thresholds: one strict parser for all three accepted
+#      forms, in both the floor and the ceiling direction.
+#   4. The outcome registry -- which Y_ columns exist, how they are labelled,
+#      and which share a plot panel.
+#   5. rdrobust wrappers (safe_rdrobust / extract_rd), needed identically by
 #      scripts 12, 13, 14 and 15.
+#   6. RD panel figures, shared by 12_rdd_analysis.R and
+#      17_party_outcomes_rdd.R.
+#
+# Analyses over RAW V-Party -- no election spine, no top-2 filter -- source
+# scripts/vparty_helpers.R instead; it holds the file, the OECD and decade
+# splits, and the Jaccard binning.
 #
 # Sourced, not run. Assumes tidyverse + gt + rdrobust are attached by the
 # caller (same convention as scripts/plot_helpers.R).
@@ -48,6 +59,41 @@ INSTRUMENT_DISPLAY <- c(
 # INSTRUMENT_LABELS / INSTRUMENT_DISPLAY above.
 ILLIBERALISM_VARS <- names(INSTRUMENT_LABELS)
 
+# Party-level scores CARRIED IN THE BUILD, which is a strictly larger set than
+# the scores usable AS THE INSTRUMENT.
+#
+# The distinction matters. 17_party_outcomes_rdd.R asks what else moves when the
+# more-anti-pluralist party narrowly wins, and minority rights is one of the
+# things we want to see move -- but v2paminor is not a candidate instrument, and
+# adding it to ILLIBERALISM_VARS would silently enrol it in 15_alt_specs.R's
+# instrument grid and in 11's `stopifnot(ILLIBERALISM_VAR %in% ILLIBERALISM_VARS)`
+# as though we had proposed narrow-minority-rights-victory as a design.
+#
+# So: 11_build_rdd_data.R carries every PARTY_SCORE_VAR into the
+# <score>__winner / <score>__loser columns and the _parties.rds companion;
+# only ILLIBERALISM_VARS may be chosen as ILLIBERALISM_VAR.
+#
+# v2paminor is V-Party's "minority rights" item: HIGHER = more supportive of
+# minority rights, i.e. it runs the OPPOSITE way from every other score here,
+# where higher = the side hypothesized to erode democracy. It is deliberately
+# NOT negated -- it is never an instrument, so no sign convention depends on it,
+# and flipping it would make the column disagree with the V-Party codebook.
+# Every display of it says which way it runs.
+PARTY_SCORE_EXTRA <- c(v2paminor = "minor")
+PARTY_SCORE_EXTRA_DISPLAY <- c(
+  v2paminor = "Minority rights (v2paminor; higher = MORE supportive)"
+)
+
+PARTY_SCORE_VARS <- c(ILLIBERALISM_VARS, names(PARTY_SCORE_EXTRA))
+PARTY_SCORE_LABELS <- c(INSTRUMENT_LABELS, PARTY_SCORE_EXTRA)
+PARTY_SCORE_DISPLAY <- c(INSTRUMENT_DISPLAY, PARTY_SCORE_EXTRA_DISPLAY)
+
+stopifnot(
+  all(ILLIBERALISM_VARS %in% PARTY_SCORE_VARS),
+  identical(names(PARTY_SCORE_LABELS), PARTY_SCORE_VARS),
+  identical(names(PARTY_SCORE_DISPLAY), PARTY_SCORE_VARS)
+)
+
 TREATMENT_LABELS <- c(
   backsliding_Nyr = "ert",
   backsliding_union_Nyr = "ertOrDdcg",
@@ -81,6 +127,16 @@ run_slug <- function(cfg) {
   # non-default convention gets a suffix, keeping default slugs clean -- but it
   # MUST get one, or a run under each convention would share a folder.
   incl <- cfg$incl_election_year %||% TRUE
+  # Same pattern for the two axes added later. Both are absent from most cfgs
+  # and both are omitted at their no-op value, so every slug written before they
+  # existed is reproduced byte-identically and no run folder moves.
+  #   other_cutoff_max  a ceiling on the LESS-illiberal party's score. No-op is
+  #                     +Inf (nothing excluded), which fmt_slug_num renders
+  #                     "any" -- so the suffix is dropped rather than written as
+  #                     "_oppany", which would be noise on every existing run.
+  #   placebo           TRUE = the pre-election placebo window.
+  opp <- cfg$other_cutoff_max %||% Inf
+  placebo <- cfg$placebo %||% FALSE
   paste0(
     "instr-",
     INSTRUMENT_LABELS[[cfg$instrument]],
@@ -92,7 +148,9 @@ run_slug <- function(cfg) {
     fmt_slug_num(cfg$score_gap_min),
     "_illib",
     fmt_slug_num(cfg$illiberal_cutoff),
-    if (isTRUE(incl)) "" else "_exclyr"
+    if (is.finite(opp)) paste0("_opp", fmt_slug_num(opp)) else "",
+    if (isTRUE(incl)) "" else "_exclyr",
+    if (isTRUE(placebo)) "_pre" else ""
   )
 }
 
@@ -179,10 +237,14 @@ write_sweep_config <- function(dir, fixed = list(), swept = list()) {
 # 2. Tables
 # ------------------------------------------------------------------------------
 
-apply_table_style <- function(gt_tbl) {
+# font_size exists for one caller: 11_build_rdd_data.R's ERT miss table is 262
+# rows x 8 columns and is set a point smaller so it fits. That used to be a
+# second, shadowing copy of this whole function in script 11, which meant any
+# change here silently failed to reach that table.
+apply_table_style <- function(gt_tbl, font_size = 12) {
   gt_tbl |>
     gt::tab_options(
-      table.font.size = gt::px(12),
+      table.font.size = gt::px(font_size),
       table.border.top.style = "solid",
       table.border.top.width = gt::px(2),
       table.border.top.color = "black",
@@ -396,9 +458,24 @@ color_grid_table <- function(
 # Classify a threshold spec WITHOUT looking at data. Returns a list with
 # $kind ("none" | "absolute" | "quantile"), $quantile, $absolute and $spec (the
 # spec as written, for the record).
-parse_threshold <- function(spec, name = "threshold") {
+#
+# `none_value` is the absolute value that "no restriction" resolves to, and it
+# depends on which DIRECTION the threshold cuts:
+#   -Inf  for a FLOOR   (op ">=" / ">"), the original and still the default --
+#         nothing is below -Inf, so nothing is excluded
+#   +Inf  for a CEILING (op "<=" / "<"), used by OTHER_CUTOFF_MAX -- nothing is
+#         above +Inf, so nothing is excluded
+# Getting this wrong is silent and total: a ceiling whose no-op resolved to -Inf
+# would keep zero rows while reporting itself as unrestricted. It is a parameter
+# rather than a second parser so the three accepted forms, the error messages
+# and the strictness stay defined exactly once.
+parse_threshold <- function(spec, name = "threshold", none_value = -Inf) {
+  stopifnot(length(none_value) == 1, is.numeric(none_value), !is.na(none_value))
   none <- function(label) {
-    list(kind = "none", quantile = NA_real_, absolute = -Inf, spec = label)
+    list(
+      kind = "none", quantile = NA_real_, absolute = none_value,
+      none_value = none_value, spec = label
+    )
   }
   if (is.null(spec)) {
     return(none("none"))
@@ -412,8 +489,9 @@ parse_threshold <- function(spec, name = "threshold") {
   if (is.numeric(spec)) {
     if (is.na(spec)) {
       stop(
-        name, " is NA. Use -Inf for no restriction; NA is too easy to produce ",
-        "by accident to accept as 'no restriction'.",
+        name, " is NA. Use ", format(none_value, trim = TRUE),
+        " for no restriction; NA is too easy to produce by accident to ",
+        "accept as 'no restriction'.",
         call. = FALSE
       )
     }
@@ -422,7 +500,8 @@ parse_threshold <- function(spec, name = "threshold") {
     }
     return(list(
       kind = "absolute", quantile = NA_real_,
-      absolute = as.numeric(spec), spec = format(spec, trim = TRUE)
+      absolute = as.numeric(spec), none_value = none_value,
+      spec = format(spec, trim = TRUE)
     ))
   }
   if (is.character(spec)) {
@@ -436,7 +515,8 @@ parse_threshold <- function(spec, name = "threshold") {
         )
       }
       return(list(
-        kind = "quantile", quantile = p, absolute = NA_real_, spec = spec
+        kind = "quantile", quantile = p, absolute = NA_real_,
+        none_value = none_value, spec = spec
       ))
     }
     stop(
@@ -445,7 +525,8 @@ parse_threshold <- function(spec, name = "threshold") {
       "    a number  -- absolute cutoff on the variable's own scale, e.g. 0.6\n",
       '    "qNN"     -- percentile of its distribution, e.g. "q50", "q97.5"\n',
       "                 (lowercase q, no space, NN between 0 and 100)\n",
-      "    -Inf      -- no restriction\n",
+      "    ", format(none_value, trim = TRUE),
+      "      -- no restriction (this threshold's no-op sentinel)\n",
       "  This is an error rather than a fallback on purpose: silently ignoring an\n",
       "  unparseable threshold would produce an unrestricted run labelled as a\n",
       "  restricted one.",
@@ -467,7 +548,7 @@ parse_threshold <- function(spec, name = "threshold") {
 # stay independent.
 resolve_threshold <- function(parsed, values, name = "threshold") {
   if (parsed$kind == "none") {
-    parsed$absolute <- -Inf
+    parsed$absolute <- parsed$none_value %||% -Inf
     parsed$label <- "no restriction"
     return(parsed)
   }
@@ -494,16 +575,44 @@ resolve_threshold <- function(parsed, values, name = "threshold") {
 
 # Apply a resolved threshold and say plainly what happened: the spec as written,
 # how it was interpreted, the absolute value used, and how many rows it cost.
-# `op` is ">=" or ">", matching whichever convention the caller wants.
-apply_threshold <- function(data, var, parsed, name, op = c(">=", ">")) {
+#
+# `op` is a FLOOR (">=" or ">") or a CEILING ("<=" or "<"). The ceiling forms
+# exist for OTHER_CUTOFF_MAX, which bounds the LESS-illiberal party's score from
+# above; paired with a floor on the more-illiberal party's score they express
+# "one side is illiberal and the other is not". The `op` a caller passes must
+# agree in direction with the `none_value` it parsed with -- see parse_threshold.
+apply_threshold <- function(data, var, parsed, name,
+                            op = c(">=", ">", "<=", "<")) {
   op <- match.arg(op)
   if (parsed$kind == "none") {
     cat(sprintf("  %-16s no restriction (%d rows kept)\n", name, nrow(data)))
     return(data)
   }
+  # A floor whose no-op is +Inf (or a ceiling whose no-op is -Inf) would drop
+  # every row the moment the spec went back to "no restriction", and the run
+  # would still describe itself as unrestricted. Catch the mismatch here rather
+  # than letting it surface as an inexplicably empty sample.
+  expected_none <- if (op %in% c(">=", ">")) -Inf else Inf
+  none_value <- parsed$none_value %||% -Inf
+  if (!identical(none_value, expected_none)) {
+    stop(
+      name, ": direction mismatch. op = \"", op, "\" is a ",
+      if (op %in% c(">=", ">")) "floor" else "ceiling",
+      ", whose no-restriction sentinel is ", format(expected_none, trim = TRUE),
+      ", but the spec was parsed with none_value = ",
+      format(none_value, trim = TRUE),
+      ". Pass none_value = ", format(expected_none, trim = TRUE),
+      " to parse_threshold().",
+      call. = FALSE
+    )
+  }
   n_before <- nrow(data)
-  keep <- !is.na(data[[var]]) &
-    if (op == ">=") data[[var]] >= parsed$absolute else data[[var]] > parsed$absolute
+  keep <- !is.na(data[[var]]) & switch(op,
+    ">=" = data[[var]] >= parsed$absolute,
+    ">" = data[[var]] > parsed$absolute,
+    "<=" = data[[var]] <= parsed$absolute,
+    "<" = data[[var]] < parsed$absolute
+  )
   out <- data[keep, , drop = FALSE]
   cat(sprintf(
     "  %-16s %s  ->  keep %s %s %.4g:  %d -> %d rows (%d dropped)\n",
@@ -703,13 +812,26 @@ PANEL_YLABS <- c(
 )
 
 
-# Okabe-Ito blue / vermillion / green. Colourblind-safe: worst adjacent-pair
-# separation is dE 11.0 under deuteranopia, 25.8 under normal vision, and all
-# three clear 3:1 contrast against a white panel. Series are ALSO distinguished
-# by point shape, so identity never rests on colour alone. Assigned in fixed
-# order, never cycled -- no panel here has more than three series.
-SERIES_COLORS <- c("#0072B2", "#D55E00", "#009E73")
-SERIES_SHAPES <- c(16, 17, 15)
+# Okabe-Ito blue / vermillion / green / reddish-purple / black. Colourblind-safe:
+# worst pairwise separation across all five is dE 19.0 under deuteranopia and
+# 23.7 under protanopia, and every one clears 3:1 contrast against a white panel
+# (5.19, 3.87, 3.42, 3.06, 21.0). Series are ALSO distinguished by point shape,
+# so identity never rests on colour alone.
+#
+# Assigned in FIXED order and never cycled, so extending the palette from three
+# to five leaves every existing one-, two- and three-series panel byte-identical.
+#
+# Black is the fifth rather than Okabe-Ito's orange (#E69F00) on purpose: orange
+# only reaches 2.25:1 against white, and every darkened variant that fixes the
+# contrast collapses onto vermillion under deuteranopia (dE 1.1-13.5). Black is
+# itself an Okabe-Ito colour, and the only cutoff/reference marks it could be
+# confused with are grey35 dashed, never solid.
+#
+# Shapes: base R has only four solid glyphs, so the fifth is the asterisk. It is
+# the weakest of the five at size 1.6, which is why it sits alongside the most
+# distinctive colour.
+SERIES_COLORS <- c("#0072B2", "#D55E00", "#009E73", "#CC79A7", "#000000")
+SERIES_SHAPES <- c(16, 17, 15, 18, 8)
 
 
 # Coarser groupings than OUTCOME_PANELS, for figures that need one sheet per
@@ -858,4 +980,195 @@ extract_rd <- function(fit) {
     pval = unname(fit$pv["Robust", 1]),
     bw = unname(fit$bws[1, 1])
   )
+}
+
+# ------------------------------------------------------------------------------
+# 6. RD panel figures
+#
+# Moved here from 12_rdd_analysis.R so 17_party_outcomes_rdd.R draws the same
+# figure rather than a lookalike. Nothing below reads any script-local state --
+# only SERIES_COLORS, SERIES_SHAPES, RD_MIN_OBS and safe_rdrobust(), all defined
+# above. The caller supplies the data, the series and the labels.
+# ------------------------------------------------------------------------------
+
+# The weighted least-squares regression rdrobust()/rdplot() use for the point
+# estimate: OLS with triangular-kernel weights (1 - |x|/h, clipped at 0)
+# restricted to |x| <= h, fitted separately on each side of the cutoff. This is
+# not an approximation -- the weighted-OLS intercept at 0 reproduces
+# rdrobust()'s own "Conventional" jump estimate exactly. The SEs are ordinary
+# WLS prediction SEs, NOT CCT's bias-corrected "Robust" SEs reported in the
+# table, so the ribbon visualizes the conventional fit's uncertainty rather
+# than substituting for the table's formal inference.
+side_fit <- function(y, x, side, bandwidth, grid) {
+  w <- pmax(1 - abs(x) / bandwidth, 0)
+  idx <- which(side & w > 0 & !is.na(y))
+  if (length(idx) < 3) {
+    return(NULL)
+  }
+  df <- data.frame(xx = x[idx], yy = y[idx], ww = w[idx])
+  fit <- tryCatch(lm(yy ~ xx, data = df, weights = ww), error = function(e) NULL)
+  if (is.null(fit)) {
+    return(NULL)
+  }
+  pred <- predict(fit, newdata = data.frame(xx = grid), se.fit = TRUE)
+  tcrit <- qt(0.975, df = fit$df.residual)
+  tibble(
+    xx = grid,
+    yhat = pred$fit,
+    ymin = pred$fit - tcrit * pred$se.fit,
+    ymax = pred$fit + tcrit * pred$se.fit
+  )
+}
+
+# Binned local means of y against the running variable, as rdplot() computes
+# them. hide = TRUE computes the bins without rendering (rdplot() otherwise
+# prints to whatever device is open, which errors in a non-interactive Rscript
+# session). binselect defaults to "esmv" (mimicking-variance, evenly spaced);
+# RD_BIN_SCALE multiplies its automatically-chosen bin count rather than
+# hardcoding an nbins that wouldn't adapt across very different subsample sizes.
+RD_BIN_SCALE <- 2
+
+binned_means <- function(y, x, bandwidth) {
+  probe <- tryCatch(
+    rdplot(
+      y = y, x = x, p = 1, h = bandwidth,
+      kernel = "triangular", scale = RD_BIN_SCALE, hide = TRUE
+    ),
+    error = function(e) NULL
+  )
+  if (is.null(probe)) {
+    return(NULL)
+  }
+  as_tibble(probe$vars_bins) |>
+    select(xx = rdplot_mean_bin, yy = rdplot_mean_y) |>
+    filter(is.finite(xx), is.finite(yy))
+}
+
+# One RD panel, one or more series sharing a single y-axis.
+#
+# All series in a panel share ONE bandwidth -- the MSE-optimal bandwidth of the
+# first (primary) series -- so the binning and the fitted window are identical
+# across series and the lines are visually comparable. Letting each series pick
+# its own bandwidth would make three curves drawn over different x-ranges look
+# like a substantive difference when it is a bandwidth difference.
+#
+# p = 1 (local linear) matches what rdrobust() actually estimates;
+# rdplot()'s own default p = 4 snakes through nearly every bin with only ~15-20
+# binned points per side. kernel = "triangular" matches rdrobust()'s weighting
+# (rdplot() otherwise defaults to uniform).
+build_panel_plot <- function(
+  data, series, title, y_label,
+  y_lim = NULL, show_legend = TRUE
+) {
+  x <- data$running_var
+  vars <- names(series)
+
+  primary_fit <- safe_rdrobust(data[[vars[1]]], x)
+  h <- if (!is.null(primary_fit)) max(unname(primary_fit$bws["h", ])) else NULL
+  if (is.null(h) || !is.finite(h)) {
+    h <- max(abs(x), na.rm = TRUE)
+  }
+
+  grid_left <- seq(-h, 0, length.out = 100)
+  grid_right <- seq(0, h, length.out = 100)
+
+  bins <- list()
+  fits <- list()
+  for (i in seq_along(vars)) {
+    v <- vars[i]
+    y <- data[[v]]
+    keep <- !is.na(y) & !is.na(x)
+    if (sum(keep) < RD_MIN_OBS) {
+      next
+    }
+    yk <- y[keep]
+    xk <- x[keep]
+    b <- binned_means(yk, xk, h)
+    if (!is.null(b)) {
+      bins[[v]] <- b |>
+        filter(abs(xx) <= h) |>
+        mutate(series = unname(series[v]))
+    }
+    f <- bind_rows(
+      side_fit(yk, xk, xk < 0, h, grid_left) |> mutate(side = "left"),
+      side_fit(yk, xk, xk >= 0, h, grid_right) |> mutate(side = "right")
+    )
+    if (nrow(f) > 0) {
+      fits[[v]] <- f |> mutate(series = unname(series[v]))
+    }
+  }
+
+  if (length(bins) == 0 && length(fits) == 0) {
+    message("Skipping panel (too few observations): ", title)
+    return(NULL)
+  }
+
+  bins_df <- bind_rows(bins)
+  fits_df <- bind_rows(fits)
+  # Fixed factor order so a series keeps its colour regardless of which
+  # series happen to survive in a given subsample.
+  lvls <- unname(series)
+  if (nrow(bins_df)) bins_df$series <- factor(bins_df$series, levels = lvls)
+  if (nrow(fits_df)) fits_df$series <- factor(fits_df$series, levels = lvls)
+
+  n_series <- length(lvls)
+  ribbon_alpha <- if (n_series >= 3) 0.09 else 0.14
+
+  if (is.null(y_lim)) {
+    bounds <- c(bins_df$yy, fits_df$ymin, fits_df$ymax)
+    bounds <- bounds[is.finite(bounds)]
+    if (length(bounds) > 0) {
+      rng <- range(bounds)
+      pad <- max(diff(rng) * 0.1, 1e-9)
+      y_lim <- c(rng[1] - pad, rng[2] + pad)
+    }
+  }
+
+  p <- ggplot() +
+    geom_vline(xintercept = 0, linetype = "dashed", colour = "grey35", linewidth = 0.4)
+
+  if (nrow(fits_df)) {
+    p <- p +
+      geom_ribbon(
+        data = fits_df,
+        aes(x = xx, ymin = ymin, ymax = ymax, group = interaction(series, side), fill = series),
+        alpha = ribbon_alpha, colour = NA
+      ) +
+      geom_line(
+        data = fits_df,
+        aes(x = xx, y = yhat, group = interaction(series, side), colour = series),
+        linewidth = 0.7
+      )
+  }
+  if (nrow(bins_df)) {
+    p <- p +
+      geom_point(
+        data = bins_df,
+        aes(x = xx, y = yy, colour = series, shape = series),
+        size = 1.6, alpha = 0.85
+      )
+  }
+
+  p +
+    scale_colour_manual(values = setNames(SERIES_COLORS[seq_len(n_series)], lvls), drop = FALSE) +
+    scale_fill_manual(values = setNames(SERIES_COLORS[seq_len(n_series)], lvls), drop = FALSE) +
+    scale_shape_manual(values = setNames(SERIES_SHAPES[seq_len(n_series)], lvls), drop = FALSE) +
+    coord_cartesian(xlim = c(-h, h), ylim = y_lim) +
+    labs(
+      title = title,
+      x = "Running variable (illiberal - other vote/seat share, pp)",
+      y = y_label,
+      colour = NULL, fill = NULL, shape = NULL
+    ) +
+    theme_bw(base_size = 9) +
+    theme(
+      panel.grid.minor = element_blank(),
+      panel.grid.major = element_line(colour = "grey92", linewidth = 0.3),
+      plot.title = element_text(size = 9, face = "bold"),
+      # A legend is always present for >= 2 series so identity is never carried
+      # by colour alone; a single-series panel is named by its own title.
+      legend.position = if (show_legend && n_series > 1) "bottom" else "none",
+      legend.key.size = unit(0.35, "cm"),
+      legend.margin = margin(t = -4)
+    )
 }

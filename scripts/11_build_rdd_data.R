@@ -1158,28 +1158,6 @@ print(
 
 # ---- gt miss table -----------------------------------------------------------
 
-apply_table_style <- function(gt_tbl) {
-  gt_tbl |>
-    tab_options(
-      table.font.size = px(11),
-      table.border.top.style = "solid",
-      table.border.top.width = px(2),
-      table.border.top.color = "black",
-      table.border.bottom.style = "solid",
-      table.border.bottom.width = px(2),
-      table.border.bottom.color = "black",
-      column_labels.border.top.style = "solid",
-      column_labels.border.top.width = px(2),
-      column_labels.border.top.color = "black",
-      column_labels.border.bottom.style = "solid",
-      column_labels.border.bottom.width = px(1.5),
-      column_labels.border.bottom.color = "black",
-      table_body.hlines.style = "solid",
-      table_body.hlines.width = px(0.5),
-      table_body.hlines.color = "#cccccc"
-    )
-}
-
 election_type_label <- if (ELECTION_TYPE == "both") {
   "presidential + parliamentary"
 } else {
@@ -1233,7 +1211,7 @@ gt_ert_miss_table <- ert_miss_table |>
     )
   ) |>
   opt_row_striping() |>
-  apply_table_style()
+  apply_table_style(font_size = 11)
 
 # Written into the per-build folder rather than a flat output/ file, so
 # different instrument/window builds don't overwrite each other's accounting.

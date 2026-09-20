@@ -21,8 +21,9 @@
 # Writes one figure per index (anti-pluralism, populism) plus a combined CSV.
 #
 # Reads the raw V-Party CSV straight out of the zip -- no election spine, no
-# top-2 filter, no crosswalk. Self-contained on purpose (as the sibling adhoc
-# scripts are), so the OECD list below is duplicated from vparty_corr_by_decade.R.
+# top-2 filter, no crosswalk. The read, the OECD list and the coverage bounds
+# now come from scripts/vparty_helpers.R, shared with the sibling adhoc scripts
+# and with 18/19; they used to be duplicated here verbatim.
 #
 #   Rscript --no-init-file scripts/adhoc/vparty_variance_by_decade.R
 # ==============================================================================
@@ -30,25 +31,24 @@
 library(tidyverse)
 library(here)
 
+source(here::here("scripts", "vparty_helpers.R"))
+
 # ---- toggles -----------------------------------------------------------------
 INDICES <- c(
   v2xpa_antiplural = "anti-pluralism",
   v2xpa_popul = "populism"
 )
 
-YEAR_MIN <- 1970 # V-Party reaches back to 1900, but coverage before 1970 is
-YEAR_MAX <- 2019 # thin and lopsided; 2019 is the last year in v2.
+# Coverage bounds live in vparty_helpers.R with the reason (pre-1970 V-Party
+# is thin and lopsided; 2019 is the last year in v2).
+YEAR_MIN <- VPARTY_YEAR_MIN
+YEAR_MAX <- VPARTY_YEAR_MAX
 MIN_CELL_N <- 30 # drop a decade x group cell thinner than this
 
-# Current (2026) OECD membership, applied to the whole period -- so the split is
-# "countries that ended up rich democracies", not membership as of each
-# election. Kept identical to vparty_corr_by_decade.R.
-OECD <- c(
-  "AUS", "AUT", "BEL", "CAN", "CHL", "COL", "CRI", "CZE", "DNK", "EST",
-  "FIN", "FRA", "DEU", "GRC", "HUN", "ISL", "IRL", "ISR", "ITA", "JPN",
-  "KOR", "LVA", "LTU", "LUX", "MEX", "NLD", "NZL", "NOR", "POL", "PRT",
-  "SVK", "SVN", "ESP", "SWE", "CHE", "TUR", "GBR", "USA"
-)
+# OECD membership (and the reason it is applied to the whole period rather
+# than by accession date) is in vparty_helpers.R, shared with the other
+# raw-V-Party scripts.
+OECD <- OECD_ISO3
 
 # Which years a party is demeaned against, for the party-FE series only.
 #   TRUE  demean within party x decade, so the cell's variance is built only
@@ -87,13 +87,7 @@ SERIES_COLORS <- c(
 SERIES_SHAPES <- c(15, 17)
 
 # ---- data --------------------------------------------------------------------
-vparty <- read_csv(
-  unz(
-    here::here("data", "elections_database", "CPD_V-Party_CSV_v2.zip"),
-    "CPD_V-Party_CSV_v2/V-Dem-CPD-Party-V2.csv"
-  ),
-  show_col_types = FALSE
-)
+vparty <- load_vparty_raw()
 
 stopifnot(all(OECD %in% unique(vparty$country_text_id)))
 

@@ -7,7 +7,6 @@ instr-antiplural_w3_trt-ert_gapany_illibany_exclyr,v2xpa_antiplural,3,backslidin
 instr-antiplural_w3_trt-ertOrDdcg_gapany_illibany_exclyr,v2xpa_antiplural,3,backsliding_union_Nyr,-Inf,-Inf,FALSE,-Inf,none,-Inf,none,1347,100,0.0349,0.4219,2026-09-06 23:10:11
 instr-antiplural_w4_trt-ert_gapany_illibany_exclyr,v2xpa_antiplural,4,backsliding_Nyr,-Inf,-Inf,FALSE,-Inf,none,-Inf,none,1347,109,-0.0361,0.5061,2026-09-06 23:10:16
 instr-antiplural_w4_trt-ertOrDdcg_gapany_illibany_exclyr,v2xpa_antiplural,4,backsliding_union_Nyr,-Inf,-Inf,FALSE,-Inf,none,-Inf,none,1347,129,-0.0033,0.9536,2026-09-06 23:10:16
-instr-antiplural_w5_trt-ert_gapany_illibany_exclyr,v2xpa_antiplural,5,backsliding_Nyr,-Inf,-Inf,FALSE,-Inf,none,-Inf,none,1347,142,-0.0252,0.6613,2026-09-06 23:10:20
 instr-antiplural_w5_trt-ertOrDdcg_gapany_illibany_exclyr,v2xpa_antiplural,5,backsliding_union_Nyr,-Inf,-Inf,FALSE,-Inf,none,-Inf,none,1347,165,-0.0026,0.9648,2026-09-06 23:10:21
 instr-antiplural_w6_trt-ert_gapany_illibany_exclyr,v2xpa_antiplural,6,backsliding_Nyr,-Inf,-Inf,FALSE,-Inf,none,-Inf,none,1347,164,-0.0162,0.7779,2026-09-06 23:10:53
 instr-antiplural_w6_trt-ertOrDdcg_gapany_illibany_exclyr,v2xpa_antiplural,6,backsliding_union_Nyr,-Inf,-Inf,FALSE,-Inf,none,-Inf,none,1347,186,0.007,0.9077,2026-09-06 23:10:54
@@ -90,3 +89,4 @@ instr-econleft_w9_trt-polyarchy_gapany_illibany_exclyr,v2pariglef_neg,9,polyarch
 instr-econleft_w10_trt-polyarchy_gapany_illibany_exclyr,v2pariglef_neg,10,polyarchy_decline,-Inf,-Inf,FALSE,-Inf,none,-Inf,none,1343,NA,-0.007,0.7738,2026-09-07 04:15:51
 instr-antiplural_w5_trt-polyarchy_gapany_illibany_exclyr,v2xpa_antiplural,5,polyarchy_decline,-Inf,-Inf,FALSE,-Inf,none,-Inf,none,1347,NA,0.0175,0.3351,2026-09-07 12:55:27
 instr-antiplural_w5_trt-polyarchyBin_gapany_illibany_exclyr,v2xpa_antiplural,5,polyarchy_declined,-Inf,-Inf,FALSE,-Inf,none,-Inf,none,1347,496,0.0146,0.8617,2026-09-07 12:55:32
+instr-antiplural_w5_trt-ert_gapany_illibany_exclyr,v2xpa_antiplural,5,backsliding_Nyr,-Inf,-Inf,FALSE,-Inf,none,-Inf,none,1347,142,-0.0252,0.6613,2026-09-20 15:39:41

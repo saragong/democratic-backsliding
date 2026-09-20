@@ -498,21 +498,6 @@ PAIRS <- list(
   c("R3", "R4")
 )
 
-METRICS <- list(
-  first_stage = list(
-    coef = "fs_coef", se = "fs_se", pval = "fs_pval",
-    title = "First-stage coefficient"
-  ),
-  rf = list(
-    coef = "rf_coef", se = "rf_se", pval = "rf_pval",
-    title = "Reduced-form RD"
-  ),
-  late = list(
-    coef = "late_coef", se = "late_se", pval = "late_pval",
-    title = "Fuzzy RD (LATE)"
-  )
-)
-
 cat("\n=== Pair grids ===\n")
 
 # Estimate every cell of every pair once, then render the same numbers three

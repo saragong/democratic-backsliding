@@ -30,7 +30,8 @@
 #
 # Reads the raw V-Party CSV straight out of the zip -- no election spine, no
 # top-2 filter, no crosswalk -- so this is a property of the indices, not of
-# this project's sample construction.
+# this project's sample construction. The read, the OECD list and the coverage
+# bounds come from scripts/vparty_helpers.R.
 #
 #   Rscript --no-init-file scripts/adhoc/vparty_corr_by_decade.R
 # ==============================================================================
@@ -38,58 +39,22 @@
 library(tidyverse)
 library(here)
 
+source(here::here("scripts", "vparty_helpers.R"))
+
 # ---- toggles -----------------------------------------------------------------
 A <- "v2xpa_antiplural" # "illiberalism" axis
 B <- "v2xpa_popul" # "populism" axis
 
-YEAR_MIN <- 1970 # V-Party reaches back to 1900, but coverage before 1970 is
-YEAR_MAX <- 2019 # thin and lopsided; 2019 is the last year in v2.
+# Coverage bounds live in vparty_helpers.R with the reason (pre-1970 V-Party
+# is thin and lopsided; 2019 is the last year in v2).
+YEAR_MIN <- VPARTY_YEAR_MIN
+YEAR_MAX <- VPARTY_YEAR_MAX
 MIN_CELL_N <- 30 # drop a decade x group cell thinner than this
 
-# Current (2026) OECD membership, applied to the whole period -- so the split is
-# "countries that ended up rich democracies", not membership as of each
-# election. Switching to date-of-accession membership would empty the 1970s
-# non-OECD-then cells of exactly the countries that make the OECD line.
-OECD <- c(
-  "AUS",
-  "AUT",
-  "BEL",
-  "CAN",
-  "CHL",
-  "COL",
-  "CRI",
-  "CZE",
-  "DNK",
-  "EST",
-  "FIN",
-  "FRA",
-  "DEU",
-  "GRC",
-  "HUN",
-  "ISL",
-  "IRL",
-  "ISR",
-  "ITA",
-  "JPN",
-  "KOR",
-  "LVA",
-  "LTU",
-  "LUX",
-  "MEX",
-  "NLD",
-  "NZL",
-  "NOR",
-  "POL",
-  "PRT",
-  "SVK",
-  "SVN",
-  "ESP",
-  "SWE",
-  "CHE",
-  "TUR",
-  "GBR",
-  "USA"
-)
+# OECD membership (and the reason it is applied to the whole period rather
+# than by accession date) is in vparty_helpers.R, shared with the other
+# raw-V-Party scripts.
+OECD <- OECD_ISO3
 
 # Which parties enter the party-FE series (this restriction does NOT touch the
 # raw or election-FE series, which stay on the full sample). Mirrors the toggle
@@ -122,13 +87,7 @@ SERIES_SHAPES <- c(16, 15, 17)
 PARTY_FE_WITHIN_DECADE <- TRUE
 
 # ---- data --------------------------------------------------------------------
-vparty <- read_csv(
-  unz(
-    here::here("data", "elections_database", "CPD_V-Party_CSV_v2.zip"),
-    "CPD_V-Party_CSV_v2/V-Dem-CPD-Party-V2.csv"
-  ),
-  show_col_types = FALSE
-)
+vparty <- load_vparty_raw()
 
 stopifnot(all(OECD %in% unique(vparty$country_text_id)))
 
