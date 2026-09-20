@@ -1,0 +1,5 @@
+vocab,n_tagged_parties,n_distinct_tags,n_matched_in_vparty,n_vparty_parties,pct_of_vparty
+rile_wikipedia,1461,8,1309,1930,67.8
+rile_wikidata,822,10,750,1930,38.9
+ideology_wikipedia,1577,862,1404,1930,72.7
+ideology_wikidata,1471,486,1302,1930,67.5

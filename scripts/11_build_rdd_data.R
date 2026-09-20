@@ -100,6 +100,35 @@ if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
 }
 stopifnot(is.logical(TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR))
 
+# Placebo: look BACKWARDS instead of forwards.
+#
+#   FALSE (default)  the real design. Outcomes are the change over
+#                    (election_year - 1, election_year + N]; treatment is an
+#                    episode starting in the post-election window.
+#   TRUE             the mirror image. Outcomes are the change over
+#                    (election_year - 1 - N, election_year - 1]; treatment is
+#                    an episode starting in the N years before the real
+#                    treatment window opens.
+#
+# The point is the pre-trend question the Sep 7 memo left open: if growth was
+# already falling BEFORE the narrow illiberal victory, the headline reduced
+# form is picking up a trend rather than an effect. A placebo estimate that is
+# indistinguishable from the real one is bad news; one that is a precise zero
+# is the reassurance the design needs.
+#
+# This is a mirror, not a shift: the placebo window ENDS where the real outcome
+# window begins (election_year - 1), so the two abut with no overlap and no
+# gap, exactly as prior_backsliding already abuts the treatment window. Nothing
+# about the running variable, the cutoff or the sample changes -- only which
+# years the outcomes and the treatment are measured over.
+#
+# It changes the DATA, not just the estimation, so it is part of the build
+# identity: the file gets a _pre suffix, the attribute below records it, and
+# 12_rdd_analysis.R refuses to estimate a placebo build as though it were a
+# real one.
+if (!exists("PLACEBO_PRE_WINDOW")) PLACEBO_PRE_WINDOW <- FALSE
+stopifnot(is.logical(PLACEBO_PRE_WINDOW))
+
 stopifnot(ELECTION_TYPE %in% c("presidential", "parliamentary", "both"))
 stopifnot(ILLIBERALISM_VAR %in% ILLIBERALISM_VARS)
 stopifnot(START_YEAR_SOURCE %in% c("ert", "ddcg", "llm"))
@@ -466,7 +495,13 @@ v_party <- read_csv(vparty_con, show_col_types = FALSE) |>
     v2xpa_popul,
     ep_galtan,
     v2pariglef,
-    v2paanteli
+    v2paanteli,
+    # Carried but never usable as the instrument -- see PARTY_SCORE_VARS in
+    # rdd_helpers.R. It is an OUTCOME in 17_party_outcomes_rdd.R ("does the
+    # narrow anti-pluralist winner also score lower on minority rights?"), and
+    # unlike every other score here it runs higher = MORE supportive of
+    # minority rights, so it is deliberately not negated.
+    v2paminor
   ) |>
   filter(!is.na(v2paid)) |>
   # v2pariglef runs right-positive in V-Party ("economic left-right position",
@@ -504,13 +539,11 @@ cat(sprintf(
 # the illiberalism score is meant to characterize the party AS OF the
 # election, not with the benefit of its post-election trajectory).
 match_vparty <- function(vdem_id_1, target_year) {
-  empty_result <- tibble(
-    v2xpa_antiplural = NA_real_,
-    v2xpa_popul = NA_real_,
-    ep_galtan = NA_real_,
-    v2pariglef_neg = NA_real_,
-    v2paanteli = NA_real_
-  )
+  # Built from the registry rather than listed, so adding a party score is one
+  # line in rdd_helpers.R and not three edits scattered through this function.
+  empty_result <- as_tibble(setNames(
+    rep(list(NA_real_), length(PARTY_SCORE_VARS)), PARTY_SCORE_VARS
+  ))
   if (is.na(vdem_id_1)) {
     return(empty_result)
   }
@@ -520,7 +553,7 @@ match_vparty <- function(vdem_id_1, target_year) {
   }
   cand |>
     slice_max(year, n = 1, with_ties = FALSE) |>
-    select(all_of(ILLIBERALISM_VARS))
+    select(all_of(PARTY_SCORE_VARS))
 }
 
 vparty_scores <- map2_dfr(
@@ -549,10 +582,13 @@ top2_for_scoring <- top2_scored |>
   filter(sum(!is.na(illiberalism_score)) == 2) |> # both candidates must have a score
   ungroup()
 
-# Carry EVERY candidate instrument's score for both top-2 members through to the
-# election level, not just the active ILLIBERALISM_VAR. Script 16 needs all of
-# them to compare how much the instrument definitions actually differ, and
-# recomputing the party match there would duplicate ~200 lines of join logic.
+# Carry EVERY party score for both top-2 members through to the election level,
+# not just the active ILLIBERALISM_VAR. Script 16 needs all of them to compare
+# how much the instrument definitions actually differ, and 17 needs them as
+# OUTCOMES ("when the anti-pluralist narrowly wins, is the winner also the more
+# populist one?"); recomputing the party match in either would duplicate ~200
+# lines of join logic. PARTY_SCORE_VARS, not ILLIBERALISM_VARS -- the set
+# carried here is wider than the set usable as the instrument.
 # Ordered by SHARE (winner first), not by any score, so "__winner"/"__loser"
 # mean the same thing for every instrument. Ties are impossible for
 # parliamentary (dropped in Step 1) and vanishingly rare for presidential, but
@@ -563,7 +599,7 @@ all_scores_wide <- top2_for_scoring |>
   arrange(desc(final_share), .by_group = TRUE) |>
   summarise(
     across(
-      all_of(ILLIBERALISM_VARS),
+      all_of(PARTY_SCORE_VARS),
       list(winner = ~ .x[1], loser = ~ .x[2]),
       .names = "{.col}__{.fn}"
     ),
@@ -738,8 +774,20 @@ window_change <- function(
   compounded = FALSE,
   log_transform = FALSE
 ) {
-  pre_year <- election_year - 1
-  post_year <- election_year + BACKSLIDING_WINDOW_YEARS
+  # The ONE place the outcome window is defined, so the placebo cannot end up
+  # applied to some outcomes and not others. Under PLACEBO_PRE_WINDOW the span
+  # is reflected about election_year - 1, which is the real window's own start
+  # point -- so the placebo window is the N years immediately before it, and
+  # the two abut without overlapping.
+  #   real:    (election_year - 1)      -> (election_year + N)
+  #   placebo: (election_year - 1 - N)  -> (election_year - 1)
+  if (PLACEBO_PRE_WINDOW) {
+    pre_year <- election_year - 1 - BACKSLIDING_WINDOW_YEARS
+    post_year <- election_year - 1
+  } else {
+    pre_year <- election_year - 1
+    post_year <- election_year + BACKSLIDING_WINDOW_YEARS
+  }
   if (!compounded) {
     pre_val <- panel_value(country, pre_year, var)
     post_val <- panel_value(country, post_year, var)
@@ -799,12 +847,26 @@ build_outcomes <- function(country, election_year) {
     # economic outcomes: higher = more constrained executive = healthier
     # democracy, so a negative RD estimate is the "backsliding" sign here.
     Y_checks_balances = window_change(country, election_year, "checks_balances"),
-    Y_jucon = window_change(country, election_year, "v2x_jucon"),
-    Y_legcon = window_change(country, election_year, "v2xlg_legcon"),
     Y_hos_power = window_change(country, election_year, "hos_power_linear"),
     Y_hog_power = window_change(country, election_year, "hog_power_linear"),
     Y_hos_power_vdem = window_change(country, election_year, "hos_power_vdem"),
-    Y_hog_power_vdem = window_change(country, election_year, "hog_power_vdem")
+    Y_hog_power_vdem = window_change(country, election_year, "hog_power_vdem"),
+    # V-Dem's high- and mid-level democracy indices, the mechanism outcomes.
+    # Built from the registry in scripts/vdem_indices.R rather than listed one
+    # per line: there are 21 of them, they are all the plain window change of a
+    # panel column with no per-variable handling, and a hand-written list would
+    # be a second place for the set to drift from rdd_helpers.R's panels.
+    #
+    # Y_jucon and Y_legcon are in that registry too and are assigned here
+    # rather than above -- same variable, same window_change call, so the
+    # duplicate literal definitions that used to sit above are gone.
+    !!!setNames(
+      lapply(
+        unname(VDEM_INDEX_VARS),
+        function(v) window_change(country, election_year, v)
+      ),
+      names(VDEM_INDEX_VARS)
+    )
   )
 }
 
@@ -817,12 +879,31 @@ backsliding_for_election <- function(country, election_year) {
   # different conventions -- which would matter, since backsliding_union_Nyr is
   # their pmax() and any apparent power gain would then partly be the wider
   # window rather than the extra events.
-  window_start <- if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) {
-    election_year
+  #
+  # Under PLACEBO_PRE_WINDOW the window is the faithful mirror of the real one,
+  # defined so that the treatment/outcome ALIGNMENT is preserved rather than
+  # merely the window length. window_change() measures the placebo outcome over
+  # years (election_year - N) ... (election_year - 1); the real treatment window
+  # is the real outcome window optionally minus its first year, so the placebo
+  # treatment window is the placebo outcome window under the same rule:
+  #
+  #                       outcome years            treatment years
+  #   real,    incl       ey     .. ey + N         ey     .. ey + N
+  #   real,    excl       ey     .. ey + N         ey + 1 .. ey + N
+  #   placebo, incl       ey - N .. ey - 1         ey - N .. ey - 1
+  #   placebo, excl       ey - N .. ey - 1         ey-N+1 .. ey - 1
+  #
+  # Getting this by reflecting the window LENGTH instead would put the placebo
+  # treatment window one year later than its own outcome window, so the placebo
+  # would test a slightly different design from the one it is a placebo for.
+  offset <- if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) 0L else 1L
+  if (PLACEBO_PRE_WINDOW) {
+    window_start <- election_year - BACKSLIDING_WINDOW_YEARS + offset
+    window_end <- election_year - 1
   } else {
-    election_year + 1
+    window_start <- election_year + offset
+    window_end <- election_year + BACKSLIDING_WINDOW_YEARS
   }
-  window_end <- election_year + BACKSLIDING_WINDOW_YEARS
 
   # ERT episodes that started in the post-election window
   post_matches <- episode_years |>
@@ -975,7 +1056,13 @@ dir.create(build_dir, showWarnings = FALSE, recursive = TRUE)
 # the build's identity or a TRUE build and a FALSE build would silently
 # overwrite each other. Only the non-default (FALSE) convention gets a suffix,
 # keeping the default filenames clean.
-build_suffix <- if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else "_exclyr"
+# The placebo window changes every outcome column and the treatment, so it is
+# part of the build's identity for the same reason -- and it composes with the
+# window convention, hence two suffixes rather than one switch.
+build_suffix <- paste0(
+  if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else "_exclyr",
+  if (PLACEBO_PRE_WINDOW) "_pre" else ""
+)
 build_path <- file.path(
   build_dir,
   sprintf(
@@ -983,24 +1070,31 @@ build_path <- file.path(
     ILLIBERALISM_VAR, BACKSLIDING_WINDOW_YEARS, build_suffix
   )
 )
-# Record the convention on the object itself, so 12_rdd_analysis.R can read it
-# back and label its run folder accordingly rather than having to be told.
+# Record both conventions on the object itself, so 12_rdd_analysis.R can read
+# them back and label its run folder accordingly rather than having to be told
+# -- and, more importantly, refuse a build that does not match what it was
+# asked for.
 attr(elections_final, "includes_election_year") <-
   TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR
+attr(elections_final, "placebo_pre_window") <- PLACEBO_PRE_WINDOW
 saveRDS(elections_final, build_path)
 message("Saved ", build_path)
 
 # Party-level companion: the two top-2 finishers of every scored election, with
-# every candidate instrument's score. 16_instrument_overlap.R needs this grain
-# (a party-year observation, not an election) for its Jaccard heatmaps, and
-# re-deriving it there would mean duplicating the whole Party Facts -> V-Dem ->
-# V-Party matching chain above.
+# every party score. 16_instrument_overlap.R needs this grain (a party-year
+# observation, not an election) for its Jaccard heatmaps, and re-deriving it
+# there would mean duplicating the whole Party Facts -> V-Dem -> V-Party
+# matching chain above.
+#
+# vdem_id_1 is carried because 18_vparty_jaccard_panels.R restricts raw V-Party
+# to parties that reached a top 2 at some point, and raw V-Party is keyed on
+# v2paid -- which IS vdem_id_1. party_id (Party Facts) cannot make that join.
 parties_path <- sub("\\.rds$", "_parties.rds", build_path)
 saveRDS(
   top2_for_scoring |>
     select(
       election_id, election_type, country_text_id, country_name, election_year,
-      party_id, candidate, final_share, all_of(ILLIBERALISM_VARS)
+      party_id, vdem_id_1, candidate, final_share, all_of(PARTY_SCORE_VARS)
     ),
   parties_path
 )
@@ -1011,7 +1105,8 @@ message("Saved ", parties_path)
 if (
   ILLIBERALISM_VAR == "v2xpa_antiplural" && BACKSLIDING_WINDOW_YEARS == 5 &&
     ELECTION_TYPE == "both" && START_YEAR_SOURCE == "ert" &&
-    SAMPLE_YEARS == "all" && TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR
+    SAMPLE_YEARS == "all" && TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR &&
+    !PLACEBO_PRE_WINDOW
 ) {
   saveRDS(elections_final, file.path(data_dir, "rdd_analysis_data.rds"))
   message("Saved data/rdd_analysis_data.rds (default configuration)")

@@ -56,7 +56,17 @@ if (!exists("SWEEP_ILLIBERAL_CUTOFF")) {
 if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
   TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- FALSE
 }
-build_suffix <- if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else "_exclyr"
+# The placebo sweep: the same w = 1..10 sweep run on the PRE-election window,
+# so the pre-trend check is available at every window length rather than only
+# at the headline one. Passed explicitly into the children for the same reason
+# the convention above is -- run_script_with() builds a fresh environment, so a
+# toggle only set in this script's scope would not reach 11 or 12 and the
+# "placebo" sweep would silently be a second copy of the real one.
+if (!exists("PLACEBO_PRE_WINDOW")) PLACEBO_PRE_WINDOW <- FALSE
+build_suffix <- paste0(
+  if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else "_exclyr",
+  if (PLACEBO_PRE_WINDOW) "_pre" else ""
+)
 
 # Run one of the pipeline scripts in a fresh environment with the given toggle
 # overrides pre-defined. The scripts all guard their toggles with
@@ -102,7 +112,8 @@ for (n in if (SWEEP_REESTIMATE) WINDOWS else integer(0)) {
       list(
         ILLIBERALISM_VAR = SWEEP_INSTRUMENT,
         BACKSLIDING_WINDOW_YEARS = n,
-        TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR
+        TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
+        PLACEBO_PRE_WINDOW = PLACEBO_PRE_WINDOW
       )
     )
   }
@@ -116,6 +127,7 @@ for (n in if (SWEEP_REESTIMATE) WINDOWS else integer(0)) {
         BACKSLIDING_WINDOW_YEARS = n,
         TREATMENT_VAR = trt,
         TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
+        PLACEBO_PRE_WINDOW = PLACEBO_PRE_WINDOW,
         SCORE_GAP_MIN = SWEEP_SCORE_GAP_MIN,
         ILLIBERAL_CUTOFF = SWEEP_ILLIBERAL_CUTOFF,
         # Only the main treatment definition gets the full figure set; the other

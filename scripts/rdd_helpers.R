@@ -30,6 +30,8 @@
 # 1. Run folders
 # ------------------------------------------------------------------------------
 
+source(here::here("scripts", "vdem_indices.R"))
+
 RUNS_ROOT <- here::here("output", "runs")
 
 # Short, filesystem-safe label for an instrument variable. Keeps slugs
@@ -779,6 +781,51 @@ OUTCOME_PANELS <- list(
   exec_power_alt = c(
     Y_hos_power_vdem = "HOS (v2ex_hosw)",
     Y_hog_power_vdem = "HOG (v2ex_hogw)"
+  ),
+  # ---- V-Dem democracy indices --------------------------------------------
+  #
+  # Grouped on V-DEM'S OWN taxonomy: the five high-level indices, then the
+  # mid-level indices that aggregate into each of them. A principled grouping
+  # beats a convenience one here, and it keeps every panel at or under five
+  # series, which is all SERIES_COLORS carries.
+  #
+  # Y_jucon and Y_legcon are not new -- they were already outcomes in the
+  # `institutions` panel above, where they sit alongside checks_balances (their
+  # own mean). They appear ONCE in OUTCOME_PANELS, under `institutions`, so the
+  # results table keeps one row per outcome; vdem_liberal therefore shows only
+  # the rule-of-law index that completes V-Dem's liberal component, and the
+  # panel title says where the other two are.
+  #
+  # Direction: every index runs HIGHER = MORE DEMOCRATIC, so a NEGATIVE RD
+  # estimate is the backsliding sign -- the opposite of the economic outcomes.
+  vdem_high = c(
+    Y_polyarchy = "Electoral (polyarchy)",
+    Y_libdem = "Liberal",
+    Y_partipdem = "Participatory",
+    Y_delibdem = "Deliberative",
+    Y_egaldem = "Egalitarian"
+  ),
+  vdem_electoral = c(
+    Y_elecoff = "Elected officials",
+    Y_frefair = "Clean elections",
+    Y_frassoc = "Association",
+    Y_suffr = "Suffrage",
+    Y_freexp = "Expression & alt. info"
+  ),
+  vdem_liberal = c(
+    Y_cl_rol = "Rule of law"
+  ),
+  vdem_particip = c(
+    Y_cspart = "Civil society",
+    Y_dd = "Direct democracy",
+    Y_locelec = "Local elections",
+    Y_regelec = "Regional elections"
+  ),
+  vdem_egal_delib = c(
+    Y_delib = "Deliberation",
+    Y_eqprotec = "Equal protection",
+    Y_eqaccess = "Equal access",
+    Y_eqdr = "Equal distribution"
   )
 )
 
@@ -792,7 +839,12 @@ PANEL_TITLES <- c(
   fiscal = "Public debt and deficit",
   institutions = "Executive constraints",
   exec_power = "Executive power (ET)",
-  exec_power_alt = "Executive power (V-Dem)"
+  exec_power_alt = "Executive power (V-Dem)",
+  vdem_high = "V-Dem high-level democracy indices",
+  vdem_electoral = "V-Dem mid-level: electoral component",
+  vdem_liberal = "V-Dem mid-level: liberal component (see also Executive constraints)",
+  vdem_particip = "V-Dem mid-level: participatory component",
+  vdem_egal_delib = "V-Dem mid-level: deliberative and egalitarian components"
 )
 
 # The y axis carries the UNIT; the panel title carries the subject. Repeating
@@ -808,7 +860,12 @@ PANEL_YLABS <- c(
   fiscal = "Change, pp of GDP",
   institutions = "Change, index (0-1)",
   exec_power = "Change, index (0-1)",
-  exec_power_alt = "Change, index (0-1)"
+  exec_power_alt = "Change, index (0-1)",
+  vdem_high = "Change, index (0-1)",
+  vdem_electoral = "Change, index (0-1)",
+  vdem_liberal = "Change, index (0-1)",
+  vdem_particip = "Change, index (0-1)",
+  vdem_egal_delib = "Change, index (0-1)"
 )
 
 
@@ -848,6 +905,23 @@ OUTCOME_FAMILIES <- list(
   institutions = c(
     "Y_checks_balances", "Y_jucon", "Y_legcon",
     "Y_hos_power", "Y_hog_power", "Y_hos_power_vdem", "Y_hog_power_vdem"
+  ),
+  # Their own families rather than folded into `institutions`: these are the
+  # mechanism outcomes, a different question from executive constraints.
+  #
+  # Split high from mid on the same line the ask draws. One combined family
+  # would be 19 facets on a single window-sweep sheet -- seven rows deep, and
+  # the five headline indices, which are the ones actually being asked about,
+  # would be buried among fourteen components.
+  #
+  # Y_jucon and Y_legcon are excluded from vdem_mid because they already appear
+  # in the `institutions` family; OUTCOME_FAMILIES may repeat an outcome across
+  # families, but showing the same two panels twice on adjacent sheets is
+  # clutter, not emphasis.
+  vdem_high = names(OUTCOME_PANELS$vdem_high),
+  vdem_mid = setdiff(
+    names(VDEM_INDEX_VARS),
+    c(names(OUTCOME_PANELS$vdem_high), "Y_jucon", "Y_legcon")
   )
 )
 
@@ -855,7 +929,9 @@ OUTCOME_FAMILY_TITLES <- c(
   economic = "Economic outcomes",
   inequality = "Inequality",
   fiscal = "Public finances",
-  institutions = "Institutions and executive power"
+  institutions = "Institutions and executive power",
+  vdem_high = "V-Dem high-level democracy indices",
+  vdem_mid = "V-Dem mid-level democracy indices"
 )
 
 # Flat outcome list, in panel order (NOT alphabetical), so facets and table rows

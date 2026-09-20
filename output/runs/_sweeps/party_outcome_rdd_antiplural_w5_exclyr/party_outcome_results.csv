@@ -1,0 +1,101 @@
+axis,axis_label,level,cutoff,n_sample,form,score,score_label,n,est,se,pval,bw
+score_gap,Top-2 illiberality gap (raw),-Inf,-Inf,1347,binary,v2xpa_popul,Populism (v2xpa_popul),1347,-0.17605800402304728,0.09061740520191881,0.052031646128088,18.030123208197338
+score_gap,Top-2 illiberality gap (raw),-Inf,-Inf,1347,binary,ep_galtan,GAL-TAN (ep_galtan),53,0.5327611896525795,0.4213760610972481,0.2061092269214525,9.637898981805925
+score_gap,Top-2 illiberality gap (raw),-Inf,-Inf,1347,binary,v2pariglef_neg,Economic left (negated v2pariglef),1343,-0.43883562045154406,0.0852198205457155,2.6124461284745374e-7,17.137565580617824
+score_gap,Top-2 illiberality gap (raw),-Inf,-Inf,1347,binary,v2paanteli,Anti-elitism (v2paanteli),1347,-0.12040239149838633,0.0859385845989281,0.16120560216308713,20.418277727067977
+score_gap,Top-2 illiberality gap (raw),-Inf,-Inf,1347,binary,v2paminor,Minority rights (v2paminor; higher = MORE supportive),1347,-0.6787106092373845,0.06294389724125972,4.151164427997024e-27,19.150045964483112
+score_gap,Top-2 illiberality gap (raw),-Inf,-Inf,1347,continuous,v2xpa_popul,Populism (v2xpa_popul),1347,-0.09306917144604798,0.04526406123683222,0.03976918420396718,17.63663907560823
+score_gap,Top-2 illiberality gap (raw),-Inf,-Inf,1347,continuous,ep_galtan,GAL-TAN (ep_galtan),54,2.1444348240090307,1.6272336610516869,0.18755696428446963,11.575992641768678
+score_gap,Top-2 illiberality gap (raw),-Inf,-Inf,1347,continuous,v2pariglef_neg,Economic left (negated v2pariglef),1346,-0.9817282567338557,0.23786009094925278,3.6699172308585676e-5,18.363813701387343
+score_gap,Top-2 illiberality gap (raw),-Inf,-Inf,1347,continuous,v2paanteli,Anti-elitism (v2paanteli),1347,-0.5731366380785605,0.26127633924289223,0.028263941501105328,17.549911500726044
+score_gap,Top-2 illiberality gap (raw),-Inf,-Inf,1347,continuous,v2paminor,Minority rights (v2paminor; higher = MORE supportive),1347,-0.9674337774747255,0.23538865413871105,3.9575806050724464e-5,15.708645823620847
+score_gap,Top-2 illiberality gap (raw),q20,0.018000000000000016,1081,binary,v2xpa_popul,Populism (v2xpa_popul),1081,-0.2709863451700725,0.09694367041467648,0.005185206469576459,20.774788987193187
+score_gap,Top-2 illiberality gap (raw),q20,0.018000000000000016,1081,binary,ep_galtan,GAL-TAN (ep_galtan),34,0.3630496049927932,0.5117568196331748,0.47806499298979466,9.474618710900478
+score_gap,Top-2 illiberality gap (raw),q20,0.018000000000000016,1081,binary,v2pariglef_neg,Economic left (negated v2pariglef),1077,-0.47143833859770184,0.09434846044284488,5.829602652271546e-7,19.797567686476075
+score_gap,Top-2 illiberality gap (raw),q20,0.018000000000000016,1081,binary,v2paanteli,Anti-elitism (v2paanteli),1081,-0.22218948164769775,0.09393485612631265,0.01801269176145107,22.40197239469975
+score_gap,Top-2 illiberality gap (raw),q20,0.018000000000000016,1081,binary,v2paminor,Minority rights (v2paminor; higher = MORE supportive),1081,-0.7067432991221658,0.06959011218681985,3.122370452377646e-24,18.88307408523164
+score_gap,Top-2 illiberality gap (raw),q20,0.018000000000000016,1081,continuous,v2xpa_popul,Populism (v2xpa_popul),1081,-0.10064227901048073,0.050578837735913706,0.04661186531135218,21.39560898068443
+score_gap,Top-2 illiberality gap (raw),q20,0.018000000000000016,1081,continuous,ep_galtan,GAL-TAN (ep_galtan),34,1.5642960767048457,1.7754533747645223,0.3782807347411467,11.813002170470616
+score_gap,Top-2 illiberality gap (raw),q20,0.018000000000000016,1081,continuous,v2pariglef_neg,Economic left (negated v2pariglef),1080,-1.0735168106011193,0.27431524986091343,9.098977611832077e-5,20.899403094012754
+score_gap,Top-2 illiberality gap (raw),q20,0.018000000000000016,1081,continuous,v2paanteli,Anti-elitism (v2paanteli),1081,-0.6761862658262908,0.30172167868655236,0.025020067899856537,20.580898511773547
+score_gap,Top-2 illiberality gap (raw),q20,0.018000000000000016,1081,continuous,v2paminor,Minority rights (v2paminor; higher = MORE supportive),1081,-1.122080133611069,0.24287923911314116,3.839072373031713e-6,16.879879397011152
+score_gap,Top-2 illiberality gap (raw),q40,0.08999999999999997,810,binary,v2xpa_popul,Populism (v2xpa_popul),810,-0.2544558566010466,0.11081756820879149,0.021666224513341124,22.331029508966775
+score_gap,Top-2 illiberality gap (raw),q40,0.08999999999999997,810,binary,ep_galtan,GAL-TAN (ep_galtan),27,0.1362940448267423,0.7604608865020623,0.8577605775549602,6.141668674836255
+score_gap,Top-2 illiberality gap (raw),q40,0.08999999999999997,810,binary,v2pariglef_neg,Economic left (negated v2pariglef),810,-0.3469779172677643,0.1137711172764718,0.0022900208750589977,20.266962275930993
+score_gap,Top-2 illiberality gap (raw),q40,0.08999999999999997,810,binary,v2paanteli,Anti-elitism (v2paanteli),810,-0.24367421683084622,0.10173972755492383,0.016616993125276844,25.245942359143992
+score_gap,Top-2 illiberality gap (raw),q40,0.08999999999999997,810,binary,v2paminor,Minority rights (v2paminor; higher = MORE supportive),810,-0.7411018836693976,0.07046222094228181,7.158515408212478e-26,21.925702503877694
+score_gap,Top-2 illiberality gap (raw),q40,0.08999999999999997,810,continuous,v2xpa_popul,Populism (v2xpa_popul),810,-0.04739726251825499,0.05883600406533599,0.42048354810993516,22.27714324413378
+score_gap,Top-2 illiberality gap (raw),q40,0.08999999999999997,810,continuous,ep_galtan,GAL-TAN (ep_galtan),27,3.623249353032731,5.4087072587152205,0.5029266835058506,4.102023536950955
+score_gap,Top-2 illiberality gap (raw),q40,0.08999999999999997,810,continuous,v2pariglef_neg,Economic left (negated v2pariglef),810,-0.6840616097184197,0.32537849527630863,0.035522054605461754,20.953857832209323
+score_gap,Top-2 illiberality gap (raw),q40,0.08999999999999997,810,continuous,v2paanteli,Anti-elitism (v2paanteli),810,-0.39784153193160104,0.3495237096567077,0.2550206807707222,21.892306030153534
+score_gap,Top-2 illiberality gap (raw),q40,0.08999999999999997,810,continuous,v2paminor,Minority rights (v2paminor; higher = MORE supportive),810,-1.285700058908569,0.27485334027250163,2.9001492093313094e-6,18.573105833312038
+score_gap,Top-2 illiberality gap (raw),q60,0.19860000000000003,539,binary,v2xpa_popul,Populism (v2xpa_popul),539,-0.42433001942383786,0.11937713568137734,3.786503727702926e-4,28.11047134552672
+score_gap,Top-2 illiberality gap (raw),q60,0.19860000000000003,539,binary,ep_galtan,GAL-TAN (ep_galtan),NA,NA,NA,NA,NA
+score_gap,Top-2 illiberality gap (raw),q60,0.19860000000000003,539,binary,v2pariglef_neg,Economic left (negated v2pariglef),539,-0.4940148367704354,0.13856463800046118,3.635369184149021e-4,21.900121505987304
+score_gap,Top-2 illiberality gap (raw),q60,0.19860000000000003,539,binary,v2paanteli,Anti-elitism (v2paanteli),539,-0.42549887536244874,0.11795741104511505,3.094897443451115e-4,25.891946733222767
+score_gap,Top-2 illiberality gap (raw),q60,0.19860000000000003,539,binary,v2paminor,Minority rights (v2paminor; higher = MORE supportive),539,-0.7519511444522586,0.08852157743341742,1.9869778601017504e-17,26.430280809330803
+score_gap,Top-2 illiberality gap (raw),q60,0.19860000000000003,539,continuous,v2xpa_popul,Populism (v2xpa_popul),539,-0.09827852452603897,0.07002368814923667,0.16046660804966464,23.856725667336732
+score_gap,Top-2 illiberality gap (raw),q60,0.19860000000000003,539,continuous,ep_galtan,GAL-TAN (ep_galtan),NA,NA,NA,NA,NA
+score_gap,Top-2 illiberality gap (raw),q60,0.19860000000000003,539,continuous,v2pariglef_neg,Economic left (negated v2pariglef),539,-0.8083947283723203,0.4119502858770116,0.049720596055168535,24.756200944000174
+score_gap,Top-2 illiberality gap (raw),q60,0.19860000000000003,539,continuous,v2paanteli,Anti-elitism (v2paanteli),539,-0.67152372963341,0.3989702223708138,0.09234751261277116,25.075871224158774
+score_gap,Top-2 illiberality gap (raw),q60,0.19860000000000003,539,continuous,v2paminor,Minority rights (v2paminor; higher = MORE supportive),539,-1.4701191196071726,0.3097751028031718,2.077221538445172e-6,22.22936526045916
+score_gap,Top-2 illiberality gap (raw),q80,0.437,271,binary,v2xpa_popul,Populism (v2xpa_popul),271,-0.2722544684354065,0.23284601830825197,0.24230419901082362,21.285849784750194
+score_gap,Top-2 illiberality gap (raw),q80,0.437,271,binary,ep_galtan,GAL-TAN (ep_galtan),NA,NA,NA,NA,NA
+score_gap,Top-2 illiberality gap (raw),q80,0.437,271,binary,v2pariglef_neg,Economic left (negated v2pariglef),271,-0.5085503371848183,0.22742870688395972,0.025346083695413663,18.00948347370509
+score_gap,Top-2 illiberality gap (raw),q80,0.437,271,binary,v2paanteli,Anti-elitism (v2paanteli),271,-0.3722261423456351,0.19224860915155412,0.052846786166565754,28.28438760995327
+score_gap,Top-2 illiberality gap (raw),q80,0.437,271,binary,v2paminor,Minority rights (v2paminor; higher = MORE supportive),271,-0.9134202900661036,0.09039705559766285,5.274473073457965e-24,27.38463166897373
+score_gap,Top-2 illiberality gap (raw),q80,0.437,271,continuous,v2xpa_popul,Populism (v2xpa_popul),271,-0.1523653286771115,0.10699818895039262,0.15444672202008597,32.576978316273134
+score_gap,Top-2 illiberality gap (raw),q80,0.437,271,continuous,ep_galtan,GAL-TAN (ep_galtan),NA,NA,NA,NA,NA
+score_gap,Top-2 illiberality gap (raw),q80,0.437,271,continuous,v2pariglef_neg,Economic left (negated v2pariglef),271,-1.6743947753483082,0.5873256190828535,0.0043598439957312,31.00915204082758
+score_gap,Top-2 illiberality gap (raw),q80,0.437,271,continuous,v2paanteli,Anti-elitism (v2paanteli),271,-1.1532093825189484,0.6284307117128681,0.06649648847469346,28.874577196556462
+score_gap,Top-2 illiberality gap (raw),q80,0.437,271,continuous,v2paminor,Minority rights (v2paminor; higher = MORE supportive),271,-2.561941747141499,0.4175298384800477,8.465237426057206e-10,18.99565821642014
+score_gap_z,Top-2 illiberality gap (within-country SDs),-Inf,-Inf,1347,binary,v2xpa_popul,Populism (v2xpa_popul),1347,-0.17605800402304728,0.09061740520191881,0.052031646128088,18.030123208197338
+score_gap_z,Top-2 illiberality gap (within-country SDs),-Inf,-Inf,1347,binary,ep_galtan,GAL-TAN (ep_galtan),53,0.5327611896525795,0.4213760610972481,0.2061092269214525,9.637898981805925
+score_gap_z,Top-2 illiberality gap (within-country SDs),-Inf,-Inf,1347,binary,v2pariglef_neg,Economic left (negated v2pariglef),1343,-0.43883562045154406,0.0852198205457155,2.6124461284745374e-7,17.137565580617824
+score_gap_z,Top-2 illiberality gap (within-country SDs),-Inf,-Inf,1347,binary,v2paanteli,Anti-elitism (v2paanteli),1347,-0.12040239149838633,0.0859385845989281,0.16120560216308713,20.418277727067977
+score_gap_z,Top-2 illiberality gap (within-country SDs),-Inf,-Inf,1347,binary,v2paminor,Minority rights (v2paminor; higher = MORE supportive),1347,-0.6787106092373845,0.06294389724125972,4.151164427997024e-27,19.150045964483112
+score_gap_z,Top-2 illiberality gap (within-country SDs),-Inf,-Inf,1347,continuous,v2xpa_popul,Populism (v2xpa_popul),1347,-0.09306917144604798,0.04526406123683222,0.03976918420396718,17.63663907560823
+score_gap_z,Top-2 illiberality gap (within-country SDs),-Inf,-Inf,1347,continuous,ep_galtan,GAL-TAN (ep_galtan),54,2.1444348240090307,1.6272336610516869,0.18755696428446963,11.575992641768678
+score_gap_z,Top-2 illiberality gap (within-country SDs),-Inf,-Inf,1347,continuous,v2pariglef_neg,Economic left (negated v2pariglef),1346,-0.9817282567338557,0.23786009094925278,3.6699172308585676e-5,18.363813701387343
+score_gap_z,Top-2 illiberality gap (within-country SDs),-Inf,-Inf,1347,continuous,v2paanteli,Anti-elitism (v2paanteli),1347,-0.5731366380785605,0.26127633924289223,0.028263941501105328,17.549911500726044
+score_gap_z,Top-2 illiberality gap (within-country SDs),-Inf,-Inf,1347,continuous,v2paminor,Minority rights (v2paminor; higher = MORE supportive),1347,-0.9674337774747255,0.23538865413871105,3.9575806050724464e-5,15.708645823620847
+score_gap_z,Top-2 illiberality gap (within-country SDs),q20,0.2543703141156731,1076,binary,v2xpa_popul,Populism (v2xpa_popul),1076,-0.2346146213648015,0.09563088357653982,0.014153834288751336,22.394896597587426
+score_gap_z,Top-2 illiberality gap (within-country SDs),q20,0.2543703141156731,1076,binary,ep_galtan,GAL-TAN (ep_galtan),34,0.3630496049927932,0.5117568196331748,0.47806499298979466,9.474618710900478
+score_gap_z,Top-2 illiberality gap (within-country SDs),q20,0.2543703141156731,1076,binary,v2pariglef_neg,Economic left (negated v2pariglef),1072,-0.46853050991876916,0.09356686336587283,5.515856739162373e-7,20.459768190391
+score_gap_z,Top-2 illiberality gap (within-country SDs),q20,0.2543703141156731,1076,binary,v2paanteli,Anti-elitism (v2paanteli),1076,-0.172367120180771,0.08580285026740436,0.04455049152697045,28.039383754922078
+score_gap_z,Top-2 illiberality gap (within-country SDs),q20,0.2543703141156731,1076,binary,v2paminor,Minority rights (v2paminor; higher = MORE supportive),1076,-0.6488160377292912,0.06455311725977649,9.104490890222524e-24,26.129625627085954
+score_gap_z,Top-2 illiberality gap (within-country SDs),q20,0.2543703141156731,1076,continuous,v2xpa_popul,Populism (v2xpa_popul),1076,-0.09088201881818242,0.04929817014982885,0.06525354989523684,21.277595381296745
+score_gap_z,Top-2 illiberality gap (within-country SDs),q20,0.2543703141156731,1076,continuous,ep_galtan,GAL-TAN (ep_galtan),34,1.5642960767048457,1.7754533747645223,0.3782807347411467,11.813002170470616
+score_gap_z,Top-2 illiberality gap (within-country SDs),q20,0.2543703141156731,1076,continuous,v2pariglef_neg,Economic left (negated v2pariglef),1075,-0.9500790496809437,0.27024466719200957,4.3871931418745737e-4,20.503130281613764
+score_gap_z,Top-2 illiberality gap (within-country SDs),q20,0.2543703141156731,1076,continuous,v2paanteli,Anti-elitism (v2paanteli),1076,-0.5765163929111323,0.28481280013776933,0.04295018323136494,21.120450047204766
+score_gap_z,Top-2 illiberality gap (within-country SDs),q20,0.2543703141156731,1076,continuous,v2paminor,Minority rights (v2paminor; higher = MORE supportive),1076,-0.94493451761083,0.2539471339825597,1.9844400434764959e-4,17.11937518315702
+score_gap_z,Top-2 illiberality gap (within-country SDs),q40,0.8343017359285178,808,binary,v2xpa_popul,Populism (v2xpa_popul),808,-0.15210786747295607,0.1153620941249752,0.18732778110165454,23.47626611414605
+score_gap_z,Top-2 illiberality gap (within-country SDs),q40,0.8343017359285178,808,binary,ep_galtan,GAL-TAN (ep_galtan),28,0.39750927506555367,0.5650518176871997,0.4817493650677388,11.588177622734046
+score_gap_z,Top-2 illiberality gap (within-country SDs),q40,0.8343017359285178,808,binary,v2pariglef_neg,Economic left (negated v2pariglef),804,-0.3717591223327177,0.12456341065444304,0.0028404500969727397,19.902298744814033
+score_gap_z,Top-2 illiberality gap (within-country SDs),q40,0.8343017359285178,808,binary,v2paanteli,Anti-elitism (v2paanteli),808,-0.12999165323906575,0.12300021870330889,0.290584236484722,20.722917037893946
+score_gap_z,Top-2 illiberality gap (within-country SDs),q40,0.8343017359285178,808,binary,v2paminor,Minority rights (v2paminor; higher = MORE supportive),808,-0.7499739332780287,0.0787207771587563,1.6187245386104298e-21,21.349004209672064
+score_gap_z,Top-2 illiberality gap (within-country SDs),q40,0.8343017359285178,808,continuous,v2xpa_popul,Populism (v2xpa_popul),808,-0.03376895295008919,0.06910060815336043,0.6250593733763748,19.113063410736444
+score_gap_z,Top-2 illiberality gap (within-country SDs),q40,0.8343017359285178,808,continuous,ep_galtan,GAL-TAN (ep_galtan),28,1.9183804253079177,1.894849075856641,0.31133795461805575,12.752875042765131
+score_gap_z,Top-2 illiberality gap (within-country SDs),q40,0.8343017359285178,808,continuous,v2pariglef_neg,Economic left (negated v2pariglef),807,-0.9210583638179064,0.3567426762117056,0.009827046358127884,20.802202385712217
+score_gap_z,Top-2 illiberality gap (within-country SDs),q40,0.8343017359285178,808,continuous,v2paanteli,Anti-elitism (v2paanteli),808,-0.2924304847771236,0.4037227300223791,0.4688601231848603,19.46978171366941
+score_gap_z,Top-2 illiberality gap (within-country SDs),q40,0.8343017359285178,808,continuous,v2paminor,Minority rights (v2paminor; higher = MORE supportive),808,-1.405993645399376,0.2990866655018333,2.589446557801475e-6,17.663331535997482
+score_gap_z,Top-2 illiberality gap (within-country SDs),q60,1.4428374366081853,538,binary,v2xpa_popul,Populism (v2xpa_popul),538,-0.21784473595602105,0.15123065612448744,0.14973164364087257,21.804789932369257
+score_gap_z,Top-2 illiberality gap (within-country SDs),q60,1.4428374366081853,538,binary,ep_galtan,GAL-TAN (ep_galtan),NA,NA,NA,NA,NA
+score_gap_z,Top-2 illiberality gap (within-country SDs),q60,1.4428374366081853,538,binary,v2pariglef_neg,Economic left (negated v2pariglef),534,-0.29043206162337176,0.17296752561000175,0.09312997714367728,17.470181886893553
+score_gap_z,Top-2 illiberality gap (within-country SDs),q60,1.4428374366081853,538,binary,v2paanteli,Anti-elitism (v2paanteli),538,-0.24776705611493904,0.1357856444631051,0.06804743562292964,25.871108707292922
+score_gap_z,Top-2 illiberality gap (within-country SDs),q60,1.4428374366081853,538,binary,v2paminor,Minority rights (v2paminor; higher = MORE supportive),538,-0.7406927325032673,0.0923051207550215,1.0202766677468092e-15,28.05648841341975
+score_gap_z,Top-2 illiberality gap (within-country SDs),q60,1.4428374366081853,538,continuous,v2xpa_popul,Populism (v2xpa_popul),538,-0.04709517830968851,0.08533542007322488,0.5810284306360785,21.21394843921046
+score_gap_z,Top-2 illiberality gap (within-country SDs),q60,1.4428374366081853,538,continuous,ep_galtan,GAL-TAN (ep_galtan),NA,NA,NA,NA,NA
+score_gap_z,Top-2 illiberality gap (within-country SDs),q60,1.4428374366081853,538,continuous,v2pariglef_neg,Economic left (negated v2pariglef),537,-0.9871770417890668,0.46040094300008366,0.032019415463980544,23.29238216758136
+score_gap_z,Top-2 illiberality gap (within-country SDs),q60,1.4428374366081853,538,continuous,v2paanteli,Anti-elitism (v2paanteli),538,-0.46952178061198224,0.4999119797097675,0.34762350038020756,20.46726696813793
+score_gap_z,Top-2 illiberality gap (within-country SDs),q60,1.4428374366081853,538,continuous,v2paminor,Minority rights (v2paminor; higher = MORE supportive),538,-2.048645968653324,0.3940488018176254,2.0040114347756862e-7,19.692004200014004
+score_gap_z,Top-2 illiberality gap (within-country SDs),q80,2.086835973553168,269,binary,v2xpa_popul,Populism (v2xpa_popul),269,0.06116241867674699,0.20794371618963362,0.7686588121789536,25.65356354982665
+score_gap_z,Top-2 illiberality gap (within-country SDs),q80,2.086835973553168,269,binary,ep_galtan,GAL-TAN (ep_galtan),NA,NA,NA,NA,NA
+score_gap_z,Top-2 illiberality gap (within-country SDs),q80,2.086835973553168,269,binary,v2pariglef_neg,Economic left (negated v2pariglef),265,-0.36782034018376825,0.19147966157119592,0.05473966786194008,27.817628525421714
+score_gap_z,Top-2 illiberality gap (within-country SDs),q80,2.086835973553168,269,binary,v2paanteli,Anti-elitism (v2paanteli),269,-0.002705118325634026,0.2128332353785859,0.9898591306364818,24.08439152057313
+score_gap_z,Top-2 illiberality gap (within-country SDs),q80,2.086835973553168,269,binary,v2paminor,Minority rights (v2paminor; higher = MORE supportive),269,-0.6758569093976132,0.14004007482738043,1.3918520353170213e-6,27.3448132750935
+score_gap_z,Top-2 illiberality gap (within-country SDs),q80,2.086835973553168,269,continuous,v2xpa_popul,Populism (v2xpa_popul),269,0.08085277951884995,0.12831877014949758,0.5286336338490021,21.451427759421406
+score_gap_z,Top-2 illiberality gap (within-country SDs),q80,2.086835973553168,269,continuous,ep_galtan,GAL-TAN (ep_galtan),NA,NA,NA,NA,NA
+score_gap_z,Top-2 illiberality gap (within-country SDs),q80,2.086835973553168,269,continuous,v2pariglef_neg,Economic left (negated v2pariglef),268,-1.1414099759794483,0.7155405345898171,0.11067385629931678,25.618583392240517
+score_gap_z,Top-2 illiberality gap (within-country SDs),q80,2.086835973553168,269,continuous,v2paanteli,Anti-elitism (v2paanteli),269,0.19523978861582875,0.7162899943912446,0.7851831048779923,21.425025783398855
+score_gap_z,Top-2 illiberality gap (within-country SDs),q80,2.086835973553168,269,continuous,v2paminor,Minority rights (v2paminor; higher = MORE supportive),269,-2.2242576904034963,0.5002068467884381,8.720929298257349e-6,25.635019026712445

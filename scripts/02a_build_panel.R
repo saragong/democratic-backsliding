@@ -23,6 +23,8 @@
 library(tidyverse)
 library(here)
 
+source(here::here("scripts", "vdem_indices.R"))
+
 data_dir <- here::here("data")
 
 # --- Load all sources ---------------------------------------------------------
@@ -190,7 +192,11 @@ panel <- panel |>
         hos_power_linear,
         hog_power_linear,
         hos_power_vdem,
-        hog_power_vdem
+        hog_power_vdem,
+        # The high- and mid-level democracy indices, listed in
+        # scripts/vdem_indices.R. all_of() so a name that 01f stopped
+        # producing is an error here rather than a silently absent outcome.
+        all_of(VDEM_INDEX_NEW_VARS)
       ),
     by = c("country_text_id", "year")
   )

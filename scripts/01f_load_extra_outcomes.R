@@ -29,6 +29,8 @@ library(haven)
 library(here)
 library(ERT)
 
+source(here::here("scripts", "vdem_indices.R"))
+
 data_dir <- here::here("data")
 elections_dir <- file.path(data_dir, "elections_database")
 
@@ -202,7 +204,12 @@ vdem_raw <- ERT::vdem
 needed <- c(
   "country_text_id", "year",
   "v2x_jucon", "v2xlg_legcon", "v2ex_hosw", "v2ex_hogw",
-  POWER_COMPONENTS$hos_tag, POWER_COMPONENTS$hog_tag
+  POWER_COMPONENTS$hos_tag, POWER_COMPONENTS$hog_tag,
+  # The high- and mid-level democracy indices used as RDD outcomes. The list
+  # is in scripts/vdem_indices.R because 02a and rdd_helpers.R need the same
+  # one. NEW_VARS excludes the three already reaching combined_panel.rds by
+  # another route, which would otherwise arrive twice on the join.
+  VDEM_INDEX_NEW_VARS
 )
 missing_vars <- setdiff(needed, names(vdem_raw))
 if (length(missing_vars) > 0) {
@@ -272,6 +279,9 @@ vdem_sub <- tibble(
   hos_power_vdem = linear_recode_hosw(vd$v2ex_hosw),
   hog_power_vdem = linear_recode_hosw(vd$v2ex_hogw)
 ) |>
+  # The democracy indices pass through untouched -- unlike the power indices
+  # above they need no reconstruction, they ARE V-Dem's published aggregates.
+  bind_cols(vd[, VDEM_INDEX_NEW_VARS, drop = FALSE]) |>
   filter(!is.na(country_text_id), !is.na(year))
 
 cat(sprintf(
@@ -287,6 +297,9 @@ report_coverage(
     "hos_power_vdem", "hog_power_vdem"
   )
 )
+
+cat("\nV-Dem democracy indices (RDD outcomes):\n")
+report_coverage(vdem_sub, VDEM_INDEX_NEW_VARS)
 
 # ---- executive-power sanity check -------------------------------------------
 # If the propose-legislation reverse-coding above were missed, these cases would

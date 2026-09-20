@@ -51,6 +51,13 @@ if (!exists("BACKSLIDING_WINDOW_YEARS")) BACKSLIDING_WINDOW_YEARS <- 5
 if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
   TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- TRUE
 }
+# Selects the PLACEBO build -- outcomes and treatment measured over the window
+# BEFORE the election rather than after it, as a pre-trend check. Set in
+# 11_build_rdd_data.R; see the long comment there. Like the convention above it
+# selects a build, it does not re-derive anything, and a mismatch between what
+# is asked for here and what the build actually is hard-errors below.
+if (!exists("PLACEBO_PRE_WINDOW")) PLACEBO_PRE_WINDOW <- FALSE
+stopifnot(is.logical(PLACEBO_PRE_WINDOW))
 
 # Which treatment the fuzzy RD instruments for:
 #   backsliding_Nyr        an ERT autocratization episode starts in the window
@@ -112,6 +119,26 @@ if (!exists("SCORE_GAP_MIN")) SCORE_GAP_MIN <- 0
 # Compared with `>` (strictly above the threshold).
 if (!exists("ILLIBERAL_CUTOFF")) ILLIBERAL_CUTOFF <- 0.6
 
+# Maximum other_score -- a CEILING on the LESS-illiberal top-2 member, the
+# mirror of ILLIBERAL_CUTOFF's floor on the more-illiberal one. Same three
+# forms, but the no-restriction sentinel is +Inf rather than -Inf, because
+# nothing is above +Inf.
+#
+# On its own it is "the opponent is not itself illiberal". Paired with
+# ILLIBERAL_CUTOFF at the same number it is the restriction the Sep 7 memo
+# actually wanted: ONE side classified illiberal and the OTHER not. That
+# addresses the standing objection that "narrow" constrains the vote margin
+# while the illiberality GAP between the two parties can still be near zero --
+# 29% of elections have a top-2 gap under 0.05, where crossing the cutoff is
+# not a real treatment contrast at all.
+#
+# Where the number comes from is deliberately not this script's business.
+# 20_populist_threshold.R derives one by calibrating against The PopuList, but
+# a quantile ("q50") or a hand-picked value are equally valid ways to set it,
+# and 13_restriction_grid.R sweeps it as axis R6.
+# Compared with `<=` (a score exactly at the threshold is kept).
+if (!exists("OTHER_CUTOFF_MAX")) OTHER_CUTOFF_MAX <- Inf
+
 # Driver scripts that only need the numbers (14_window_sweep.R's secondary
 # treatment definitions, 15_alt_specs.R's grid) can set this FALSE to skip the
 # figures, which are the slow part of a run.
@@ -121,7 +148,10 @@ if (!exists("MAKE_PLOTS")) MAKE_PLOTS <- TRUE
 # Load + restrict
 # ------------------------------------------------------------------------------
 
-build_suffix <- if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else "_exclyr"
+build_suffix <- paste0(
+  if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else "_exclyr",
+  if (PLACEBO_PRE_WINDOW) "_pre" else ""
+)
 build_path <- file.path(
   data_dir,
   "rdd_build",
@@ -135,8 +165,9 @@ if (!file.exists(build_path)) {
     "No build at ", build_path, ".\n",
     "Run 11_build_rdd_data.R with ILLIBERALISM_VAR = '", ILLIBERALISM_VAR,
     "', BACKSLIDING_WINDOW_YEARS = ", BACKSLIDING_WINDOW_YEARS,
-    " and TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR = ",
-    TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, " first."
+    ", TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR = ",
+    TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
+    " and PLACEBO_PRE_WINDOW = ", PLACEBO_PRE_WINDOW, " first."
   )
 }
 d <- readRDS(build_path)
@@ -149,6 +180,18 @@ if (!identical(build_incl, TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR)) {
     "Build at ", build_path, " was made with ",
     "TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR = ", build_incl,
     " but this run asked for ", TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
+    ". Rebuild it with 11_build_rdd_data.R."
+  )
+}
+# Same guard for the placebo, and it matters more: a placebo build estimated as
+# though it were the real one would report a pre-election correlation as the
+# headline post-election effect, and nothing in the numbers would look wrong.
+# Builds predating the attribute are all real (non-placebo) ones.
+build_placebo <- attr(d, "placebo_pre_window") %||% FALSE
+if (!identical(build_placebo, PLACEBO_PRE_WINDOW)) {
+  stop(
+    "Build at ", build_path, " was made with PLACEBO_PRE_WINDOW = ",
+    build_placebo, " but this run asked for ", PLACEBO_PRE_WINDOW,
     ". Rebuild it with 11_build_rdd_data.R."
   )
 }
@@ -173,6 +216,14 @@ illiberal_thr <- resolve_threshold(
   parse_threshold(ILLIBERAL_CUTOFF, "ILLIBERAL_CUTOFF"),
   d$illiberal_score, "ILLIBERAL_CUTOFF"
 )
+# none_value = Inf: this one is a ceiling, so "no restriction" is +Inf. It is
+# resolved against other_score, the LESS-illiberal member -- so a quantile spec
+# means a percentile of the opponents' distribution, not of the illiberal
+# parties'.
+other_thr <- resolve_threshold(
+  parse_threshold(OTHER_CUTOFF_MAX, "OTHER_CUTOFF_MAX", none_value = Inf),
+  d$other_score, "OTHER_CUTOFF_MAX"
+)
 
 # The run folder is named by the RESOLVED absolute values, not the specs, so a
 # "q50" run and a hand-written run at the same resolved number correctly share a
@@ -185,11 +236,15 @@ cfg <- list(
   treatment = TREATMENT_VAR,
   score_gap_min = score_gap_thr$absolute,
   illiberal_cutoff = illiberal_thr$absolute,
+  other_cutoff_max = other_thr$absolute,
   incl_election_year = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
+  placebo = PLACEBO_PRE_WINDOW,
   score_gap_spec = score_gap_thr$spec,
   score_gap_form = score_gap_thr$kind,
   illiberal_cutoff_spec = illiberal_thr$spec,
-  illiberal_cutoff_form = illiberal_thr$kind
+  illiberal_cutoff_form = illiberal_thr$kind,
+  other_cutoff_spec = other_thr$spec,
+  other_cutoff_form = other_thr$kind
 )
 slug <- run_slug(cfg)
 out_run <- run_dir(cfg)
@@ -198,6 +253,7 @@ plots_dir <- file.path(out_run, "plots")
 cat("\nSample restrictions:\n")
 d <- apply_threshold(d, "score_gap_z", score_gap_thr, "SCORE_GAP_MIN", op = ">=")
 d <- apply_threshold(d, "illiberal_score", illiberal_thr, "ILLIBERAL_CUTOFF", op = ">")
+d <- apply_threshold(d, "other_score", other_thr, "OTHER_CUTOFF_MAX", op = "<=")
 cat(sprintf("  %-16s %d elections\n\n", "FINAL SAMPLE", nrow(d)))
 
 if (nrow(d) < RD_MIN_OBS) {
@@ -218,6 +274,9 @@ restriction_label <- {
     },
     if (illiberal_thr$kind != "none") {
       sprintf("illiberal_score > %.4g [%s]", illiberal_thr$absolute, illiberal_thr$spec)
+    },
+    if (other_thr$kind != "none") {
+      sprintf("other_score <= %.4g [%s]", other_thr$absolute, other_thr$spec)
     }
   )
   if (length(parts) == 0) "all scored elections" else paste(parts, collapse = ", ")
@@ -424,12 +483,31 @@ if (MAKE_PLOTS) {
 cat(sprintf("\n=== %s ===\n", slug))
 results <- run_spec(d, slug)
 
+# The placebo has to announce itself on the face of every table. A reader who
+# picks up an outcomes_table.html without the folder name in front of them must
+# not be able to mistake a pre-election correlation for the headline effect.
+window_label <- if (PLACEBO_PRE_WINDOW) {
+  sprintf(
+    "PLACEBO (pre-election): [election_year - %d, election_year - 1]",
+    BACKSLIDING_WINDOW_YEARS - (!TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR)
+  )
+} else {
+  sprintf(
+    "[%s, election_year + %d]",
+    if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) {
+      "election_year"
+    } else {
+      "election_year + 1"
+    },
+    BACKSLIDING_WINDOW_YEARS
+  )
+}
+
 subtitle <- sprintf(
-  "Instrument: %s | Treatment: %s | Window: [%s, election_year + %d] | Sample: %s (N = %d)",
+  "Instrument: %s | Treatment: %s | Window: %s | Sample: %s (N = %d)",
   INSTRUMENT_DISPLAY[[ILLIBERALISM_VAR]],
   TREATMENT_DISPLAY[[TREATMENT_VAR]],
-  if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "election_year" else "election_year + 1",
-  BACKSLIDING_WINDOW_YEARS,
+  window_label,
   restriction_label,
   nrow(d)
 )
