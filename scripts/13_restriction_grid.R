@@ -133,6 +133,30 @@ threshold_axis <- function(var, label, data = d_full, probs = c(0.2, 0.4, 0.6, 0
   list(name = var, label = label, levels = levels)
 }
 
+# The CEILING counterpart: tightens from above, so the levels run from "no
+# restriction" down to a low quantile. Used for the less-illiberal party's
+# score, where the restriction of interest is "the opponent is NOT itself
+# illiberal" -- the mirror of R2.
+#
+# Levels are the LOW quantiles (q80 down to q20) so that, as in every other
+# axis here, moving down the rows means a tighter sample.
+ceiling_axis <- function(var, label, data = d_full, probs = c(0.8, 0.6, 0.4, 0.2)) {
+  cuts <- unname(quantile(data[[var]], probs = probs, na.rm = TRUE))
+  levels <- list(list(label = "all", cutoff = Inf, fn = function(df) df))
+  for (i in seq_along(cuts)) {
+    local({
+      cut_i <- cuts[i]
+      p_i <- probs[i]
+      levels[[length(levels) + 1]] <<- list(
+        label = sprintf("q%02d (\u2264 %.3g)", round(p_i * 100), cut_i),
+        cutoff = cut_i,
+        fn = function(df) df[!is.na(df[[var]]) & df[[var]] <= cut_i, , drop = FALSE]
+      )
+    })
+  }
+  list(name = var, label = label, levels = levels)
+}
+
 AXES <- list(
   R1 = threshold_axis("score_gap", "R1: top-2 illiberality gap"),
   R2 = threshold_axis("illiberal_score", "R2: more-illiberal party's score"),
@@ -149,6 +173,12 @@ AXES <- list(
       )
     )
   ),
+  # The opponent-side ceiling. On its own it asks "does the result survive
+  # dropping elections where BOTH top-2 parties are illiberal?"; crossed with
+  # R2 (a floor on the more-illiberal party) it is the "one illiberal, one
+  # not" restriction that 20_populist_threshold.R calibrates a number for.
+  # Here it is swept over quantiles instead, so the answer does not depend on
+  # PopuList, which covers only 31 European countries.
   R5 = list(
     name = "election_type",
     label = "R5: election type",
@@ -165,7 +195,14 @@ AXES <- list(
         fn = function(df) df[df$election_type == "parliamentary", , drop = FALSE]
       )
     )
-  )
+  ),
+  # The opponent-side ceiling. On its own it asks "does the result survive
+  # dropping elections where BOTH top-2 parties are illiberal?"; crossed with
+  # R2 (a floor on the more-illiberal party) it is the "one illiberal, one
+  # not" restriction that 20_populist_threshold.R calibrates a number for.
+  # Swept over quantiles here, so this axis does not depend on PopuList, which
+  # covers only 31 European countries.
+  R6 = ceiling_axis("other_score", "R6: less-illiberal party's score (ceiling)")
 )
 
 # ------------------------------------------------------------------------------
@@ -495,7 +532,12 @@ save_composition(
 PAIRS <- list(
   c("R2", "R3"),
   c("R2", "R4"),
-  c("R3", "R4")
+  c("R3", "R4"),
+  # The floor on the illiberal side crossed with the ceiling on the other: the
+  # cells below the diagonal of this grid are the "one illiberal, one not"
+  # samples, at every threshold rather than at the one PopuList happens to
+  # imply.
+  c("R2", "R6")
 )
 
 cat("\n=== Pair grids ===\n")

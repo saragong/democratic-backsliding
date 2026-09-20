@@ -49,6 +49,13 @@ if (!exists("SWEEP_SCORE_GAP_MIN")) {
 if (!exists("SWEEP_ILLIBERAL_CUTOFF")) {
   SWEEP_ILLIBERAL_CUTOFF <- -Inf
 }
+# The ceiling on the less-illiberal party. Inf = no restriction (a ceiling's
+# no-op sentinel is +Inf, not -Inf). Present so this axis is held fixed
+# EXPLICITLY rather than by both the child and the pooling step happening to
+# fall back to the same default.
+if (!exists("SWEEP_OTHER_CUTOFF_MAX")) {
+  SWEEP_OTHER_CUTOFF_MAX <- Inf
+}
 # Passed explicitly into every child script below. run_script_with() builds a
 # FRESH environment per call, so a toggle merely set in this script's own scope
 # would not reach 11 or 12 -- they would silently fall back to their own default
@@ -130,6 +137,7 @@ for (n in if (SWEEP_REESTIMATE) WINDOWS else integer(0)) {
         PLACEBO_PRE_WINDOW = PLACEBO_PRE_WINDOW,
         SCORE_GAP_MIN = SWEEP_SCORE_GAP_MIN,
         ILLIBERAL_CUTOFF = SWEEP_ILLIBERAL_CUTOFF,
+        OTHER_CUTOFF_MAX = SWEEP_OTHER_CUTOFF_MAX,
         # Only the main treatment definition gets the full figure set; the other
         # two contribute numbers to the sweep plots below.
         MAKE_PLOTS = identical(trt, SWEEP_TREATMENTS[1])
@@ -154,6 +162,11 @@ sweep_name <- paste0(
   fmt_slug_num(SWEEP_SCORE_GAP_MIN),
   "_illib",
   fmt_slug_num(SWEEP_ILLIBERAL_CUTOFF),
+  if (is.finite(SWEEP_OTHER_CUTOFF_MAX)) {
+    paste0("_opp", fmt_slug_num(SWEEP_OTHER_CUTOFF_MAX))
+  } else {
+    ""
+  },
   build_suffix
 )
 out_dir <- sweep_dir(sweep_name)
@@ -162,13 +175,22 @@ collect <- function(file_name) {
   missing <- character(0)
   out <- map_dfr(WINDOWS, function(n) {
     map_dfr(SWEEP_TREATMENTS, function(trt) {
+      # Every field run_slug() reads must appear here. Omitting one does not
+      # error -- run_slug() falls back to that field's default -- so the
+      # pooling step quietly reads a DIFFERENT set of run folders than the
+      # estimation step just wrote, and the sweep reports the wrong numbers
+      # under the right name. That is exactly what happened when `placebo` was
+      # missing: the placebo sweep pooled the non-placebo runs and came out
+      # byte-identical to the real one.
       cfg <- list(
         instrument = SWEEP_INSTRUMENT,
         window = n,
         treatment = trt,
         score_gap_min = SWEEP_SCORE_GAP_MIN,
         illiberal_cutoff = SWEEP_ILLIBERAL_CUTOFF,
-        incl_election_year = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR
+        other_cutoff_max = SWEEP_OTHER_CUTOFF_MAX,
+        incl_election_year = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
+        placebo = PLACEBO_PRE_WINDOW
       )
       path <- file.path(RUNS_ROOT, run_slug(cfg), file_name)
       if (!file.exists(path)) {
@@ -219,14 +241,23 @@ restriction_label <- if (length(restriction_parts) == 0) {
 } else {
   paste(restriction_parts, collapse = ", ")
 }
-window_label <- sprintf(
-  "[%s, election_year + N]",
-  if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) {
-    "election_year"
-  } else {
-    "election_year + 1"
-  }
-)
+# Every figure and table this sweep writes carries this string, so a placebo
+# sweep says so on its face rather than only in its folder name.
+window_label <- if (PLACEBO_PRE_WINDOW) {
+  sprintf(
+    "PLACEBO (pre-election): [election_year - N%s, election_year - 1]",
+    if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else " + 1"
+  )
+} else {
+  sprintf(
+    "[%s, election_year + N]",
+    if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) {
+      "election_year"
+    } else {
+      "election_year + 1"
+    }
+  )
+}
 
 trt_display <- unname(TREATMENT_DISPLAY[SWEEP_TREATMENTS])
 label_treatment <- function(x) {

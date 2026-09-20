@@ -1,0 +1,38 @@
+outcome,outcome_label,panel,spec,treatment,n_first_stage,n_first_stage_treated,first_stage_coef,first_stage_pval,n_outcome,n_outcome_treated,rd_estimate,rd_se,rd_pval,late_estimate,late_se,late_pval,bandwidth
+Y_gdp_growth,PWT,growth,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1328,0,-0.003174212362151478,0.0069171787351740895,0.6463143840259695,NA,NA,NA,NA
+Y_gdp_growth_wb,World Bank,growth,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1321,0,-0.0035098465592578836,0.006920192597088362,0.6120221114579827,NA,NA,NA,NA
+Y_gdp_growth_imf,IMF WEO,growth,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1007,0,-0.0025427210991818446,0.007800000513271385,0.7444320246836091,NA,NA,NA,NA
+Y_inflation,"CPI, cumulative log",inflation,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1216,0,0.00590447410112023,0.047070151640602305,0.9001753189766664,NA,NA,NA,NA
+Y_unemployment,Unemployment rate,unemployment,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,907,0,0.05825943959463542,0.22170204714308894,0.7927181502359255,NA,NA,NA,NA
+Y_trade_pct_gdp,Trade / GDP,trade,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1186,0,-2.1799843074399656,2.1200490190720265,0.3038225054705288,NA,NA,NA,NA
+Y_top10_share,Top-10% income share,top10,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1228,0,-0.2824841107888447,0.18907444618149388,0.13516609744939576,NA,NA,NA,NA
+Y_gini_disp,Disposable,gini,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1090,0,-0.07165594941882136,0.07063167156778136,0.31034342850965413,NA,NA,NA,NA
+Y_gini_mkt,Market,gini,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1090,0,0.062648389336247,0.07870869336552645,0.4260595849383292,NA,NA,NA,NA
+Y_debt,Debt / GDP,fiscal,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1281,0,0.18345124683282732,2.6880084796741497,0.9455882044775678,NA,NA,NA,NA
+Y_deficit,Deficit / GDP,fiscal,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1126,0,-0.6029896510334993,1.2678029347853277,0.6343466871534862,NA,NA,NA,NA
+Y_checks_balances,Checks & balances,institutions,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1315,0,-0.004620165610416225,0.008646246700523413,0.5930959101047736,NA,NA,NA,NA
+Y_jucon,Judicial constraints,institutions,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1343,0,-0.007107600495018961,0.007012435915228797,0.31078758221064995,NA,NA,NA,NA
+Y_legcon,Legislative constraints,institutions,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1315,0,-0.0017326732236107867,0.010979732468789173,0.8746092714295597,NA,NA,NA,NA
+Y_hos_power,HOS,exec_power,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1343,0,0.0026099515354416816,0.007139061131424504,0.7146729014039575,NA,NA,NA,NA
+Y_hog_power,HOG,exec_power,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,705,0,-0.01075648281627627,0.007002371942125999,0.12450897896070341,NA,NA,NA,NA
+Y_hos_power_vdem,HOS (v2ex_hosw),exec_power_alt,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1343,0,0.0032678339258757462,0.015986920987757443,0.8380356868789534,NA,NA,NA,NA
+Y_hog_power_vdem,HOG (v2ex_hogw),exec_power_alt,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1343,0,0.0012697330591570424,0.01808382716216465,0.9440235418732497,NA,NA,NA,NA
+Y_polyarchy,Electoral (polyarchy),vdem_high,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1343,0,0.003733604631357298,0.006921138510784867,0.5895767412119834,NA,NA,NA,NA
+Y_libdem,Liberal,vdem_high,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1343,0,-9.112998130073539e-4,0.005736899891883696,0.8737879795277744,NA,NA,NA,NA
+Y_partipdem,Participatory,vdem_high,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1342,0,0.0032834190703132,0.004272235774460292,0.44216157258341104,NA,NA,NA,NA
+Y_delibdem,Deliberative,vdem_high,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1343,0,7.695833385586359e-4,0.006913075031371178,0.911360322141835,NA,NA,NA,NA
+Y_egaldem,Egalitarian,vdem_high,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1343,0,0.002856949129259817,0.004120153045403262,0.4880532315891576,NA,NA,NA,NA
+Y_elecoff,Elected officials,vdem_electoral,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1343,0,0.03449763302755156,0.019141059691557404,0.07150067372690913,NA,NA,NA,NA
+Y_frefair,Clean elections,vdem_electoral,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1343,0,0.007417472558195091,0.007496948067546421,0.3224679872877379,NA,NA,NA,NA
+Y_frassoc,Association,vdem_electoral,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1343,0,-0.0014896003311628532,0.009345623876804097,0.8733615039584929,NA,NA,NA,NA
+Y_suffr,Suffrage,vdem_electoral,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1343,0,2.1898968607084876e-4,2.0060025287280237e-4,0.2749772816390147,NA,NA,NA,NA
+Y_freexp,Expression & alt. info,vdem_electoral,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1343,0,-0.0021625817619048268,0.01152567103907885,0.8511653397893827,NA,NA,NA,NA
+Y_cl_rol,Rule of law,vdem_liberal,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1343,0,-0.00515996589278136,0.008782799590594763,0.5568625125868405,NA,NA,NA,NA
+Y_cspart,Civil society,vdem_particip,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1343,0,0.0013250240986267055,0.010799256220822437,0.902347937259145,NA,NA,NA,NA
+Y_dd,Direct democracy,vdem_particip,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1343,0,0.00715310620188033,0.0036815887519838927,0.05202340321904608,NA,NA,NA,NA
+Y_locelec,Local elections,vdem_particip,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1331,0,0.004264638729157078,0.006163469426597679,0.4889864528362281,NA,NA,NA,NA
+Y_regelec,Regional elections,vdem_particip,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1342,0,-0.001276196781951332,0.006463457916281901,0.8434769771648858,NA,NA,NA,NA
+Y_delib,Deliberation,vdem_egal_delib,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1343,0,3.151918947863555e-4,0.012700994788220026,0.980201477119006,NA,NA,NA,NA
+Y_eqprotec,Equal protection,vdem_egal_delib,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1343,0,2.1115933649419843e-4,0.004414307808979433,0.9618475759644184,NA,NA,NA,NA
+Y_eqaccess,Equal access,vdem_egal_delib,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1343,0,0.002308005473926318,0.0035467270497671227,0.515212824132689,NA,NA,NA,NA
+Y_eqdr,Equal distribution,vdem_egal_delib,instr-antiplural_w1_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,NA,0,NA,NA,1343,0,0.00835695053349212,0.003361182112190992,0.012907441202446808,NA,NA,NA,NA

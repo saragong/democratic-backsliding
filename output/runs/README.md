@@ -1,11 +1,14 @@
 # Analysis runs
 
 One folder per *version* of the fuzzy-RDD analysis. A version is fully
-identified by five choices, which the folder name encodes:
+identified by the choices the folder name encodes:
 
 ```
-instr-<instrument>_w<window>_trt-<treatment>_gap<score_gap_min>_illib<illiberal_cutoff>
+instr-<instrument>_w<window>_trt-<treatment>_gap<score_gap_min>_illib<illiberal_cutoff>[_opp<other_cutoff_max>][_exclyr][_pre]
 ```
+
+The last three parts appear only when they are not at their default, so every
+folder written before they existed still has exactly the name it had.
 
 | Part | Meaning |
 |---|---|
@@ -13,19 +16,29 @@ instr-<instrument>_w<window>_trt-<treatment>_gap<score_gap_min>_illib<illiberal_
 | `w` | post-election window N, in years. Treatment *and* every outcome are measured over `(election_year - 1, election_year + N]` |
 | `trt-` | `ert` (ERT autocratization episode), `ertOrDdcg` (that OR an Acemoglu et al. reversal), `polyarchy` (continuous decline in V-Dem polyarchy) |
 | `gap` | minimum `score_gap_z`; `any` = no restriction |
-| `illib` | minimum `illiberal_score`; `any` = no restriction |
+| `illib` | minimum `illiberal_score` (the MORE illiberal of the top 2); `any` = no restriction |
+| `_opp` | maximum `other_score` (the LESS illiberal of the top 2). Omitted entirely at its default of `Inf`. Paired with `illib` at the same number, this is the "one side illiberal, the other not" restriction |
 | `_exclyr` | present only when `TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR = FALSE` (see below) |
+| `_pre` | present only when `PLACEBO_PRE_WINDOW = TRUE`: the pre-election placebo, outcomes and treatment measured over the window BEFORE the election (see below) |
 
 ## Sample-restriction thresholds
 
-`SCORE_GAP_MIN` and `ILLIBERAL_CUTOFF` each accept three forms, and which one
-you mean is decided by what you write — there is no separate "type" switch:
+`SCORE_GAP_MIN`, `ILLIBERAL_CUTOFF` and `OTHER_CUTOFF_MAX` each accept three
+forms, and which one you mean is decided by what you write — there is no
+separate "type" switch:
 
 | Written as | Read as | Example |
 |---|---|---|
 | a number | absolute value on the variable's own scale | `0.6` |
 | `"qNN"` | percentile of the variable's distribution | `"q50"`, `"q97.5"` |
-| `-Inf` | no restriction | |
+| `-Inf` | no restriction, for a FLOOR (`SCORE_GAP_MIN`, `ILLIBERAL_CUTOFF`) | |
+| `Inf` | no restriction, for a CEILING (`OTHER_CUTOFF_MAX`) | |
+
+The no-restriction sentinel differs by direction because nothing is below
+`-Inf` and nothing is above `Inf`. `parse_threshold()` takes the right one via
+its `none_value` argument, and `apply_threshold()` errors if a caller pairs a
+ceiling operator with a floor sentinel — that mistake would drop every row
+while the run still described itself as unrestricted.
 
 Anything else — `"Q50"`, `"p50"`, `"q 50"`, `NA`, `"q150"` — is a **hard error**,
 not a fallback. An earlier version fell back to `as.numeric()`, so a typo became
@@ -98,6 +111,38 @@ Note that `polyarchy_decline` is unaffected by the toggle: it is computed by
 `window_change()` over `(election_year - 1, election_year + N]` and so was
 always on the aligned window.
 
+## The pre-election placebo
+
+`PLACEBO_PRE_WINDOW = TRUE` runs the whole design backwards, as a pre-trend
+check: if growth was already falling *before* the narrow illiberal victory, the
+headline reduced form is a trend rather than an effect.
+
+|  | outcome window | treatment window (`_exclyr`) |
+|---|---|---|
+| `FALSE` (default) | years `ey` … `ey + N` | `ey + 1` … `ey + N` |
+| `TRUE` | years `ey - N` … `ey - 1` | `ey - N + 1` … `ey - 1` |
+
+It is a mirror, not a shift. The placebo outcome window *ends* where the real
+one begins differencing (`ey - 1`), so the two abut with no overlap and no
+year counted twice, and the treatment sits inside its own outcome window under
+the same rule as the real design. Deriving the placebo by reflecting the window
+*length* instead would put its treatment window a year later than its own
+outcome window — testing a slightly different design from the one it is a
+placebo for.
+
+Nothing about the running variable, the cutoff or the sample changes; only
+which years the outcomes and treatment are measured over. Because it changes
+the data, it is part of the build identity: builds get a `_pre` suffix, carry a
+`placebo_pre_window` attribute, and `12_rdd_analysis.R` refuses to estimate a
+placebo build as a real one (a silent mix-up would report a pre-election
+correlation as the headline effect, and nothing in the numbers would look
+wrong). Every table subtitle says `PLACEBO (pre-election)` on its face.
+
+At w = 5, `_exclyr`, full sample, the placebo is clean: GDP growth is
+`+0.017 (0.025)` against the real `-0.053 (0.027)**`, and disposable Gini is
+`-0.044 (0.314)` against the real `+0.663 (0.314)**`. Both pre-window estimates
+are insignificant and of the opposite sign.
+
 `manifest.csv` indexes every run with its configuration, sample size and
 first-stage result. Each folder also carries its own `run_config.csv`.
 
@@ -113,6 +158,39 @@ plots/running_var_density.png
 plots/outcomes_<panel>.png   one figure per outcome panel
 plots/outcomes_all.png       all panels on one sheet
 ```
+
+### Outcomes
+
+37 outcomes in 15 panels, registered once in `rdd_helpers.R`
+(`OUTCOME_PANELS`, `PANEL_TITLES`, `PANEL_YLABS`, `OUTCOME_FAMILIES`). A panel
+is a set of series sharing one y axis, so a panel never mixes two units; a
+family is a set a reader wants to look at together, and drives one window-sweep
+sheet each.
+
+Alongside the economic, inequality, fiscal and executive-power outcomes there
+are 21 V-Dem democracy indices, listed in `scripts/vdem_indices.R` and grouped
+on V-Dem's own taxonomy:
+
+| Panel | Series |
+|---|---|
+| `vdem_high` | polyarchy, libdem, partipdem, delibdem, egaldem |
+| `vdem_electoral` | elected officials, clean elections, association, suffrage, expression |
+| `vdem_liberal` | rule of law (judicial and legislative constraints are in `institutions`) |
+| `vdem_particip` | civil society, direct democracy, local and regional elections |
+| `vdem_egal_delib` | deliberation, equal protection, equal access, equal distribution |
+
+These run the OPPOSITE way from the economic outcomes: higher = more
+democratic, so a **negative** RD estimate is the backsliding sign.
+
+Adding an outcome means three edits, in order: get the source column into
+`combined_panel.rds` (`01*` then `02a`), difference it in
+`11_build_rdd_data.R`'s `build_outcomes()`, and register it here. Builds must
+then be regenerated — `12_rdd_analysis.R` warns and drops outcomes a build
+predates rather than failing, so a stale build silently under-reports.
+
+One row to read with care: in a `trt-polyarchy` run, `Y_polyarchy` is the
+negation of the treatment, so its fuzzy LATE is a tautology and its reduced
+form *is* the first stage.
 
 ## Runs vs sweeps
 
@@ -144,6 +222,10 @@ hold numbers only.
 | `_sweeps/window_sweep_<sample>/` | to-do 3: first stage / RD / fuzzy RD against window length, N = 1..10 |
 | `_sweeps/alt_specs_<sample>/` | to-dos 4-6: instrument x treatment-definition grids, plus what the DDCG extension actually adds |
 | `_sweeps/instrument_overlap/` | to-do 7: UpSet plots and Jaccard heatmaps measuring how much the instruments really differ |
+| `_sweeps/party_outcome_rdd_<instr>_w<N>/` | 1a: the same RD with the winner's OTHER party scores as the outcome — is a narrow anti-pluralist victory also a populist / left / minority-hostile one? |
+| `_sweeps/vparty_jaccard_panels/` | 1c: the anti-pluralism x populism Jaccard heatmap over the full V-Party dataset, as a 2 x 5 OECD-by-decade grid |
+| `_sweeps/vparty_ideology_quadrants/` | 1d: where the most common Wikipedia/Wikidata ideology tags sit on the illiberalism x populism plane, same 2 x 5 grid |
+| `_sweeps/populist_threshold/` | 2b: the PopuList-calibrated cutoff for "illiberal", and the ROC it comes from |
 
 The pre-run-folder output that used to sit in `_legacy/` has been deleted. It is
 recoverable from the commit that preceded the cleanup, and the numbers in it
@@ -160,7 +242,15 @@ Rscript --no-init-file scripts/13_restriction_grid.R       # to-do 1
 Rscript --no-init-file scripts/14_window_sweep.R           # to-do 3
 Rscript --no-init-file scripts/15_alt_specs.R              # to-dos 4-6
 Rscript --no-init-file scripts/16_instrument_overlap.R     # to-do 7
+Rscript --no-init-file scripts/17_party_outcomes_rdd.R     # 1a
+Rscript --no-init-file scripts/18_vparty_jaccard_panels.R  # 1c
+Rscript --no-init-file scripts/19_vparty_ideology_quadrants.R  # 1d
+Rscript --no-init-file scripts/20_populist_threshold.R     # 2b (downloads PopuList)
 ```
+
+Scripts 18 and 19 read raw V-Party and never touch a build, so they source
+`scripts/vparty_helpers.R` rather than `scripts/rdd_helpers.R`. Script 20 is a
+calibration step and sources neither.
 
 `--no-init-file` is required: this machine's `~/.Rprofile` calls
 `credentials::set_github_pat()`, which errors without a PAT. Do not use

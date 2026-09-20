@@ -1,0 +1,263 @@
+country_name,aut_ep_id,ep_start,ep_end,start_year_used,outcome_label,prch_label,miss_reason
+Cuba,CUB_1904_1907,1904,1907,1904,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Ecuador,ECU_1906_1906,1906,1906,1906,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Dominican Republic,DOM_1908_1917,1908,1917,1908,Autocracy deepening,No,No election in the pre-episode window
+Belgium,BEL_1914_1915,1914,1915,1914,Democratic breakdown,Yes,No election in the pre-episode window
+Greece,GRC_1915_1917,1915,1917,1915,Autocracy deepening,No,No election in the pre-episode window
+Costa Rica,CRI_1917_1917,1917,1917,1917,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Hungary,HUN_1919_1919,1919,1919,1919,Autocracy deepening,No,No election in the pre-episode window
+Peru,PER_1919_1920,1919,1920,1919,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Italy,ITA_1921_1926,1921,1926,1921,Autocracy deepening,No,No election in the pre-episode window
+Greece,GRC_1922_1923,1922,1923,1922,Autocracy deepening,No,No election in the pre-episode window
+Germany,DEU_1923_1939,1923,1939,1923,Democratic breakdown,Yes,No election in the pre-episode window
+Spain,ESP_1923_1924,1923,1924,1923,Autocracy deepening,No,No election in the pre-episode window
+Chile,CHL_1924_1925,1924,1925,1924,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Greece,GRC_1925_1926,1925,1926,1925,Autocracy deepening,No,No election in the pre-episode window
+Lithuania,LTU_1926_1927,1926,1927,1926,Democratic breakdown,Yes,No election in the pre-episode window
+Poland,POL_1926_1931,1926,1931,1926,Democratic breakdown,Yes,No election in the pre-episode window
+Portugal,PRT_1926_1927,1926,1927,1926,Autocracy deepening,No,No election in the pre-episode window
+Cuba,CUB_1929_1934,1929,1934,1929,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Argentina,ARG_1930_1931,1930,1931,1930,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Austria,AUT_1930_1938,1930,1938,1930,Democratic breakdown,Yes,No election in the pre-episode window
+Bolivia,BOL_1930_1935,1930,1935,1930,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Brazil,BRA_1930_1931,1930,1931,1930,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Czechia,CZE_1930_1940,1930,1940,1930,Democratic breakdown,Yes,No election in the pre-episode window
+Dominican Republic,DOM_1930_1931,1930,1931,1930,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Malta,MLT_1930_1931,1930,1931,1930,Autocracy deepening,No,No election in the pre-episode window
+El Salvador,SLV_1931_1932,1931,1932,1931,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Ecuador,ECU_1932_1936,1932,1936,1932,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Estonia,EST_1932_1935,1932,1935,1932,Democratic breakdown,Yes,No election in the pre-episode window
+Uruguay,URY_1933_1933,1933,1933,1933,Democratic breakdown,Yes,Election(s) in window never scored (top-2/party/V-Party match failed)
+Bulgaria,BGR_1934_1935,1934,1935,1934,Autocracy deepening,No,No election in the pre-episode window
+Latvia,LVA_1934_1939,1934,1939,1934,Democratic breakdown,Yes,No election in the pre-episode window
+Malta,MLT_1934_1935,1934,1935,1934,Autocracy deepening,No,No election in the pre-episode window
+Greece,GRC_1935_1937,1935,1937,1935,Autocracy deepening,No,No election in the pre-episode window
+Spain,ESP_1936_1940,1936,1940,1936,Democratic breakdown,Yes,No election in the pre-episode window
+Albania,ALB_1937_1940,1937,1940,1937,Autocracy deepening,No,No election in the pre-episode window
+Romania,ROU_1937_1940,1937,1940,1937,Autocracy deepening,No,No election in the pre-episode window
+Finland,FIN_1939_1940,1939,1940,1939,Democratic erosion,Yes,Election(s) in window never scored (top-2/party/V-Party match failed)
+France,FRA_1939_1941,1939,1941,1939,Democratic breakdown,Yes,No election in the pre-episode window
+Hungary,HUN_1939_1945,1939,1945,1939,Autocracy deepening,No,No election in the pre-episode window
+Belgium,BEL_1940_1941,1940,1941,1940,Democratic breakdown,Yes,No election in the pre-episode window
+Denmark,DNK_1940_1944,1940,1944,1940,Democratic breakdown,Yes,No election in the pre-episode window
+Luxembourg,LUX_1940_1941,1940,1941,1940,Democratic breakdown,Yes,No election in the pre-episode window
+Netherlands,NLD_1940_1941,1940,1941,1940,Democratic breakdown,Yes,No election in the pre-episode window
+Norway,NOR_1940_1943,1940,1943,1940,Democratic breakdown,Yes,No election in the pre-episode window
+Philippines,PHL_1941_1942,1941,1942,1941,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Burma/Myanmar,MMR_1942_1943,1942,1943,1942,Autocracy deepening,No,No election in the pre-episode window
+Argentina,ARG_1943_1945,1943,1945,1943,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Colombia,COL_1947_1950,1947,1950,1947,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Hungary,HUN_1947_1949,1947,1949,1947,Autocracy deepening,No,No election in the pre-episode window
+Costa Rica,CRI_1948_1948,1948,1948,1948,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Czechia,CZE_1948_1954,1948,1954,1948,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Peru,PER_1948_1949,1948,1949,1948,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Argentina,ARG_1949_1956,1949,1956,1949,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Syria,SYR_1949_1952,1949,1952,1949,Autocracy deepening,No,No election in the pre-episode window
+Venezuela,VEN_1949_1949,1949,1949,1949,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Cuba,CUB_1951_1953,1951,1953,1951,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Egypt,EGY_1952_1953,1952,1953,1952,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Iran,IRN_1953_1954,1953,1954,1953,Autocracy deepening,No,No election in the pre-episode window
+Guatemala,GTM_1954_1955,1954,1955,1954,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Türkiye,TUR_1954_1961,1954,1961,1954,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Honduras,HND_1955_1955,1955,1955,1955,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Indonesia,IDN_1957_1966,1957,1966,1957,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Ghana,GHA_1958_1966,1958,1966,1958,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Iraq,IRQ_1958_1968,1958,1968,1958,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Malta,MLT_1958_1959,1958,1959,1958,Democratic breakdown,Yes,Election(s) in window never scored (top-2/party/V-Party match failed)
+Burma/Myanmar,MMR_1958_1963,1958,1963,1958,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Sudan,SDN_1958_1959,1958,1959,1958,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Syria,SYR_1958_1959,1958,1959,1958,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Cuba,CUB_1959_1961,1959,1961,1959,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Laos,LAO_1959_1965,1959,1965,1959,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Ecuador,ECU_1960_1964,1960,1964,1960,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+South Korea,KOR_1961_1962,1961,1962,1961,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Nepal,NPL_1961_1961,1961,1961,1961,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Argentina,ARG_1962_1962,1962,1962,1962,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Republic of the Congo,COG_1962_1968,1962,1968,1962,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Greece,GRC_1962_1968,1962,1968,1962,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Central African Republic,CAF_1963_1966,1963,1966,1963,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Syria,SYR_1963_1970,1963,1970,1963,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Togo,TGO_1963_1968,1963,1968,1963,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Uruguay,URY_1963_1974,1963,1974,1963,Democratic breakdown,Yes,Election(s) in window never scored (top-2/party/V-Party match failed)
+Republic of Vietnam,VDR_1963_1964,1963,1964,1963,Autocracy deepening,No,Country has no elections in the spine at all
+Benin,BEN_1964_1966,1964,1966,1964,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Bolivia,BOL_1964_1965,1964,1965,1964,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Brazil,BRA_1964_1965,1964,1965,1964,Autocracy deepening,No,Matched
+Dominican Republic,DOM_1964_1964,1964,1964,1964,Autocracy deepening,No,Matched
+Mali,MLI_1964_1969,1964,1969,1964,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Panama,PAN_1964_1969,1964,1969,1964,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Somalia,SOM_1964_1970,1964,1970,1964,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Zanzibar,ZZB_1964_1964,1964,1964,1964,Autocracy deepening,No,Country has no elections in the spine at all
+Burundi,BDI_1965_1967,1965,1967,1965,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Burkina Faso,BFA_1965_1967,1965,1967,1965,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Democratic Republic of the Congo,COD_1965_1966,1965,1966,1965,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Algeria,DZA_1965_1966,1965,1966,1965,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Argentina,ARG_1966_1967,1966,1967,1966,Democratic breakdown,Yes,Election(s) in window never scored (top-2/party/V-Party match failed)
+Philippines,PHL_1966_1973,1966,1973,1966,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Uganda,UGA_1966_1972,1966,1972,1966,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Sierra Leone,SLE_1967_1968,1967,1968,1967,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Guyana,GUY_1968_1974,1968,1974,1968,Autocracy deepening,No,Matched
+Peru,PER_1968_1969,1968,1969,1968,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Lesotho,LSO_1969_1971,1969,1971,1969,Autocracy deepening,No,Matched
+Malaysia,MYS_1969_1970,1969,1970,1969,Autocracy deepening,No,Country has no elections in the spine at all
+Sudan,SDN_1969_1969,1969,1969,1969,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Zambia,ZMB_1969_1974,1969,1974,1969,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Benin,BEN_1970_1973,1970,1973,1970,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Ecuador,ECU_1970_1973,1970,1973,1970,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Cambodia,KHM_1970_1975,1970,1975,1970,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Sri Lanka,LKA_1970_1989,1970,1989,1970,Democratic breakdown,Yes,Election(s) in window never scored (top-2/party/V-Party match failed)
+Equatorial Guinea,GNQ_1971_1973,1971,1973,1971,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+India,IND_1971_1975,1971,1975,1971,Democratic breakdown,Yes,Election(s) in window never scored (top-2/party/V-Party match failed)
+Chile,CHL_1972_1974,1972,1974,1972,Democratic breakdown,Yes,Election(s) in window never scored (top-2/party/V-Party match failed)
+Ghana,GHA_1972_1973,1972,1973,1972,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Madagascar,MDG_1972_1973,1972,1973,1972,Autocracy deepening,No,Matched
+Seychelles,SYC_1972_1978,1972,1978,1972,Autocracy deepening,No,Matched
+Honduras,HND_1973_1973,1973,1973,1973,Autocracy deepening,No,Unexplained (should not occur)
+Rwanda,RWA_1973_1974,1973,1974,1973,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Eswatini,SWZ_1973_1974,1973,1974,1973,Autocracy deepening,No,Unexplained (should not occur)
+Bahrain,BHR_1974_1976,1974,1976,1974,Autocracy deepening,No,No election in the pre-episode window
+Argentina,ARG_1975_1977,1975,1977,1975,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Bangladesh,BGD_1975_1976,1975,1976,1975,Autocracy deepening,No,Matched
+Laos,LAO_1975_1976,1975,1976,1975,Autocracy deepening,No,No election in the pre-episode window
+Suriname,SUR_1975_1975,1975,1975,1975,Democratic erosion,Yes,Election(s) in window never scored (top-2/party/V-Party match failed)
+Kuwait,KWT_1976_1976,1976,1976,1976,Autocracy deepening,No,Country has no elections in the spine at all
+Thailand,THA_1976_1977,1976,1977,1976,Autocracy deepening,No,Unexplained (should not occur)
+Pakistan,PAK_1977_1978,1977,1978,1977,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Mauritania,MRT_1978_1979,1978,1979,1978,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Zimbabwe,ZWE_1978_1978,1978,1978,1978,Autocracy deepening,No,Matched
+Burkina Faso,BFA_1980_1981,1980,1981,1980,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Liberia,LBR_1980_1981,1980,1981,1980,Autocracy deepening,No,Matched
+Suriname,SUR_1980_1981,1980,1981,1980,Democratic breakdown,Yes,No election in the pre-episode window
+Türkiye,TUR_1980_1981,1980,1981,1980,Democratic breakdown,Yes,Unexplained (should not occur)
+Ghana,GHA_1981_1982,1981,1982,1981,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Bangladesh,BGD_1982_1983,1982,1983,1982,Autocracy deepening,No,Matched
+Nigeria,NGA_1983_1984,1983,1984,1983,Autocracy deepening,No,Unexplained (should not occur)
+Kuwait,KWT_1986_1986,1986,1986,1986,Autocracy deepening,No,Country has no elections in the spine at all
+Burundi,BDI_1987_1988,1987,1988,1987,Autocracy deepening,No,Matched
+Fiji,FJI_1987_1988,1987,1988,1987,Democratic breakdown,Yes,No election in the pre-episode window
+Sudan,SDN_1989_1990,1989,1990,1989,Autocracy deepening,No,Unexplained (should not occur)
+Peru,PER_1990_1992,1990,1992,1990,Democratic breakdown,Yes,Unexplained (should not occur)
+Estonia,EST_1991_1992,1991,1992,1991,Democratic breakdown,Yes,Matched
+Suriname,SUR_1991_1991,1991,1991,1991,Autocracy deepening,No,No election in the pre-episode window
+Thailand,THA_1991_1991,1991,1991,1991,Autocracy deepening,No,Matched
+Algeria,DZA_1992_1993,1992,1993,1992,Autocracy deepening,No,Matched
+Haiti,HTI_1992_1992,1992,1992,1992,Autocracy deepening,No,Unexplained (should not occur)
+Tajikistan,TJK_1992_1995,1992,1995,1992,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Armenia,ARM_1993_1997,1993,1997,1993,Democratic breakdown,Yes,Matched
+Azerbaijan,AZE_1993_1996,1993,1996,1993,Autocracy deepening,No,Matched
+The Gambia,GMB_1993_1995,1993,1995,1993,Autocracy deepening,No,Matched
+Russia,RUS_1993_2014,1993,2014,1993,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Rwanda,RWA_1993_1995,1993,1995,1993,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Belarus,BLR_1994_2001,1994,2001,1994,Democratic breakdown,Yes,No election in the pre-episode window
+Republic of the Congo,COG_1994_1998,1994,1998,1994,Autocracy deepening,No,Unexplained (should not occur)
+Lesotho,LSO_1994_1995,1994,1995,1994,Democratic breakdown,Yes,Matched
+Niger,NER_1996_1996,1996,1996,1996,Democratic breakdown,Yes,Matched
+Nicaragua,NIC_1996_2025,1996,2025,1996,Democratic breakdown,Yes,Matched
+Madagascar,MDG_1997_2002,1997,2002,1997,Democratic breakdown,Yes,Unexplained (should not occur)
+Ukraine,UKR_1997_2000,1997,2000,1997,Democratic breakdown,Yes,Matched
+Moldova,MDA_1998_2006,1998,2006,1998,Democratic breakdown,Yes,Matched
+Solomon Islands,SLB_1998_2001,1998,2001,1998,Democratic breakdown,Yes,No election in the pre-episode window
+Venezuela,VEN_1998_2018,1998,2018,1998,Democratic breakdown,Yes,Matched
+Comoros,COM_1999_2000,1999,2000,1999,Autocracy deepening,No,Unexplained (should not occur)
+Malawi,MWI_1999_2005,1999,2005,1999,Democratic breakdown,Yes,Matched
+Niger,NER_1999_1999,1999,1999,1999,Autocracy deepening,No,Matched
+Pakistan,PAK_1999_2000,1999,2000,1999,Autocracy deepening,No,Matched
+Ivory Coast,CIV_2000_2000,2000,2000,2000,Autocracy deepening,No,Matched
+Fiji,FJI_2000_2001,2000,2001,2000,Democratic breakdown,Yes,Matched
+North Macedonia,MKD_2000_2001,2000,2001,2000,Autocracy deepening,No,Matched
+Nepal,NPL_2000_2003,2000,2003,2000,Autocracy deepening,No,Unexplained (should not occur)
+Haiti,HTI_2001_2004,2001,2004,2001,Autocracy deepening,No,Matched
+Philippines,PHL_2001_2005,2001,2005,2001,Democratic breakdown,Yes,Unexplained (should not occur)
+Bangladesh,BGD_2002_2007,2002,2007,2002,Democratic breakdown,Yes,Unexplained (should not occur)
+Central African Republic,CAF_2003_2004,2003,2004,2003,Autocracy deepening,No,Unexplained (should not occur)
+Liberia,LBR_2003_2004,2003,2004,2003,Autocracy deepening,No,Matched
+Thailand,THA_2003_2007,2003,2007,2003,Democratic breakdown,Yes,Matched
+Bosnia and Herzegovina,BIH_2004_2007,2004,2007,2004,Democratic erosion,Yes,Matched
+Sri Lanka,LKA_2004_2006,2004,2006,2004,Democratic breakdown,Yes,Election(s) in window never scored (top-2/party/V-Party match failed)
+North Macedonia,MKD_2005_2012,2005,2012,2005,Democratic breakdown,Yes,Matched
+Türkiye,TUR_2005_2017,2005,2017,2005,Democratic breakdown,Yes,Matched
+Bolivia,BOL_2006_2020,2006,2020,2006,Democratic breakdown,Yes,Matched
+Fiji,FJI_2006_2007,2006,2007,2006,Autocracy deepening,No,Shadowed by a closer episode in the same election's window
+Honduras,HND_2006_2010,2006,2010,2006,Democratic breakdown,Yes,Matched
+Hungary,HUN_2006_2025,2006,2025,2006,Democratic breakdown,Yes,Matched
+Palestine/West Bank,PSE_2006_2008,2006,2008,2006,Democratic breakdown,Yes,Country has no elections in the spine at all
+Ecuador,ECU_2007_2013,2007,2013,2007,Democratic erosion,Yes,Matched
+Papua New Guinea,PNG_2007_2013,2007,2013,2007,Democratic breakdown,Yes,No election in the pre-episode window
+South Korea,KOR_2008_2014,2008,2014,2008,Democratic erosion,Yes,Election(s) in window never scored (top-2/party/V-Party match failed)
+Mali,MLI_2008_2013,2008,2013,2008,Democratic breakdown,Yes,Matched
+Indonesia,IDN_2009_2025,2009,2025,2009,Democratic breakdown,Yes,Matched
+India,IND_2009_2025,2009,2025,2009,Democratic breakdown,Yes,Unexplained (should not occur)
+Madagascar,MDG_2009_2010,2009,2010,2009,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Niger,NER_2009_2010,2009,2010,2009,Democratic breakdown,Yes,Matched
+Burundi,BDI_2010_2016,2010,2016,2010,Autocracy deepening,No,Matched
+Maldives,MDV_2010_2017,2010,2017,2010,Democratic breakdown,Yes,Unexplained (should not occur)
+Serbia,SRB_2010_2025,2010,2025,2010,Democratic breakdown,Yes,Unexplained (should not occur)
+Ukraine,UKR_2010_2014,2010,2014,2010,Democratic breakdown,Yes,Matched
+Zambia,ZMB_2011_2019,2011,2019,2011,Democratic breakdown,Yes,Matched
+Guinea-Bissau,GNB_2012_2013,2012,2013,2012,Autocracy deepening,No,Matched
+Nepal,NPL_2012_2013,2012,2013,2012,Autocracy deepening,No,Matched
+Slovenia,SVN_2012_2021,2012,2021,2012,Democratic erosion,Yes,Matched
+Bangladesh,BGD_2013_2018,2013,2018,2013,Autocracy deepening,No,Matched
+Czechia,CZE_2013_2021,2013,2021,2013,Democratic erosion,Yes,Matched
+Egypt,EGY_2013_2014,2013,2014,2013,Autocracy deepening,No,Unexplained (should not occur)
+Ghana,GHA_2013_2021,2013,2021,2013,Democratic erosion,Yes,Matched
+Croatia,HRV_2013_2025,2013,2025,2013,Ongoing,Yes,Matched
+Moldova,MDA_2013_2017,2013,2017,2013,Democratic erosion,Yes,Matched
+Mauritania,MRT_2013_2025,2013,2025,2013,Autocracy deepening,No,Matched
+Thailand,THA_2013_2014,2013,2014,2013,Autocracy deepening,No,Matched
+Yemen,YEM_2013_2016,2013,2016,2013,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Burkina Faso,BFA_2014_2015,2014,2015,2014,Democratic breakdown,Yes,Matched
+Libya,LBY_2014_2025,2014,2025,2014,Autocracy deepening,No,Country has no elections in the spine at all
+Mauritius,MUS_2014_2023,2014,2023,2014,Democratic breakdown,Yes,No election in the pre-episode window
+Tunisia,TUN_2014_2022,2014,2022,2014,Democratic breakdown,Yes,Matched
+Brazil,BRA_2015_2019,2015,2019,2015,Democratic erosion,Yes,Matched
+Botswana,BWA_2015_2022,2015,2022,2015,Democratic erosion,Yes,Matched
+Comoros,COM_2015_2020,2015,2020,2015,Autocracy deepening,No,Matched
+Lesotho,LSO_2015_2017,2015,2017,2015,Democratic erosion,Yes,Matched
+Niger,NER_2015_2025,2015,2025,2015,Democratic breakdown,Yes,Matched
+Pakistan,PAK_2015_2025,2015,2025,2015,Autocracy deepening,No,Matched
+Tanzania,TZA_2015_2021,2015,2021,2015,Autocracy deepening,No,Matched
+Hong Kong,HKG_2016_2025,2016,2025,2016,Autocracy deepening,No,Country has no elections in the spine at all
+Cambodia,KHM_2016_2025,2016,2025,2016,Autocracy deepening,No,Unexplained (should not occur)
+Mongolia,MNG_2016_2024,2016,2024,2016,Democratic breakdown,Yes,Matched
+Peru,PER_2016_2025,2016,2025,2016,Ongoing,Yes,Matched
+Philippines,PHL_2016_2025,2016,2025,2016,Democratic breakdown,Yes,Matched
+Poland,POL_2016_2021,2016,2021,2016,Democratic erosion,Yes,Matched
+Georgia,GEO_2017_2025,2017,2025,2017,Democratic breakdown,Yes,Matched
+Mozambique,MOZ_2017_2025,2017,2025,2017,Autocracy deepening,No,Matched
+Chad,TCD_2017_2022,2017,2022,2017,Autocracy deepening,No,Matched
+Togo,TGO_2017_2025,2017,2025,2017,Autocracy deepening,No,Unexplained (should not occur)
+Benin,BEN_2018_2021,2018,2021,2018,Democratic breakdown,Yes,Unexplained (should not occur)
+Burkina Faso,BFA_2018_2025,2018,2025,2018,Democratic breakdown,Yes,Shadowed by a closer episode in the same election's window
+Gabon,GAB_2018_2024,2018,2024,2018,Autocracy deepening,No,Unexplained (should not occur)
+Guatemala,GTM_2018_2022,2018,2022,2018,Democratic erosion,Yes,Matched
+Lebanon,LBN_2018_2024,2018,2024,2018,Autocracy deepening,No,Country has no elections in the spine at all
+Mali,MLI_2018_2025,2018,2025,2018,Autocracy deepening,No,Shadowed by a closer episode in the same election's window
+El Salvador,SLV_2018_2025,2018,2025,2018,Democratic breakdown,Yes,Matched
+Central African Republic,CAF_2019_2025,2019,2025,2019,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+United Kingdom,GBR_2019_2025,2019,2025,2019,Ongoing,Yes,Unexplained (should not occur)
+Guinea,GIN_2019_2025,2019,2025,2019,Autocracy deepening,No,Matched
+Guyana,GUY_2019_2025,2019,2025,2019,Ongoing,Yes,No election in the pre-episode window
+Italy,ITA_2019_2025,2019,2025,2019,Ongoing,Yes,Election(s) in window never scored (top-2/party/V-Party match failed)
+Kyrgyzstan,KGZ_2019_2025,2019,2025,2019,Autocracy deepening,No,Unexplained (should not occur)
+South Korea,KOR_2019_2023,2019,2023,2019,Democratic erosion,Yes,Unexplained (should not occur)
+Armenia,ARM_2020_2025,2020,2025,2020,Ongoing,Yes,Unexplained (should not occur)
+Belarus,BLR_2020_2025,2020,2025,2020,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Ivory Coast,CIV_2020_2025,2020,2025,2020,Democratic breakdown,Yes,Election(s) in window never scored (top-2/party/V-Party match failed)
+Greece,GRC_2020_2025,2020,2025,2020,Ongoing,Yes,Matched
+Haiti,HTI_2020_2025,2020,2025,2020,Autocracy deepening,No,Unexplained (should not occur)
+Mexico,MEX_2020_2025,2020,2025,2020,Democratic breakdown,Yes,Unexplained (should not occur)
+Afghanistan,AFG_2021_2025,2021,2025,2021,Autocracy deepening,No,Election(s) in window never scored (top-2/party/V-Party match failed)
+Kuwait,KWT_2021_2025,2021,2025,2021,Autocracy deepening,No,Country has no elections in the spine at all
+Burma/Myanmar,MMR_2021_2025,2021,2025,2021,Autocracy deepening,No,Unexplained (should not occur)
+Romania,ROU_2021_2025,2021,2025,2021,Ongoing,Yes,Unexplained (should not occur)
+Senegal,SEN_2021_2025,2021,2025,2021,Ongoing,Yes,Election(s) in window never scored (top-2/party/V-Party match failed)
+Ukraine,UKR_2021_2025,2021,2025,2021,Ongoing,Yes,Shadowed by a closer episode in the same election's window
+Guinea-Bissau,GNB_2022_2022,2022,2022,2022,Democratic breakdown,Yes,Unexplained (should not occur)
+Moldova,MDA_2023_2025,2023,2025,2023,Ongoing,Yes,Unexplained (should not occur)
+Madagascar,MDG_2023_2025,2023,2025,2023,Autocracy deepening,No,Unexplained (should not occur)
+Slovakia,SVK_2023_2025,2023,2025,2023,Ongoing,Yes,Unexplained (should not occur)
+Slovenia,SVN_2023_2025,2023,2025,2023,Ongoing,Yes,Shadowed by a closer episode in the same election's window
+Argentina,ARG_2024_2025,2024,2025,2024,Ongoing,Yes,Election(s) in window never scored (top-2/party/V-Party match failed)
+Guinea-Bissau,GNB_2024_2025,2024,2025,2024,Autocracy deepening,No,Unexplained (should not occur)
+United States of America,USA_2024_2025,2024,2025,2024,Ongoing,Yes,Unexplained (should not occur)

@@ -10,3 +10,4 @@ swept,R2,illiberal_score: all | q20 (≥ 0.144) | q40 (≥ 0.405) | q60 (≥ 0.7
 swept,R3,score_gap_z: all | q20 (≥ 0.254) | q40 (≥ 0.834) | q60 (≥ 1.44) | q80 (≥ 2.09)
 swept,R4,prior_backsliding: all | no prior episode
 swept,R5,election_type: both | presidential | parliamentary
+swept,R6,other_score: all | q80 (≤ 0.546) | q60 (≤ 0.335) | q40 (≤ 0.188) | q20 (≤ 0.061)
