@@ -1165,9 +1165,19 @@ build_panel_plot <- function(
         filter(abs(xx) <= h) |>
         mutate(series = unname(series[v]))
     }
+    # side_fit() returns NULL when a side has fewer than three usable points
+    # inside the bandwidth, and mutate() on NULL errors. Piping straight into
+    # mutate() therefore crashed the whole figure whenever ONE side was thin --
+    # which never happened on the pooled samples this was written for, but does
+    # on a sparse subsample (an ep_galtan decade x OECD cell, say, where both
+    # top-2 members are scored in about 4% of elections). Tag each side only if
+    # it fitted; a panel with one side is still worth drawing.
+    tag_side <- function(fit, side) {
+      if (is.null(fit)) NULL else mutate(fit, side = side)
+    }
     f <- bind_rows(
-      side_fit(yk, xk, xk < 0, h, grid_left) |> mutate(side = "left"),
-      side_fit(yk, xk, xk >= 0, h, grid_right) |> mutate(side = "right")
+      tag_side(side_fit(yk, xk, xk < 0, h, grid_left), "left"),
+      tag_side(side_fit(yk, xk, xk >= 0, h, grid_right), "right")
     )
     if (nrow(f) > 0) {
       fits[[v]] <- f |> mutate(series = unname(series[v]))

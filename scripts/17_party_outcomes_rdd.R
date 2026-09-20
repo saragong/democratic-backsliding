@@ -29,6 +29,34 @@
 # There is no treatment here and no fuzzy RD: these are properties of the
 # election, not outcomes that backsliding could mediate. Reduced form only.
 #
+# WHAT THESE ESTIMATES ARE, AND ARE NOT
+#
+# They are not causal, and the arithmetic makes that concrete. Which party is
+# "the winner" flips AT the cutoff by construction: above it the winner is the
+# more anti-pluralist party, below it the other one. So
+#
+#   binary jump      ~  2 * P(the more anti-pluralist party is also the
+#                            higher-scoring one on this index) - 1
+#   continuous jump  ~  E[score of the more anti-pluralist party
+#                         - score of the other one]
+#
+# both evaluated at the cutoff. Verified numerically: the binary populism
+# estimate is -0.176, and 2P-1 computed directly in shrinking windows around
+# the cutoff runs -0.12 to -0.22.
+#
+# So each number is a COMPOSITION statistic about the elections at the margin,
+# not an effect of anything. That is still the thing worth knowing here: it
+# answers whether the treatment is separable from a correlated trait at the
+# margin, which is the precondition for the headline growth result meaning
+# what it says. If populism were perfectly bundled (P = 1, jump = +1) the
+# design could not tell the two apart at all.
+#
+# What it does NOT do is apportion the growth effect. Bundling says a confound
+# exists; it does not say the confound drives growth. The test that would is
+# the sign-discordant subsample -- elections where the more anti-pluralist
+# party is the LESS right-wing one, so the two explanations predict
+# opposite-signed growth effects -- which belongs in the growth RD, not here.
+#
 # The window is irrelevant to every outcome above -- they are all measured at
 # the election -- so the script reads a single build and says so.
 #
@@ -36,13 +64,17 @@
 #
 # Output: output/runs/_sweeps/party_outcome_rdd_<instr>_w<N><suffix>/
 #           party_outcome_results.csv    one row per score x form x restriction
+#           party_outcome_cells.csv      one row per score x form x decade x OECD
 #           party_outcomes_table.html    the unrestricted sample, flat
 #           grid_party_outcomes_binary.html      restriction x score colour
 #           grid_party_outcomes_continuous.html  grids, one per outcome form
 #                                        (continuous cells are in SD units --
 #                                        see that section for why they are two
 #                                        files rather than one)
-#           plots/party_outcomes_<form>.png
+#           grid_cells_<form>.html       decade x OECD x score colour grids
+#           plots/party_outcomes_<form>.png       pooled, one panel per score
+#           plots/cells_<form>_<score>.png        the 2 x 5 decade x OECD grid,
+#                                        one figure per score x form
 # ==============================================================================
 
 library(tidyverse)
@@ -52,6 +84,10 @@ library(patchwork)
 library(gt)
 
 source(here::here("scripts", "rdd_helpers.R"))
+# For oecd_group() and decade_label(). They live in vparty_helpers.R because
+# the raw-V-Party scripts needed them first, but they are general splits on a
+# country code and a year, not anything V-Party-specific.
+source(here::here("scripts", "vparty_helpers.R"))
 
 data_dir <- here::here("data")
 
@@ -91,6 +127,27 @@ if (!exists("GAP_AXES")) {
     score_gap_z = "Top-2 illiberality gap (within-country SDs)"
   )
 }
+
+# ---- decade x OECD cells -----------------------------------------------------
+#
+# The same 2 x 5 grid scripts 18 and 19 use, so the three figures are read
+# together. Bounded to VPARTY_YEAR_MIN..MAX (1970-2019) for the same reason:
+# it is exactly five decades, and it is the window where V-Party coverage is
+# not thin and lopsided. 87 of the 1,347 elections fall outside it and are in
+# the pooled sample but not in any cell -- the figures say so.
+if (!exists("CELL_YEAR_MIN")) CELL_YEAR_MIN <- VPARTY_YEAR_MIN
+if (!exists("CELL_YEAR_MAX")) CELL_YEAR_MAX <- VPARTY_YEAR_MAX
+
+# A cell below this many usable observations is reported in the CSV but not
+# fitted or drawn. The thinnest cell (non-OECD 1970s) has 66 elections and only
+# ~21 within a typical bandwidth, which is at the edge of what rdrobust will
+# attempt and well past what it will do reliably.
+#
+# Counted PER OUTCOME, not per cell: ep_galtan is scored for both top-2 members
+# in about 4% of elections, so its cells are nearly empty even where the cell
+# itself is large. Gating on the cell size alone would hand rdrobust a
+# 3-observation sample and draw a panel around whatever came back.
+if (!exists("CELL_MIN_N")) CELL_MIN_N <- 40
 
 build_suffix <- if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else "_exclyr"
 build_path <- file.path(
@@ -283,72 +340,88 @@ score_sd <- vapply(COMPARISON_SCORES, function(s) {
   )
 }, numeric(1))
 
+# One color_grid_blocks() block: rows are whatever `row_labels` names, columns
+# are the comparison scores. Used by both the restriction grids and the
+# decade x OECD grids, so the SD rescaling and the column ordering are defined
+# once.
+#
+# `row_labels` is a NAMED vector: names are the keys to look up in `df`, values
+# are what the table shows.
+make_block <- function(df, key_col, row_labels, row_axis, fm) {
+  keys <- names(row_labels)
+  rescale <- identical(fm, "continuous")
+  mat <- function(col, do_rescale) {
+    m <- matrix(
+      NA_real_, nrow = length(keys), ncol = length(COMPARISON_SCORES),
+      dimnames = list(
+        unname(row_labels), unname(PARTY_SCORE_LABELS[COMPARISON_SCORES])
+      )
+    )
+    for (i in seq_along(keys)) {
+      for (j in seq_along(COMPARISON_SCORES)) {
+        v <- df[df[[key_col]] == keys[i] & df$score == COMPARISON_SCORES[j], ]
+        if (nrow(v) == 1 && !is.na(v[[col]])) {
+          m[i, j] <- if (do_rescale) {
+            v[[col]] / score_sd[[COMPARISON_SCORES[j]]]
+          } else {
+            v[[col]]
+          }
+        }
+      }
+    }
+    m
+  }
+  list(
+    # `label` is never rendered by color_grid_blocks() -- it names its gt row
+    # group from row_axis and col_axis -- so anything that must distinguish
+    # two blocks has to go in row_axis.
+    label = row_axis,
+    row_axis = row_axis,
+    col_axis = "Comparison score",
+    row_labels = unname(row_labels),
+    col_labels = unname(PARTY_SCORE_LABELS[COMPARISON_SCORES]),
+    est = mat("est", rescale),
+    se = mat("se", rescale),
+    pval = mat("pval", FALSE),
+    n = mat("n", FALSE)
+  )
+}
+
+# The unit note that must travel with any grid of these cells.
+unit_note_for <- function(fm) {
+  if (identical(fm, "continuous")) {
+    paste(
+      "Cells are in SD units of each score's own distribution across top-2",
+      "parties, so columns on different native scales are comparable.",
+      "Raw estimates are in the CSVs and in party_outcomes_table.html."
+    )
+  } else {
+    "Cells are changes in probability, so all columns share a scale."
+  }
+}
+
 for (fm in names(FORMS)) {
   blocks <- list()
   for (ax in names(GAP_AXES)) {
     sub <- results |> filter(axis == ax, form == fm)
     if (nrow(sub) == 0) next
     lvls <- unique(sub$level)
-    row_labels <- vapply(lvls, function(l) {
-      r <- sub |> filter(level == l) |> slice(1)
-      if (l == "-Inf") {
-        sprintf("all (N = %d)", r$n_sample)
-      } else {
-        sprintf("%s: >= %.3g (N = %d)", l, r$cutoff, r$n_sample)
-      }
-    }, character(1))
-
-    # Continuous estimates are rescaled to SD units; binary ones are already
-    # on a common (probability) scale and are left alone.
-    scale_by <- if (fm == "continuous") score_sd else setNames(
-      rep(1, length(COMPARISON_SCORES)), COMPARISON_SCORES
-    )
-
-    mat <- function(col, rescale = FALSE) {
-      m <- matrix(
-        NA_real_, nrow = length(lvls), ncol = length(COMPARISON_SCORES),
-        dimnames = list(row_labels, unname(PARTY_SCORE_LABELS[COMPARISON_SCORES]))
-      )
-      for (i in seq_along(lvls)) {
-        for (j in seq_along(COMPARISON_SCORES)) {
-          v <- sub |> filter(level == lvls[i], score == COMPARISON_SCORES[j])
-          if (nrow(v) == 1) {
-            m[i, j] <- if (rescale) {
-              v[[col]] / scale_by[[COMPARISON_SCORES[j]]]
-            } else {
-              v[[col]]
-            }
-          }
+    row_labels <- setNames(
+      vapply(lvls, function(l) {
+        r <- sub |> filter(level == l) |> slice(1)
+        if (l == "-Inf") {
+          sprintf("all (N = %d)", r$n_sample)
+        } else {
+          sprintf("%s: >= %.3g (N = %d)", l, r$cutoff, r$n_sample)
         }
-      }
-      m
-    }
-    blocks[[length(blocks) + 1]] <- list(
-      label = unname(GAP_AXES[ax]),
-      # The gap axis lives here, not in `label`, because `label` is never
-      # rendered -- see the comment at the top of this section.
-      row_axis = unname(GAP_AXES[ax]),
-      col_axis = "Comparison score",
-      row_labels = row_labels,
-      col_labels = unname(PARTY_SCORE_LABELS[COMPARISON_SCORES]),
-      est = mat("est", rescale = fm == "continuous"),
-      se = mat("se", rescale = fm == "continuous"),
-      pval = mat("pval"),
-      n = mat("n")
+      }, character(1)),
+      lvls
+    )
+    blocks[[length(blocks) + 1]] <- make_block(
+      sub, "level", row_labels, unname(GAP_AXES[ax]), fm
     )
   }
   if (length(blocks) == 0) next
-
-  unit_note <- if (fm == "continuous") {
-    paste(
-      "Cells are in SD units of each score's own distribution across top-2",
-      "parties, so columns on different native scales are comparable.",
-      "Raw estimates are in party_outcome_results.csv and",
-      "party_outcomes_table.html."
-    )
-  } else {
-    "Cells are changes in probability, so all columns share a scale."
-  }
 
   color_grid_blocks(
     blocks,
@@ -359,7 +432,7 @@ for (fm in names(FORMS)) {
     ),
     subtitle = subtitle_base,
     note = paste(
-      SIG_FOOTNOTE, unit_note, REDUNDANCY_NOTE,
+      SIG_FOOTNOTE, unit_note_for(fm), REDUNDANCY_NOTE,
       "Every cell is a different sample restriction a researcher could have",
       "chosen. Read the surface, not the best cell. No multiple-testing",
       "correction is applied."
@@ -409,6 +482,282 @@ for (fm in names(FORMS)) {
     limitsize = FALSE
   )
   cat(sprintf("Saved plots/party_outcomes_%s.png\n", fm))
+}
+
+# ==============================================================================
+# Decade x OECD cells
+#
+# The same 2 x 5 grid as 18_vparty_jaccard_panels.R and
+# 19_vparty_ideology_quadrants.R, so all three are read together: rows are
+# OECD / non-OECD, columns are the 1970s to the 2010s.
+#
+# The question these answer is whether the bundling is stable. The pooled
+# numbers say anti-pluralism is near-orthogonal to populism but strongly
+# bundled with the economic right; if that is a recent, OECD-specific
+# phenomenon (which is what the rising populism/anti-pluralism correlation in
+# adhoc/vparty_corr_by_decade.R would suggest) then the pooled figure is an
+# average over regimes that differ, and the confound is worse in exactly the
+# cells the headline result leans on.
+#
+# FULL SAMPLE ONLY -- no restriction sweep is crossed with the cells. Ten cells
+# times five restriction levels times two axes would be 100 subsamples of a
+# 1,347-election build, most of them too thin to fit.
+#
+# Every cell gets its OWN bandwidth and binning, which is why these are ten
+# separate panels assembled with patchwork rather than a facet_grid: a shared
+# binning across cells with very different sample sizes would misrepresent all
+# of them. The y axis IS shared within a figure, so the panels stay comparable.
+# ==============================================================================
+
+d_cells <- d_full |>
+  filter(
+    election_year >= CELL_YEAR_MIN,
+    election_year <= CELL_YEAR_MAX
+  ) |>
+  mutate(
+    group = oecd_group(country_text_id),
+    decade = decade_label(election_year)
+  )
+
+n_dropped <- nrow(d_full) - nrow(d_cells)
+cat(sprintf(
+  "\nDecade x OECD cells: %d of %d elections fall in %d-%d (%d outside, pooled only)\n",
+  nrow(d_cells), nrow(d_full), CELL_YEAR_MIN, CELL_YEAR_MAX, n_dropped
+))
+
+cell_keys <- expand_grid(
+  group = levels(d_cells$group),
+  decade = levels(d_cells$decade)
+) |>
+  mutate(
+    group = factor(group, levels = levels(d_cells$group)),
+    decade = factor(decade, levels = levels(d_cells$decade)),
+    cell = paste(group, decade),
+    n_cell = map2_int(group, decade, \(g, dd) {
+      sum(d_cells$group == g & d_cells$decade == dd)
+    })
+  )
+
+cell_df <- function(g, dd) {
+  d_cells[d_cells$group == g & d_cells$decade == dd, , drop = FALSE]
+}
+
+# Usable observations for ONE outcome in ONE cell -- the number the fit
+# actually rests on, and what CELL_MIN_N is compared against.
+n_usable <- function(g, dd, var) sum(!is.na(cell_df(g, dd)[[var]]))
+
+cat("\nCell sizes (elections, and usable observations per outcome):\n")
+print(
+  cell_keys |>
+    select(group, decade, n_cell) |>
+    mutate(!!!setNames(
+      lapply(COMPARISON_SCORES, function(sc) {
+        map2_int(cell_keys$group, cell_keys$decade,
+                 \(g, dd) n_usable(g, dd, paste0("Zbin_", sc)))
+      }),
+      unname(PARTY_SCORE_LABELS[COMPARISON_SCORES])
+    )) |>
+    as.data.frame(),
+  row.names = FALSE
+)
+cat(sprintf("(a cell is fitted when its usable count reaches %d)\n", CELL_MIN_N))
+
+# ---- estimation --------------------------------------------------------------
+
+cell_results <- pmap_dfr(
+  cell_keys,
+  function(group, decade, cell, n_cell) {
+    dd <- cell_df(group, decade)
+    expand_grid(form = names(FORMS), score = COMPARISON_SCORES) |>
+      pmap_dfr(function(form, score) {
+        var <- paste0(FORMS[[form]]$prefix, score)
+        nu <- sum(!is.na(dd[[var]]))
+        base <- tibble(
+          group = group, decade = decade, cell = cell,
+          n_cell = n_cell, n_usable = nu, fitted = nu >= CELL_MIN_N,
+          form = form, score = score,
+          score_label = unname(PARTY_SCORE_DISPLAY[score])
+        )
+        # A too-thin cell is still emitted, so it is visibly blank in the CSV
+        # rather than silently absent from it.
+        if (nu < CELL_MIN_N) {
+          return(bind_cols(base, tibble(
+            n = NA_integer_, est = NA_real_, se = NA_real_,
+            pval = NA_real_, bw = NA_real_
+          )))
+        }
+        bind_cols(base, estimate_cell(dd, var))
+      })
+  }
+)
+
+write_csv(cell_results, file.path(out_dir, "party_outcome_cells.csv"))
+
+# ---- grids -------------------------------------------------------------------
+
+# One file per form; one block per OECD group, so the two blocks get distinct
+# gt row-group names (see make_block).
+for (fm in names(FORMS)) {
+  blocks <- list()
+  for (g in levels(d_cells$group)) {
+    sub <- cell_results |> filter(form == fm, group == g)
+    if (nrow(sub) == 0) next
+    decs <- levels(d_cells$decade)
+    row_labels <- setNames(
+      vapply(decs, function(dd) {
+        k <- cell_keys |> filter(group == g, decade == dd)
+        nf <- sum(sub$fitted[sub$decade == dd])
+        sprintf(
+          "%s (N = %d)%s", dd, k$n_cell,
+          if (nf == 0) " -- all too thin" else ""
+        )
+      }, character(1)),
+      decs
+    )
+    blocks[[length(blocks) + 1]] <- make_block(
+      sub |> mutate(decade = as.character(decade)),
+      "decade", row_labels, g, fm
+    )
+  }
+  if (length(blocks) == 0) next
+
+  color_grid_blocks(
+    blocks,
+    path = file.path(out_dir, sprintf("grid_cells_%s.html", fm)),
+    title = sprintf(
+      "Decade x OECD: RD on the winner's other party scores -- %s",
+      FORMS[[fm]]$title
+    ),
+    subtitle = sprintf(
+      "%s | Full sample within each cell, no restriction applied | %d-%d",
+      subtitle_base, CELL_YEAR_MIN, CELL_YEAR_MAX
+    ),
+    note = paste(
+      SIG_FOOTNOTE, unit_note_for(fm), REDUNDANCY_NOTE,
+      sprintf(
+        "Cells with fewer than %d elections are left blank rather than fitted.",
+        CELL_MIN_N
+      )
+    )
+  )
+}
+
+# ---- figures -----------------------------------------------------------------
+
+# A stand-in so a thin cell keeps its slot and the 2 x 5 grid stays aligned,
+# rather than the remaining panels reflowing and the decades falling out of
+# line between the two rows.
+blank_panel <- function(title, msg) {
+  ggplot() +
+    annotate("text", x = 0, y = 0, label = msg, size = 2.6, colour = "grey45") +
+    labs(title = title) +
+    theme_void(base_size = 9) +
+    theme(plot.title = element_text(size = 9, face = "bold", hjust = 0))
+}
+
+for (fm in names(FORMS)) {
+  spec <- FORMS[[fm]]
+  for (sc in COMPARISON_SCORES) {
+    var <- paste0(spec$prefix, sc)
+
+    # One y range for all ten panels, so a tag moving between decades is
+    # genuinely moving. Binary is already a probability on [0, 1]; for the
+    # continuous form the 2nd-98th percentile of the score keeps the axis off
+    # the tails without clipping the binned means.
+    y_lim <- if (!is.null(spec$ylim)) {
+      spec$ylim
+    } else {
+      q <- quantile(d_cells[[var]], c(0.02, 0.98), na.rm = TRUE)
+      pad <- max(diff(q) * 0.12, 1e-6)
+      unname(c(q[1] - pad, q[2] + pad))
+    }
+
+    n_dec <- nlevels(d_cells$decade)
+    panels <- pmap(cell_keys, function(group, decade, cell, n_cell) {
+      i <- which(levels(d_cells$decade) == decade)
+      is_left <- i == 1
+      is_bottom <- group == levels(d_cells$group)[nlevels(d_cells$group)]
+      nu <- n_usable(group, decade, var)
+      title <- sprintf("%s \u00b7 %s (n = %d)", group, decade, nu)
+
+      # Axis titles only on the outer edge. Repeating the same two strings ten
+      # times crowds the panels and, at this width, truncates them.
+      trim_axes <- function(p) {
+        p + labs(
+          x = if (is_bottom) "Running variable (illiberal - other share, pp)" else NULL,
+          y = if (is_left) spec$ylab else NULL
+        )
+      }
+
+      if (nu < CELL_MIN_N) {
+        return(blank_panel(
+          title, sprintf("%d usable, need %d", nu, CELL_MIN_N)
+        ))
+      }
+      p <- build_panel_plot(
+        cell_df(group, decade),
+        setNames(unname(PARTY_SCORE_LABELS[sc]), var),
+        title, spec$ylab, y_lim = y_lim, show_legend = FALSE
+      )
+      if (is.null(p)) {
+        return(blank_panel(title, "too few near the cutoff"))
+      }
+
+      # The estimate on the panel. These cells are thin and their CIs are wide
+      # enough to fill the panel, so a reader left to eyeball the jump will
+      # over-read noise; the number and its stars say what the fit actually
+      # found. Placed with Inf/-Inf so it sits in the corner whatever the
+      # panel's own y range turns out to be.
+      est <- cell_results |>
+        filter(group == !!group, decade == !!decade, form == fm, score == sc)
+      lab <- if (nrow(est) == 1 && !is.na(est$est)) {
+        sprintf("RD %s", fmt_est(est$est, est$se, est$pval))
+      } else {
+        NA_character_
+      }
+      if (!is.na(lab)) {
+        p <- p + annotate(
+          "label", x = -Inf, y = Inf, label = lab,
+          hjust = -0.05, vjust = 1.1, size = 2.4, colour = "grey15",
+          fill = "white", alpha = 0.75, label.size = 0
+        )
+      }
+      trim_axes(p)
+    })
+
+    combined <- wrap_plots(panels, ncol = nlevels(d_cells$decade)) +
+      plot_annotation(
+        title = sprintf(
+          "%s by decade and OECD -- %s",
+          unname(PARTY_SCORE_DISPLAY[sc]),
+          if (identical(fm, "binary")) {
+            "is the winner the higher-scoring of the top 2?"
+          } else {
+            "the winner's own score"
+          }
+        ),
+        subtitle = paste(
+          strwrap(sprintf(paste(
+            "Instrument: %s. Each panel is its own RD with its own bandwidth",
+            "and binning; the y axis is shared across panels so they are",
+            "comparable. Shaded band = 95%% CI of the local-linear fit",
+            "(conventional, not bias-corrected). Full sample within each cell.",
+            "%d-%d; %d elections outside that window are in the pooled figures",
+            "only."
+          ), INSTRUMENT_DISPLAY[[ILLIBERALISM_VAR]],
+          CELL_YEAR_MIN, CELL_YEAR_MAX, n_dropped), 130),
+          collapse = "\n"
+        )
+      )
+    ggsave(
+      file.path(plots_dir, sprintf("cells_%s_%s.png", fm, PARTY_SCORE_LABELS[sc])),
+      combined,
+      width = 3.1 * nlevels(d_cells$decade) + 0.6,
+      height = 2.9 * nlevels(d_cells$group) + 1.5,
+      dpi = 150, limitsize = FALSE
+    )
+    cat(sprintf("Saved plots/cells_%s_%s.png\n", fm, PARTY_SCORE_LABELS[sc]))
+  }
 }
 
 cat("\n=== Unrestricted sample ===\n")
