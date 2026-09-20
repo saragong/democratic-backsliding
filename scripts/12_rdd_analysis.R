@@ -10,11 +10,12 @@
 #
 # Everything this script writes goes into ONE run folder,
 # output/runs/<slug>/, where the slug encodes the instrument, window,
-# treatment definition and both sample-restriction thresholds. Different
-# versions of the analysis therefore never overwrite each other, and each
-# folder is self-describing via its run_config.csv.
+# treatment definition, all three sample-restriction thresholds, the window
+# convention and whether this is the pre-election placebo. Different versions
+# of the analysis therefore never overwrite each other, and each folder is
+# self-describing via its run_config.csv.
 #
-# Data:   data/rdd_build/rdd_<ILLIBERALISM_VAR>_w<N>.rds
+# Data:   data/rdd_build/rdd_<ILLIBERALISM_VAR>_w<N>[_exclyr][_pre].rds
 # Output: output/runs/<slug>/
 #           run_config.csv
 #           rdd_results.csv, rdd_first_stage_results.csv
@@ -76,12 +77,14 @@ stopifnot(TREATMENT_VAR %in% names(TREATMENT_LABELS))
 
 # ---- Sample restrictions -----------------------------------------------------
 #
-# BOTH thresholds below accept THREE forms, and which one you mean is decided by
-# what you write -- there is no separate "type" switch to keep in sync:
+# ALL THREE thresholds below accept the same three forms, and which one you
+# mean is decided by what you write -- there is no separate "type" switch to
+# keep in sync:
 #
 #     0.6      ABSOLUTE  a value on the variable's own scale
 #     "q50"    QUANTILE  a percentile of the variable's distribution
-#     -Inf     NONE      no restriction
+#     -Inf     NONE      no restriction, for the two FLOORs
+#     Inf      NONE      no restriction, for the CEILING (OTHER_CUTOFF_MAX)
 #
 # Anything else is an error, not a fallback (see parse_threshold() in
 # rdd_helpers.R for why). Whichever form is used, the run prints a "Sample
@@ -527,6 +530,21 @@ save_table_html(
   note = paste(SIG_FOOTNOTE, TREATED_FOOTNOTE)
 )
 
+# In a polyarchy-treatment run, Y_polyarchy IS the treatment negated, so its
+# row is arithmetic rather than a result: the reduced form reproduces the first
+# stage and the fuzzy LATE is -1 by construction. The row is kept (dropping it
+# would make the outcome list depend on the treatment, and the number is a
+# useful internal check) but the table says what it is.
+TAUTOLOGY_NOTE <- if (TREATMENT_VAR %in% c("polyarchy_decline", "polyarchy_declined")) {
+  paste(
+    "NOTE: with this treatment, Y_polyarchy is the treatment variable negated.",
+    "Its reduced form reproduces the first stage and its fuzzy LATE is -1 by",
+    "construction; it is a consistency check, not a finding."
+  )
+} else {
+  NULL
+}
+
 save_table_html(
   results$outcomes |>
     transmute(
@@ -541,7 +559,7 @@ save_table_html(
   file.path(out_run, "outcomes_table.html"),
   "Reduced form / fuzzy RD by outcome",
   subtitle,
-  note = paste(SIG_FOOTNOTE, TREATED_FOOTNOTE)
+  note = paste(c(SIG_FOOTNOTE, TREATED_FOOTNOTE, TAUTOLOGY_NOTE), collapse = " ")
 )
 
 if (MAKE_PLOTS) {
