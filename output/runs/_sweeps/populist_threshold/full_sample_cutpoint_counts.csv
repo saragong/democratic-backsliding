@@ -1,0 +1,4 @@
+score,rule,value,n_total,n_above,n_below,pct_above
+v2xpa_popul,Absolute threshold,0.6535,6305,1057,5248,16.7644726407613
+v2xpa_antiplural,Absolute threshold,0.6535,6305,1710,4595,27.12133227597145
+v2xpa_antiplural,Percentile transfer,0.822,6305,1053,5252,16.701030927835053

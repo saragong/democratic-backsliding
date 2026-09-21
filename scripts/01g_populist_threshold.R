@@ -603,6 +603,31 @@ p_roc <- ggplot(roc_df, aes(fpr, tpr)) +
 ggsave(file.path(out_dir, "roc.png"), p_roc, width = 7, height = 7, dpi = 150)
 cat("Saved roc.png\n")
 
+# On FIT_SCORE the two rules coincide by construction -- the percentile
+# transfer is defined as the percentile the cutpoint sits at, so evaluating it
+# on the score it came from returns the cutpoint. They differ in the 4th
+# decimal only because quantile() interpolates between order statistics, so an
+# exact-equality dedup leaves two lines a thousandth apart, drawn on top of
+# each other and indistinguishable. Collapse on a tolerance instead.
+dedup_cuts <- function(df, tol = 1e-2) {
+  # Pairwise, not bucketed: rounding value/tol to a bucket index splits two
+  # values that straddle a bucket edge however close they are (0.6535 and
+  # 0.6532 land in different buckets at tol = 1e-3 despite differing by
+  # 3e-4). Keep a row only if no already-kept row on the same scale is within
+  # tol of it.
+  df |>
+    arrange(score, rule) |>
+    group_by(score) |>
+    filter({
+      keep <- logical(length(value))
+      for (i in seq_along(value)) {
+        keep[i] <- !any(keep & abs(value - value[i]) < tol)
+      }
+      keep
+    }) |>
+    ungroup()
+}
+
 # The transfer, shown rather than asserted, on the sample the cutpoint was
 # actually fitted on.
 #
@@ -660,7 +685,7 @@ cut_df <- tibble(
   )
 ) |>
   mutate(lab = sprintf("%s (%.3f)", rule, value)) |>
-  distinct(score, value, .keep_all = TRUE)
+  dedup_cuts()
 
 p_dist <- ggplot(dist_df, aes(value)) +
   geom_density(
@@ -723,5 +748,128 @@ ggsave(
   width = 9, height = 6.8, dpi = 150
 )
 cat("Saved score_distributions.png\n")
+
+# ------------------------------------------------------------------------------
+# The same two cutpoints against the FULL party population
+#
+# score_distributions.png shows the inclusion sample -- the 29 European
+# countries the logit was fitted on. But the cutpoint is not applied there: it
+# is applied to the global election spine, where most parties are from
+# countries PopuList never looked at. So the question this figure answers is
+# the one that actually matters downstream: where do these thresholds fall in
+# the population they will be used to cut?
+#
+# All scored V-Party party-years, every country and every year, which is also
+# the population the percentile transfer was computed over -- so the dashed
+# line sits at its stated percentile here by construction, and does not
+# elsewhere.
+#
+# Counts rather than densities, because "how many parties does this threshold
+# put on each side" is the thing being reported.
+# ------------------------------------------------------------------------------
+
+full_cuts <- tibble(
+  score = factor(c(FIT_SCORE, FIT_SCORE, APPLY_SCORE, APPLY_SCORE),
+                 levels = c(FIT_SCORE, APPLY_SCORE)),
+  rule = rep(c("Absolute threshold", "Percentile transfer"), 2),
+  value = c(
+    out$threshold_abs,
+    unname(quantile(apply_scores[[FIT_SCORE]], out$percentile / 100, na.rm = TRUE)),
+    out$threshold_abs,
+    out$threshold_pct
+  )
+) |>
+  dedup_cuts()
+
+# How many parties each threshold puts on each side, on each scale.
+full_counts <- full_cuts |>
+  rowwise() |>
+  mutate(
+    n_total = sum(!is.na(apply_scores[[as.character(score)]])),
+    n_above = sum(apply_scores[[as.character(score)]] > value, na.rm = TRUE),
+    n_below = n_total - n_above,
+    pct_above = 100 * n_above / n_total
+  ) |>
+  ungroup()
+
+write_csv(full_counts, file.path(out_dir, "full_sample_cutpoint_counts.csv"))
+
+cat("\nFull V-Party population (all countries, all years), parties either side:\n")
+print(
+  full_counts |>
+    transmute(
+      score = as.character(score), rule,
+      threshold = round(value, 4),
+      n_below, n_above, n_total, pct_above = round(pct_above, 1)
+    ) |>
+    as.data.frame(),
+  row.names = FALSE
+)
+
+full_long <- apply_scores |>
+  select(all_of(c(FIT_SCORE, APPLY_SCORE))) |>
+  pivot_longer(everything(), names_to = "score", values_to = "value") |>
+  filter(!is.na(value)) |>
+  mutate(score = factor(score, levels = c(FIT_SCORE, APPLY_SCORE)))
+
+# One label block per panel, listing each rule's split. Placed top-left, where
+# neither index has much mass.
+count_lab <- full_counts |>
+  summarise(
+    lab = paste(
+      sprintf("%s %.3f: %s below / %s above (%.0f%% above)",
+              rule, value, format(n_below, big.mark = ","),
+              format(n_above, big.mark = ","), pct_above),
+      collapse = "\n"
+    ),
+    .by = score
+  )
+
+p_full <- ggplot(full_long, aes(value)) +
+  geom_histogram(bins = 60, fill = "grey80", colour = "white", linewidth = 0.2) +
+  geom_vline(
+    data = full_cuts, aes(xintercept = value, linetype = rule),
+    colour = "grey15", linewidth = 0.55
+  ) +
+  geom_text(
+    data = count_lab, aes(x = -Inf, y = Inf, label = lab),
+    hjust = -0.03, vjust = 1.25, size = 2.6, colour = "grey15", lineheight = 1.15
+  ) +
+  facet_wrap(
+    ~score, ncol = 1, scales = "free_y",
+    labeller = labeller(score = SCORE_LABELS)
+  ) +
+  scale_linetype_manual(values = c("solid", "dashed"), name = NULL) +
+  labs(
+    title = "Where the cutpoints fall in the full V-Party population",
+    subtitle = paste(
+      strwrap(sprintf(paste(
+        "All %s scored party-years, every country and every year -- NOT the",
+        "European inclusion sample the logit was fitted on (that is",
+        "score_distributions.png). This is the population the threshold is",
+        "actually applied to. On populism the two rules coincide by",
+        "construction and one line is drawn; they separate on anti-pluralism",
+        "because the two indices are not distributed alike. Counts either side",
+        "are in full_sample_cutpoint_counts.csv."
+      ), format(nrow(apply_scores), big.mark = ",")), 100),
+      collapse = "\n"
+    ),
+    x = "Score", y = "Party-years"
+  ) +
+  theme_bw(base_size = 9) +
+  theme(
+    panel.grid.minor = element_blank(),
+    strip.background = element_rect(fill = "grey95", colour = "grey70"),
+    strip.text = element_text(size = 8.5, face = "bold"),
+    legend.position = "bottom",
+    legend.margin = margin(t = -2),
+    plot.title = element_text(face = "bold"),
+    plot.subtitle = element_text(size = 7.5, colour = "grey25")
+  )
+ggsave(
+  file.path(out_dir, "score_distributions_full_sample.png"), p_full,
+  width = 9, height = 6.4, dpi = 150
+)
+cat("Saved score_distributions_full_sample.png\n")
 
 message("\nPopuList threshold calibration written to ", out_dir)
