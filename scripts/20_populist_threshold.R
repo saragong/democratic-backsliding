@@ -94,6 +94,28 @@ POPULIST_CSV <- file.path(data_dir, "populist_4.0.csv")
 FIT_SCORE <- "v2xpa_popul"
 APPLY_SCORE <- "v2xpa_antiplural"
 
+# Which cutpoint criterion the headline threshold uses. Both are always
+# computed and both are carried in the output; this only decides which one
+# data/populist_threshold.rds names as `threshold_abs` / `threshold_pct` and
+# which the figures mark.
+#
+# "accuracy" (chosen 2026-09-21). Provenance matters here and belongs in the
+# record rather than in anyone's memory: both criteria were computed first,
+# the RDD was run at both, and accuracy was selected afterwards. It is the
+# criterion that puts the bar where the illiberal-vs-not contrast is real --
+# Youden lands at 0.362, near the middle of the anti-pluralism distribution,
+# where using one number as both floor and ceiling makes the two parties
+# straddle a point and is barely a contrast at all. It is ALSO the criterion
+# under which the growth effect survives the restriction (-0.192 vs +0.042).
+# Those two facts have the same cause, but a reader is entitled to know the
+# choice was made with the second one visible, and any write-up should say
+# so and show both.
+#
+# "youden" remains the defensible default for an imbalanced classification
+# problem taken on its own terms, and switching back is one line.
+HEADLINE_METHOD <- "accuracy"
+stopifnot(HEADLINE_METHOD %in% c("youden", "accuracy"))
+
 # ------------------------------------------------------------------------------
 # 1. The PopuList
 # ------------------------------------------------------------------------------
@@ -445,17 +467,22 @@ write_csv(thresholds, file.path(out_dir, "thresholds.csv"))
 # 5. The headline numbers, for 12_rdd_analysis.R
 # ------------------------------------------------------------------------------
 
-# Both cutpoints from the headline universe, so 12_rdd_analysis.R can be run
-# at either without re-deriving anything. `youden` stays the default -- it
-# weights the two error types equally, which is what the sample restriction
-# needs -- but `accuracy` is a legitimate alternative reading of "best" and
-# lands somewhere very different, so it travels alongside rather than being
-# a number someone has to recompute.
+# Both cutpoints from the headline universe travel in the output, so
+# 12_rdd_analysis.R can be run at either without re-deriving anything;
+# HEADLINE_METHOD decides which one is named as the default.
 headline_universe <- "imputed_zero"
 cuts_out <- thresholds |>
   filter(universe == headline_universe, !degenerate)
 stopifnot(nrow(cuts_out) >= 1)
-headline <- cuts_out |> filter(method == "youden") |> slice(1)
+headline <- cuts_out |> filter(method == HEADLINE_METHOD) |> slice(1)
+if (nrow(headline) == 0) {
+  stop(
+    "HEADLINE_METHOD = '", HEADLINE_METHOD, "' produced no usable cutpoint ",
+    "in the ", headline_universe, " universe (it may have been dropped as ",
+    "degenerate). Available: ", paste(cuts_out$method, collapse = ", "),
+    call. = FALSE
+  )
+}
 
 out <- list(
   fit_score = FIT_SCORE,
@@ -516,27 +543,36 @@ p_roc <- ggplot(roc_df, aes(fpr, tpr, colour = universe)) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed",
               colour = "grey60", linewidth = 0.4) +
   geom_line(linewidth = 0.8) +
+  # Both cutpoints marked, the headline one filled. Showing only the chosen
+  # one would hide how far apart they are, which is the thing a reader of
+  # this figure most needs to see.
   geom_point(
     data = thresholds |>
-      filter(method == "youden") |>
+      filter(!degenerate) |>
       mutate(
         universe = sprintf("%s (AUC %.3f)", universe, auc),
-        fpr = 1 - specificity, tpr = sensitivity
+        fpr = 1 - specificity, tpr = sensitivity,
+        is_headline = method == HEADLINE_METHOD
       ),
-    aes(fpr, tpr), size = 2.6, shape = 21, fill = "white", stroke = 1
+    aes(fpr, tpr, shape = is_headline), size = 2.6, stroke = 1, fill = "white"
+  ) +
+  scale_shape_manual(
+    values = c(`FALSE` = 21, `TRUE` = 19),
+    labels = c(`FALSE` = "other cutpoint", `TRUE` = HEADLINE_METHOD),
+    name = NULL
   ) +
   scale_colour_manual(values = c("#0072B2", "#D55E00"), name = NULL) +
   coord_fixed() +
   labs(
     title = sprintf("Does %s separate PopuList's populist parties?", FIT_SCORE),
     subtitle = paste(
-      strwrap(paste(
-        "ROC of the raw V-Party populism score. Circles mark the Youden",
-        "cutpoint. AUC measures the SCORE, not any cutpoint -- it is the same",
-        "number whichever cutpoint is chosen. PopuList covers 31 European",
-        "countries, so a cutpoint fitted here is applied out of sample to the",
-        "global election spine."
-      ), 95),
+      strwrap(sprintf(paste(
+        "ROC of the raw V-Party populism score. Both cutpoints are marked;",
+        "the filled one is the headline (%s). AUC measures the SCORE, not any",
+        "cutpoint -- it is the same number whichever cutpoint is chosen.",
+        "PopuList covers 31 European countries, so a cutpoint fitted here is",
+        "applied out of sample to the global election spine."
+      ), HEADLINE_METHOD), 95),
       collapse = "\n"
     ),
     x = "False positive rate (1 - specificity)",
