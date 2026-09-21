@@ -33,6 +33,26 @@ separate "type" switch:
 | `"qNN"` | percentile of the variable's distribution | `"q50"`, `"q97.5"` |
 | `-Inf` | no restriction, for a FLOOR (`SCORE_GAP_MIN`, `ILLIBERAL_CUTOFF`) | |
 | `Inf` | no restriction, for a CEILING (`OTHER_CUTOFF_MAX`) | |
+| a named external threshold | value read from a file another script wrote | `"popucut"`, `"popucut_pct"` |
+
+The external forms are registered in `EXTERNAL_THRESHOLDS` in
+`rdd_helpers.R`. Today there are two, both resolving out of
+`data/populist_threshold.rds`, written by `01g_populist_threshold.R`:
+
+| Spec | Resolves to | Meaning |
+|---|---|---|
+| `"popucut"` | 0.6535 | the PopuList-calibrated illiberality cut, accuracy criterion, carried across as a raw value |
+| `"popucut_pct"` | 0.8220 | the same cut, transferred at its percentile (83.2nd) instead |
+
+Setting `ILLIBERAL_CUTOFF` and `OTHER_CUTOFF_MAX` both to `"popucut"` is the
+"one top-2 party illiberal, the other not" sample — 411 elections at w5. It is
+a spec rather than a typed number so that re-running the calibration moves
+every run that uses it; a hardcoded `0.6535` would not. Missing file is a hard
+error naming the script to run.
+
+Folder names still use the RESOLVED value (`..._illib0p6535_opp0p6535`), and
+`run_config.csv` records the spec as written, so the provenance travels with
+the run without the slug depending on a file.
 
 The no-restriction sentinel differs by direction because nothing is below
 `-Inf` and nothing is above `Inf`. `parse_threshold()` takes the right one via
@@ -226,6 +246,7 @@ hold numbers only.
 | `_sweeps/vparty_jaccard_panels/` | 1c: the anti-pluralism x populism Jaccard heatmap over the full V-Party dataset, as a 2 x 5 OECD-by-decade grid |
 | `_sweeps/vparty_ideology_quadrants/` | 1d: where the most common Wikipedia/Wikidata ideology tags sit on the illiberalism x populism plane, same 2 x 5 grid |
 | `_sweeps/populist_threshold/` | 2b: the PopuList-calibrated cutoff for "illiberal", and the ROC it comes from |
+| `_sweeps/cell_rdd_<instr>/` | reduced-form RD on the decade x OECD grid, every outcome, w1-10, full and PopuList-restricted samples |
 
 The pre-run-folder output that used to sit in `_legacy/` has been deleted. It is
 recoverable from the commit that preceded the cleanup, and the numbers in it
@@ -235,6 +256,7 @@ reproduce directly by setting `TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR = FALSE`.
 
 ```
 Rscript --no-init-file scripts/01f_load_extra_outcomes.R   # extra outcomes
+Rscript --no-init-file scripts/01g_populist_threshold.R   # PopuList cut (downloads)
 Rscript --no-init-file scripts/02a_build_panel.R           # country-year panel
 Rscript --no-init-file scripts/11_build_rdd_data.R         # default build
 Rscript --no-init-file scripts/12_rdd_analysis.R           # default run
@@ -245,12 +267,15 @@ Rscript --no-init-file scripts/16_instrument_overlap.R     # to-do 7
 Rscript --no-init-file scripts/17_party_outcomes_rdd.R     # 1a
 Rscript --no-init-file scripts/18_vparty_jaccard_panels.R  # 1c
 Rscript --no-init-file scripts/19_vparty_ideology_quadrants.R  # 1d
-Rscript --no-init-file scripts/20_populist_threshold.R     # 2b (downloads PopuList)
+Rscript --no-init-file scripts/21_cell_rdd.R               # decade x OECD cells
+
 ```
 
 Scripts 18 and 19 read raw V-Party and never touch a build, so they source
-`scripts/vparty_helpers.R` rather than `scripts/rdd_helpers.R`. Script 20 is a
-calibration step and sources neither.
+`scripts/vparty_helpers.R` rather than `scripts/rdd_helpers.R`.
+`01g_populist_threshold.R` is a calibration step and sources neither; it sits
+in the loader tier because `12_rdd_analysis.R` now consumes its output through
+the `"popucut"` spec, so it has to run before the build.
 
 `--no-init-file` is required: this machine's `~/.Rprofile` calls
 `credentials::set_github_pat()`, which errors without a PAT. Do not use

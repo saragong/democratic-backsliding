@@ -477,6 +477,40 @@ color_grid_table <- function(
 # skipped without a word: the run reported itself as restricted and was not.
 # ------------------------------------------------------------------------------
 
+# Threshold specs whose VALUE lives in a file another script computed, rather
+# than being typed or derived from the data at hand.
+#
+# There is one today: the PopuList-calibrated cut that separates "illiberal"
+# from "not", written by 01g_populist_threshold.R. It is a spec rather than a
+# number typed into a run because the number is derived -- re-running the
+# calibration on a new PopuList release should move every run that uses it,
+# and a hardcoded 0.6535 would not.
+#
+# Each entry names the file, the field to read, and a sentence for the run's
+# restriction label. Resolution happens in resolve_threshold(), not here:
+# parse_threshold()'s contract is that it classifies a spec WITHOUT touching
+# data, and reading an RDS would break that.
+EXTERNAL_THRESHOLDS <- list(
+  popucut = list(
+    file = file.path("data", "populist_threshold.rds"),
+    field = "threshold_abs",
+    source_script = "01g_populist_threshold.R",
+    describe = function(x) sprintf(
+      "PopuList-calibrated illiberality cut (%s criterion, absolute transfer; fitted on %d party-years, AUC %.3f)",
+      x$method, x$n, x$auc
+    )
+  ),
+  popucut_pct = list(
+    file = file.path("data", "populist_threshold.rds"),
+    field = "threshold_pct",
+    source_script = "01g_populist_threshold.R",
+    describe = function(x) sprintf(
+      "PopuList-calibrated illiberality cut (%s criterion, %.1fth-percentile transfer; fitted on %d party-years, AUC %.3f)",
+      x$method, x$percentile, x$n, x$auc
+    )
+  )
+)
+
 # Classify a threshold spec WITHOUT looking at data. Returns a list with
 # $kind ("none" | "absolute" | "quantile"), $quantile, $absolute and $spec (the
 # spec as written, for the record).
@@ -527,6 +561,13 @@ parse_threshold <- function(spec, name = "threshold", none_value = -Inf) {
     ))
   }
   if (is.character(spec)) {
+    # A named external threshold, resolved from file in resolve_threshold().
+    if (spec %in% names(EXTERNAL_THRESHOLDS)) {
+      return(list(
+        kind = "external", quantile = NA_real_, absolute = NA_real_,
+        none_value = none_value, external = spec, spec = spec
+      ))
+    }
     # Lowercase q, then a number: "q50", "q97.5". Nothing else.
     if (grepl("^q[0-9]+(\\.[0-9]+)?$", spec)) {
       p <- as.numeric(sub("^q", "", spec))
@@ -547,6 +588,8 @@ parse_threshold <- function(spec, name = "threshold", none_value = -Inf) {
       "    a number  -- absolute cutoff on the variable's own scale, e.g. 0.6\n",
       '    "qNN"     -- percentile of its distribution, e.g. "q50", "q97.5"\n',
       "                 (lowercase q, no space, NN between 0 and 100)\n",
+      "    a named external threshold, resolved from a file:\n",
+      "                 ", paste(names(EXTERNAL_THRESHOLDS), collapse = ", "), "\n",
       "    ", format(none_value, trim = TRUE),
       "      -- no restriction (this threshold's no-op sentinel)\n",
       "  This is an error rather than a fallback on purpose: silently ignoring an\n",
@@ -572,6 +615,29 @@ resolve_threshold <- function(parsed, values, name = "threshold") {
   if (parsed$kind == "none") {
     parsed$absolute <- parsed$none_value %||% -Inf
     parsed$label <- "no restriction"
+    return(parsed)
+  }
+  if (parsed$kind == "external") {
+    ext <- EXTERNAL_THRESHOLDS[[parsed$external]]
+    path <- here::here(ext$file)
+    if (!file.exists(path)) {
+      stop(
+        name, ' = "', parsed$spec, '" needs ', ext$file,
+        ", which does not exist. Run scripts/", ext$source_script,
+        " first -- it downloads The PopuList and calibrates the cut.",
+        call. = FALSE
+      )
+    }
+    x <- readRDS(path)
+    if (is.null(x[[ext$field]]) || !is.finite(x[[ext$field]])) {
+      stop(
+        name, ' = "', parsed$spec, '": ', ext$file, " has no usable '",
+        ext$field, "'. Re-run scripts/", ext$source_script, ".",
+        call. = FALSE
+      )
+    }
+    parsed$absolute <- as.numeric(x[[ext$field]])
+    parsed$label <- sprintf("%.4g -- %s", parsed$absolute, ext$describe(x))
     return(parsed)
   }
   if (parsed$kind == "quantile") {

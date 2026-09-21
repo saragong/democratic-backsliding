@@ -136,7 +136,7 @@ if (!exists("ILLIBERAL_CUTOFF")) ILLIBERAL_CUTOFF <- 0.6
 # not a real treatment contrast at all.
 #
 # Where the number comes from is deliberately not this script's business.
-# 20_populist_threshold.R derives one by calibrating against The PopuList, but
+# 01g_populist_threshold.R derives one by calibrating against The PopuList, but
 # a quantile ("q50") or a hand-picked value are equally valid ways to set it,
 # and 13_restriction_grid.R sweeps it as axis R6.
 # Compared with `<=` (a score exactly at the threshold is kept).

@@ -13,3 +13,4 @@ notes/
 
 # Claude Code session files
 .claude/
+.Rproj.user

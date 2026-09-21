@@ -1,0 +1,2 @@
+spec,treatment,n_first_stage,n_first_stage_treated,first_stage_coef,first_stage_se,first_stage_pval,first_stage_bandwidth
+instr-antiplural_w7_trt-ertOrDdcg_gapany_illib0p822_opp0p822_exclyr,backsliding_union_Nyr,323,60,0.06444177477952467,0.1846967421191276,0.7271599892082843,23.364666207486845

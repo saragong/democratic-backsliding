@@ -176,7 +176,7 @@ AXES <- list(
   # The opponent-side ceiling. On its own it asks "does the result survive
   # dropping elections where BOTH top-2 parties are illiberal?"; crossed with
   # R2 (a floor on the more-illiberal party) it is the "one illiberal, one
-  # not" restriction that 20_populist_threshold.R calibrates a number for.
+  # not" restriction that 01g_populist_threshold.R calibrates a number for.
   # Here it is swept over quantiles instead, so the answer does not depend on
   # PopuList, which covers only 31 European countries.
   R5 = list(
@@ -199,7 +199,7 @@ AXES <- list(
   # The opponent-side ceiling. On its own it asks "does the result survive
   # dropping elections where BOTH top-2 parties are illiberal?"; crossed with
   # R2 (a floor on the more-illiberal party) it is the "one illiberal, one
-  # not" restriction that 20_populist_threshold.R calibrates a number for.
+  # not" restriction that 01g_populist_threshold.R calibrates a number for.
   # Swept over quantiles here, so this axis does not depend on PopuList, which
   # covers only 31 European countries.
   R6 = ceiling_axis("other_score", "R6: less-illiberal party's score (ceiling)")

@@ -75,6 +75,66 @@ build_suffix <- paste0(
   if (PLACEBO_PRE_WINDOW) "_pre" else ""
 )
 
+# ------------------------------------------------------------------------------
+# Resolve the restriction specs to NUMBERS, once, before anything uses them.
+#
+# The three SWEEP_* thresholds accept every form 12_rdd_analysis.R accepts,
+# including "q50" and the file-backed "popucut". Two things downstream need a
+# number rather than a spec:
+#
+#   the sweep FOLDER NAME, via fmt_slug_num(), which errors on a character; and
+#   collect()'s cfg, which run_slug() turns into the folder names it reads.
+#
+# The second is the dangerous one. The children resolve their own specs and
+# write to folders named for the RESOLVED value, so if the pooling step keyed
+# on the raw spec it would look somewhere else entirely -- the same silent
+# mis-keying that made the placebo sweep pool the non-placebo runs. Resolving
+# here and passing numbers everywhere means both steps cannot disagree.
+#
+# Quantile specs resolve against the w5 build, which is arbitrary but has to be
+# SOME build; a quantile of score_gap_z barely moves across windows because the
+# window changes the outcomes, not the top-2 scores. Flagged rather than hidden.
+resolve_sweep_threshold <- function(spec, name, values, none_value = -Inf) {
+  resolve_threshold(
+    parse_threshold(spec, name, none_value = none_value), values, name
+  )$absolute
+}
+
+local({
+  ref_path <- file.path(
+    data_dir, "rdd_build",
+    sprintf("rdd_%s_w%d%s.rds", SWEEP_INSTRUMENT, 5L, build_suffix)
+  )
+  if (!file.exists(ref_path)) {
+    stop(
+      "Cannot resolve the sweep's restriction thresholds: no reference build ",
+      "at ", ref_path, ". Build w5 first.",
+      call. = FALSE
+    )
+  }
+  ref <- readRDS(ref_path)
+  SWEEP_SCORE_GAP_MIN <<- resolve_sweep_threshold(
+    SWEEP_SCORE_GAP_MIN, "SWEEP_SCORE_GAP_MIN", ref$score_gap_z
+  )
+  SWEEP_ILLIBERAL_CUTOFF <<- resolve_sweep_threshold(
+    SWEEP_ILLIBERAL_CUTOFF, "SWEEP_ILLIBERAL_CUTOFF", ref$illiberal_score
+  )
+  SWEEP_OTHER_CUTOFF_MAX <<- resolve_sweep_threshold(
+    SWEEP_OTHER_CUTOFF_MAX, "SWEEP_OTHER_CUTOFF_MAX", ref$other_score,
+    none_value = Inf
+  )
+})
+stopifnot(
+  is.numeric(SWEEP_SCORE_GAP_MIN),
+  is.numeric(SWEEP_ILLIBERAL_CUTOFF),
+  is.numeric(SWEEP_OTHER_CUTOFF_MAX)
+)
+cat(sprintf(
+  "Sweep restrictions (resolved): score_gap_z >= %s, illiberal_score > %s, other_score <= %s\n",
+  format(SWEEP_SCORE_GAP_MIN), format(SWEEP_ILLIBERAL_CUTOFF),
+  format(SWEEP_OTHER_CUTOFF_MAX)
+))
+
 # Run one of the pipeline scripts in a fresh environment with the given toggle
 # overrides pre-defined. The scripts all guard their toggles with
 # `if (!exists(...))`, so anything set here wins and everything else falls back

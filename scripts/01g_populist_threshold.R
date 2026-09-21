@@ -79,7 +79,7 @@
 # election spine, so it is an out-of-sample transfer in two directions at once
 # (different variable, different countries). Every output says so.
 #
-#   Rscript --no-init-file scripts/20_populist_threshold.R
+#   Rscript --no-init-file scripts/01g_populist_threshold.R
 #
 # Output: data/populist_4.0.csv          cached download
 #         data/populist_threshold.rds    the cutpoints, for 12_rdd_analysis.R
@@ -87,6 +87,16 @@
 #           thresholds.csv, roc.png, score_distributions.png, merge_audit.csv
 # ==============================================================================
 
+# Numbered into the loader tier, not after the RDD scripts, because
+# 12_rdd_analysis.R now consumes the threshold this writes: ILLIBERAL_CUTOFF
+# and OTHER_CUTOFF_MAX accept the spec "popucut", which resolves out of
+# data/populist_threshold.rds. The dependency therefore runs BEFORE the build
+# and the analysis, and the file has to exist by then.
+#
+# Nothing here reads a build -- only the PopuList download, parties_database
+# and the V-Party zip -- so it genuinely belongs at this stage rather than
+# merely being moved to satisfy the ordering.
+#
 # Deliberately few dependencies: this is a calibration step, not part of the
 # RDD pipeline, and it must not inherit the pipeline's toggles. It does not
 # source rdd_helpers.R.
