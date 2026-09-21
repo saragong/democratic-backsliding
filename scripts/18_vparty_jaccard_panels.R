@@ -45,11 +45,34 @@ source(here::here("scripts", "vparty_helpers.R"))
 A <- "v2xpa_antiplural" # rows
 B <- "v2xpa_popul" # columns
 
-# Equal-width, not quantile. Both indices genuinely live on [0, 1], so fixed
-# edges mean the same thing in every panel and the diagonal is a real
-# "same score" diagonal. Decile bins would re-cut within each panel and make
-# the diagonal "same rank", which is not the question -- and would move the
-# bin edges between panels, destroying the comparison the figure exists for.
+# Equal-width, not quantile -- a DELIBERATE departure from to-do-7 (Aug 24),
+# which asked for "the granularity of deciles of the relevant score".
+# Reviewed and kept on 2026-09-21.
+#
+# Both indices genuinely live on [0, 1], so fixed edges mean the same thing in
+# every panel: bin 3 is (0.2, 0.3] everywhere, the diagonal is a real "same
+# score" diagonal, and a cell can be tracked across the ten panels. Decile
+# edges are re-cut per sample, which makes the diagonal "same rank" and moves
+# the bin edges between panels -- destroying the left-to-right comparison the
+# 2 x 5 layout exists for.
+#
+# The case FOR deciles is that they equalize the marginals, which is the one
+# real weakness of Jaccard here (see summarise_cells below). Measured, as the
+# correlation between a panel's diagonal mass and its actual Pearson, across
+# these ten panels:
+#
+#   equal01 (this)            0.714
+#   deciles, pooled edges     0.733   comparable axes, almost no gain
+#   deciles, per-panel edges  0.787   best diagonal, incomparable axes
+#
+# Per-panel deciles help most and cost the most; pooled deciles cost the axes
+# almost nothing and buy almost nothing. Since even the best option leaves the
+# diagonal only a 0.79 proxy for the association, the fix is not the binning:
+# it is carrying the correlation itself on every panel, which is what the
+# strip labels do. So the axes stay interpretable and comparable, and the
+# association is read off r rather than off the colour.
+#
+# bin_breaks() still accepts "deciles" if this is ever revisited.
 BIN_MODE <- "equal01"
 N_BINS <- 10
 
@@ -154,12 +177,23 @@ build_cells <- function(df) {
 # OECD parties sit in that lowest bin, which is most of why the OECD (1,1)
 # corner glows in every decade.
 #
-# So the rank correlation is carried alongside, per panel, and shown on the
-# panel strip. It is the marginal-free statement, and the two genuinely
-# disagree: across OECD decades Pearson rises monotonically 0.22 -> 0.53 while
+# So the correlation is carried alongside, per panel, and shown on the panel
+# strip. It is the marginal-free statement, and the two genuinely disagree:
+# across OECD decades Pearson rises monotonically 0.22 -> 0.53 while
 # diag_ratio wanders 1.62, 1.77, 1.78, 1.14, 1.55. Read the correlation for
 # "are these indices related here"; read the heatmap for "where do the parties
 # actually sit".
+#
+# PEARSON is what goes on the strip, not Spearman, so these numbers are the
+# same quantity already in circulation on this project: Vincent Rollet's email
+# figures (0.43 recent/large, 0.21 all-periods 16-country, 0.14 full sample),
+# Sara's "the Pearson correlation is 0.14" on full V-Party, and the "Raw
+# correlation" column of adhoc/vparty_corr_by_decade.R. Verified: this
+# script's per-panel Pearson and N reproduce that script's ten rows exactly
+# (0.2154, 0.1113, 0.4020, 0.4458, 0.5262 / -0.3810, -0.2686, -0.0397,
+# 0.0031, -0.0151), which is also a check that the two build the same sample.
+# Spearman is kept in the CSV, since the Jaccard bins are themselves ranks and
+# it is the natural companion there.
 summarise_cells <- function(cells, df) {
   assoc <- df |>
     summarise(
@@ -212,7 +246,7 @@ panel_figure <- function(cells, summary, universe_label, fill_max) {
       group, decade,
       ifelse(is.na(n_party_years), "0",
              format(n_party_years, big.mark = ",")),
-      ifelse(is.na(spearman), "--", sprintf("%.2f", spearman))
+      ifelse(is.na(pearson), "--", sprintf("%.2f", pearson))
     )) |>
     pull(strip)
 
@@ -221,7 +255,7 @@ panel_figure <- function(cells, summary, universe_label, fill_max) {
       summary |> mutate(strip = sprintf(
         "%s \u00b7 %s \u00b7 n = %s \u00b7 r = %s",
         group, decade, format(n_party_years, big.mark = ","),
-        sprintf("%.2f", spearman)
+        sprintf("%.2f", pearson)
       )) |> select(group, decade, strip),
       by = c("group", "decade")
     ) |>
@@ -248,10 +282,12 @@ panel_figure <- function(cells, summary, universe_label, fill_max) {
             "Jaccard = the count in both bins over the count in either bin,",
             "across %s bins of each index on [0, 1].",
             "A perfectly redundant pair would light only the diagonal.",
-            "One shared colour scale across all panels. r is the Spearman",
-            "correlation in that panel: read IT for whether the two indices are",
-            "related, because Jaccard runs on raw counts and is bright wherever",
-            "both marginals pile up, related or not. V-Party %d-%d.%s"
+            "One shared colour scale across all panels. r is the Pearson",
+            "correlation in that panel -- the same quantity as the raw",
+            "correlation series in adhoc/vparty_corr_by_decade.R. Read IT for",
+            "whether the two indices are related, because Jaccard runs on raw",
+            "counts and is bright wherever both marginals pile up, related or",
+            "not. V-Party %d-%d.%s"
           ),
           N_BINS, VPARTY_YEAR_MIN, VPARTY_YEAR_MAX,
           if (nrow(thin) > 0) {
