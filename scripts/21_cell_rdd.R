@@ -314,4 +314,125 @@ for (fam in names(OUTCOME_FAMILIES)) {
   cat(sprintf("Saved grid_cells_w5_%s.html\n", fam))
 }
 
+# ==============================================================================
+# The 2 x 5 window sweep, GDP growth
+#
+# One panel per decade x OECD cell, the window sweep inside each, the three
+# GDP-per-capita series as three lines. This is the cell analogue of
+# window_rdd_economic.png: there, one panel per outcome pooled over cells;
+# here, one panel per cell with the three growth measures overlaid.
+#
+# The three series are all log-differences of a log GDP-per-capita series over
+# the same window, so they share a y axis legitimately -- the same reason
+# OUTCOME_PANELS puts them on one panel. They are three measurements of one
+# quantity, not three quantities, so where they disagree within a cell that is
+# information about the data rather than about the design.
+#
+# One y range across BOTH figures and all ten panels, so full and popucut can
+# be laid side by side and a cell compared across decades.
+# ==============================================================================
+
+GROWTH_VARS <- names(OUTCOME_PANELS$growth)
+
+growth <- results |>
+  filter(outcome %in% GROWTH_VARS, fitted, !is.na(est)) |>
+  mutate(
+    series = factor(unname(OUTCOME_PANELS$growth[outcome]),
+                    levels = unname(OUTCOME_PANELS$growth)),
+    group = factor(group, levels = c("OECD", "Non-OECD")),
+    decade = factor(decade, levels = unique(cell_keys$decade))
+  )
+
+# Clip the ribbons to the span of the point estimates, the same way
+# 14_window_sweep.R does: a handful of thin-cell CIs reach +/-1.5 against a
+# median estimate of -0.03, and on a shared axis they flatten every line into
+# a horizontal smear. The estimates themselves are never clipped, and the
+# unclipped bounds stay in cell_rdd_results.csv.
+#
+# pad is 0.15, not the 0.6 that 14_window_sweep.R uses. There, the pad only
+# bounds the ribbons and ggplot then autoscales; here the same number also
+# sets the axis via coord_cartesian, so 0.6 was applied twice and produced an
+# axis 2.4 units tall for data spanning 1.1 -- more than half the panel empty.
+clip_pad <- 0.15
+rng <- range(growth$est, na.rm = TRUE)
+pad <- max(diff(rng) * clip_pad, abs(rng[2]) * 0.1, 1e-9)
+y_lim <- c(rng[1] - pad, rng[2] + pad)
+n_clipped <- sum(growth$ci_lo < y_lim[1] | growth$ci_hi > y_lim[2], na.rm = TRUE)
+growth <- growth |>
+  mutate(ci_lo = pmax(ci_lo, y_lim[1]), ci_hi = pmin(ci_hi, y_lim[2]))
+
+for (samp in names(CELL_SAMPLES)) {
+  dat <- growth |> filter(sample == samp)
+  if (nrow(dat) == 0) next
+
+  # Cells with nothing fitted still get a panel, so the grid keeps its shape
+  # and the decades stay aligned between the two rows.
+  n_cells_drawn <- n_distinct(paste(dat$group, dat$decade))
+  dat <- dat |>
+    mutate(
+      strip_g = group,
+      strip_d = decade
+    )
+
+  p <- ggplot(dat, aes(x = window, y = est, colour = series)) +
+    geom_hline(yintercept = 0, colour = "grey40", linewidth = 0.35) +
+    geom_ribbon(
+      aes(ymin = ci_lo, ymax = ci_hi, fill = series),
+      alpha = 0.10, colour = NA
+    ) +
+    geom_line(linewidth = 0.6) +
+    geom_point(aes(shape = series), size = 1.3) +
+    facet_grid(strip_g ~ strip_d, drop = FALSE) +
+    scale_colour_manual(values = SERIES_COLORS[seq_along(levels(dat$series))], name = NULL, drop = FALSE) +
+    scale_fill_manual(values = SERIES_COLORS[seq_along(levels(dat$series))], name = NULL, drop = FALSE) +
+    scale_shape_manual(values = SERIES_SHAPES[seq_along(levels(dat$series))], name = NULL, drop = FALSE) +
+    scale_x_continuous(breaks = CELL_WINDOWS) +
+    coord_cartesian(ylim = y_lim) +
+    labs(
+      title = sprintf(
+        "GDP per capita growth by window, decade and OECD -- %s",
+        CELL_SAMPLES[[samp]]$label
+      ),
+      subtitle = paste(
+        strwrap(sprintf(paste(
+          "Instrument: %s. Reduced-form RD at each window length 1-10, one",
+          "panel per cell, three GDP series sharing a y axis (all are log",
+          "differences over the same window). Band = robust 95%% CI. The y",
+          "range is common to all panels AND to the other sample's figure, so",
+          "panels and samples are comparable; %d ribbon bound(s) are clipped",
+          "to it and the unclipped values are in cell_rdd_results.csv. Cells",
+          "with fewer than %d usable observations are empty: %d of 10 cells",
+          "have at least one fitted window here. IMF WEO has no coverage",
+          "before 1980, so it is absent from both 1970s panels by",
+          "construction rather than by the floor. %d-%d."
+        ), INSTRUMENT_DISPLAY[[CELL_INSTRUMENT]], n_clipped, CELL_MIN_N,
+        n_cells_drawn, CELL_YEAR_MIN, CELL_YEAR_MAX), 120),
+        collapse = "\n"
+      ),
+      x = "Window length N (years after the election)",
+      y = "Cumulative log change at the cutoff"
+    ) +
+    theme_bw(base_size = 9) +
+    theme(
+      panel.grid.minor = element_blank(),
+      panel.spacing = unit(0.4, "lines"),
+      strip.background = element_rect(fill = "grey95", colour = "grey70"),
+      strip.text = element_text(size = 8),
+      legend.position = "bottom",
+      legend.margin = margin(t = -2),
+      legend.key.size = unit(0.4, "cm"),
+      plot.title = element_text(face = "bold"),
+      plot.subtitle = element_text(size = 7.5, colour = "grey25")
+    )
+
+  ggsave(
+    file.path(out_dir, sprintf("cell_window_growth_%s.png", samp)),
+    p, width = 13, height = 6.4, dpi = 150
+  )
+  cat(sprintf(
+    "Saved cell_window_growth_%s.png (%d cells with a fitted window)\n",
+    samp, n_cells_drawn
+  ))
+}
+
 message("\nCell RDD written to ", out_dir)
