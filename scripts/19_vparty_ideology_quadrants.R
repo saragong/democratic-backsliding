@@ -43,7 +43,18 @@
 # COVERAGE CAVEAT, stated on the figure rather than buried here: only about
 # 1,500 of the 8,049 tagged parties carry both a V-Party id and a tag, so every
 # panel rests on a subset of V-Party, and the rile_* variants rest on a thinner
-# one than the ideology_* variants.
+# one than the ideology_* variants. Per-panel coverage is in
+# panel_coverage.csv and summarized on each figure.
+#
+# WEIGHTING: a tag's mean is over PARTY-YEARS, so a party observed in eight
+# elections counts eight times and one observed twice counts twice. Checked
+# against the alternative (average within party first, then across parties):
+# the two agree to 0.996 on anti-pluralism and 0.988 on populism, mean
+# absolute shift 0.015, and they select the identical top-6 tag set. So the
+# choice is immaterial here and party-years is kept, being the grain the
+# scores are actually measured at. Point AREA is the distinct party count,
+# which is the more meaningful "how much is behind this dot"; both counts are
+# in tag_means.csv.
 #
 #   Rscript --no-init-file scripts/19_vparty_ideology_quadrants.R
 #
@@ -162,6 +173,44 @@ cat("Tag coverage against scored V-Party parties:\n")
 print(as.data.frame(coverage), row.names = FALSE)
 write_csv(coverage, file.path(out_dir, "tag_coverage.csv"))
 
+# Coverage PER PANEL, not just pooled. The 2 x 5 layout invites two different
+# comparisons and they are not equally safe:
+#
+#   left to right, within a row -- coverage is near-flat (OECD 87-92%,
+#     non-OECD 70-83%), so a tag moving across decades is moving, not being
+#     re-sampled.
+#   top to bottom, between rows -- OECD parties are tagged at about 91% and
+#     non-OECD at about 76%, so the two rows describe differently-selected
+#     party populations and the gap between them is partly a data-coverage
+#     artifact rather than a substantive difference.
+#
+# Reported here and on the figure so that second comparison carries its
+# caveat, rather than the reader inferring it is as clean as the first.
+panel_coverage <- map_dfr(TAG_COLUMNS, function(v) {
+  ids <- tag_long |> filter(vocab == v) |> pull(vdem_id_1) |> unique()
+  base |>
+    mutate(tagged = v2paid %in% ids) |>
+    summarise(
+      parties = n_distinct(v2paid),
+      tagged_parties = n_distinct(v2paid[tagged]),
+      .by = c(group, decade)
+    ) |>
+    mutate(vocab = v, pct_tagged = 100 * tagged_parties / parties, .before = 1)
+})
+write_csv(panel_coverage, file.path(out_dir, "panel_coverage.csv"))
+
+# One coverage range per OECD group, for the subtitle.
+coverage_by_group <- function(vocab_name) {
+  pc <- panel_coverage |> filter(vocab == vocab_name)
+  paste(
+    vapply(levels(pc$group), function(g) {
+      x <- pc$pct_tagged[pc$group == g]
+      sprintf("%s %.0f-%.0f%%", g, min(x), max(x))
+    }, character(1)),
+    collapse = ", "
+  )
+}
+
 # ---- per-vocabulary means ----------------------------------------------------
 
 # Pooled medians, computed on the WHOLE scored sample rather than per panel, so
@@ -206,7 +255,7 @@ tag_means_for <- function(vocab_name) {
 
 # ---- plot --------------------------------------------------------------------
 
-quadrant_figure <- function(all_dat, vocab_name, cov_row) {
+quadrant_figure <- function(all_dat, vocab_name) {
   dat <- all_dat |>
     filter(is_plotted) |>
     mutate(tag = fct_reorder(tag, tag_rank, .fun = min))
@@ -261,13 +310,14 @@ quadrant_figure <- function(all_dat, vocab_name, cov_row) {
             "the less common populist and nationalist ones. Cells under %d",
             "party-years are dropped. Axes are common to all panels but scaled",
             "to the tag means, not to the full [0, 1] index range.",
-            "V-Party %d-%d; this vocabulary reaches %d of %d scored V-Party",
-            "parties (%.0f%%)."
+            "V-Party %d-%d. Tag coverage per panel: %s -- near-flat across",
+            "decades, so reading left to right is safe, but the two rows are",
+            "differently covered, so the OECD / non-OECD gap is partly a",
+            "coverage artifact."
           ),
           med_b, med_a, N_TAGS, MIN_TAG_CELL_N,
           VPARTY_YEAR_MIN, VPARTY_YEAR_MAX,
-          cov_row$n_matched_in_vparty, cov_row$n_vparty_parties,
-          cov_row$pct_of_vparty
+          coverage_by_group(vocab_name)
         ), 120),
         collapse = "\n"
       ),
@@ -307,7 +357,7 @@ for (v in TAG_COLUMNS) {
   }
   all_means[[v]] <- dat
 
-  fig <- quadrant_figure(dat, v, coverage |> filter(vocab == v))
+  fig <- quadrant_figure(dat, v)
   ggsave(
     file.path(out_dir, sprintf("quadrants_%s.png", v)),
     fig,
