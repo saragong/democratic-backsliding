@@ -593,53 +593,124 @@ p_roc <- ggplot(roc_df, aes(fpr, tpr)) +
 ggsave(file.path(out_dir, "roc.png"), p_roc, width = 7, height = 7, dpi = 150)
 cat("Saved roc.png\n")
 
-# The transfer, shown rather than asserted: the two score distributions with
-# both candidate cutoffs on each.
-dist_df <- apply_scores |>
-  select(all_of(c(FIT_SCORE, APPLY_SCORE))) |>
-  pivot_longer(everything(), names_to = "score", values_to = "value")
-
-cut_df <- tibble(
-  score = c(FIT_SCORE, APPLY_SCORE, APPLY_SCORE),
-  value = c(out$threshold_abs, out$threshold_abs, out$threshold_pct),
-  lab = c(
-    sprintf("Youden cutpoint (%.3f)", out$threshold_abs),
-    sprintf("Absolute transfer (%.3f)", out$threshold_abs),
-    sprintf("Percentile transfer (%.3f)", out$threshold_pct)
-  )
+# The transfer, shown rather than asserted, on the sample the cutpoint was
+# actually fitted on.
+#
+# FIT_SCORE on top and APPLY_SCORE below, in the direction the transfer runs:
+# the cutpoint is found on the upper panel and carried to the lower one.
+# facet_wrap would otherwise order them alphabetically and put the
+# destination above the source.
+#
+# Three densities per panel rather than one histogram. The single pooled
+# histogram showed where parties sit but not whether the cutpoint separates
+# anything; the split by assigned class is the part worth looking at, and the
+# pooled curve stays as the backdrop so the two classes can be read against
+# the whole. Densities rather than counts because the classes are 271 against
+# 1,107 and stacked counts would make the smaller one invisible.
+SCORE_LABELS <- c(
+  "Populism (v2xpa_popul) -- the cutpoint is fitted here",
+  "Anti-pluralism (v2xpa_antiplural) -- the cutpoint is applied here"
 )
+names(SCORE_LABELS) <- c(FIT_SCORE, APPLY_SCORE)
+
+dist_long <- universe_imputed |>
+  select(all_of(c(FIT_SCORE, APPLY_SCORE)), populist) |>
+  pivot_longer(all_of(c(FIT_SCORE, APPLY_SCORE)),
+               names_to = "score", values_to = "value") |>
+  filter(!is.na(value))
+
+CLASS_LEVELS <- c(
+  "All parties in the inclusion sample",
+  "Classified populist",
+  "Not populist"
+)
+dist_df <- bind_rows(
+  dist_long |> mutate(grp = CLASS_LEVELS[1]),
+  dist_long |> filter(populist == 1) |> mutate(grp = CLASS_LEVELS[2]),
+  dist_long |> filter(populist == 0) |> mutate(grp = CLASS_LEVELS[3])
+) |>
+  mutate(
+    grp = factor(grp, levels = CLASS_LEVELS),
+    score = factor(score, levels = c(FIT_SCORE, APPLY_SCORE))
+  )
+
+# Both rules on both scales. On FIT_SCORE they coincide by construction --
+# the percentile transfer is defined as the percentile the cutpoint sits at,
+# so evaluating it on the score it came from returns the cutpoint itself --
+# and the duplicate line is dropped rather than drawn twice.
+cut_df <- tibble(
+  score = factor(c(FIT_SCORE, FIT_SCORE, APPLY_SCORE, APPLY_SCORE),
+                 levels = c(FIT_SCORE, APPLY_SCORE)),
+  rule = rep(c("Absolute threshold", "Percentile transfer"), 2),
+  value = c(
+    out$threshold_abs,
+    unname(quantile(apply_scores[[FIT_SCORE]], out$percentile / 100, na.rm = TRUE)),
+    out$threshold_abs,
+    out$threshold_pct
+  )
+) |>
+  mutate(lab = sprintf("%s (%.3f)", rule, value)) |>
+  distinct(score, value, .keep_all = TRUE)
 
 p_dist <- ggplot(dist_df, aes(value)) +
-  geom_histogram(bins = 50, fill = "grey85", colour = "white") +
-  geom_vline(
-    data = cut_df, aes(xintercept = value, colour = lab),
-    linewidth = 0.7
+  geom_density(
+    aes(colour = grp, fill = grp),
+    alpha = 0.22, linewidth = 0.6, adjust = 0.9
   ) +
-  facet_wrap(~score, ncol = 1, scales = "free_y") +
-  scale_colour_manual(values = c("#0072B2", "#D55E00", "#009E73"), name = NULL) +
+  geom_vline(
+    data = cut_df, aes(xintercept = value, linetype = rule),
+    colour = "grey15", linewidth = 0.55
+  ) +
+  geom_text(
+    data = cut_df,
+    aes(x = value, y = Inf, label = sprintf("%.3f", value)),
+    hjust = -0.15, vjust = 1.8, size = 2.7, colour = "grey15"
+  ) +
+  facet_wrap(
+    ~score, ncol = 1, scales = "free_y",
+    labeller = labeller(score = SCORE_LABELS)
+  ) +
+  scale_colour_manual(values = c("grey45", "#D55E00", "#0072B2"), name = NULL) +
+  scale_fill_manual(values = c("grey70", "#D55E00", "#0072B2"), name = NULL) +
+  scale_linetype_manual(values = c("solid", "dashed"), name = NULL) +
   labs(
     title = "Transferring the cutpoint from populism to anti-pluralism",
     subtitle = paste(
       strwrap(sprintf(paste(
-        "The cutpoint is fitted on %s and applied to %s. The absolute transfer",
-        "carries the raw number across; the percentile transfer carries the",
-        "%.1fth percentile across. They differ because the two indices are not",
-        "distributed alike. Both are produced; neither is obviously right."
-      ), FIT_SCORE, APPLY_SCORE, out$percentile), 95),
+        "Inclusion sample only: %d party-years in the %d PopuList countries",
+        "that retained a matched populist, %d of them classified populist.",
+        "The absolute threshold carries the raw cutpoint across; the",
+        "percentile transfer carries the %.1fth percentile across. On the",
+        "populism panel the two coincide by construction, so one line is",
+        "drawn. They separate on anti-pluralism because the two indices are",
+        "not distributed alike. Percentiles are taken over all scored V-Party",
+        "parties, not just this sample, since the threshold is applied to the",
+        "global election spine."
+      ), nrow(universe_imputed), length(countries_with_matched_populist),
+      sum(universe_imputed$populist == 1), out$percentile), 100),
       collapse = "\n"
     ),
-    x = "Score", y = "Party-years"
+    x = "Score", y = "Density"
+  ) +
+  guides(
+    colour = guide_legend(order = 1), fill = guide_legend(order = 1),
+    linetype = guide_legend(order = 2)
   ) +
   theme_bw(base_size = 9) +
   theme(
     panel.grid.minor = element_blank(),
+    strip.background = element_rect(fill = "grey95", colour = "grey70"),
+    strip.text = element_text(size = 8.5, face = "bold"),
     legend.position = "bottom",
+    legend.box = "vertical",
+    legend.margin = margin(t = -2),
+    legend.key.size = unit(0.4, "cm"),
     plot.title = element_text(face = "bold"),
     plot.subtitle = element_text(size = 7.5, colour = "grey25")
   )
 ggsave(
   file.path(out_dir, "score_distributions.png"), p_dist,
-  width = 8, height = 6, dpi = 150
+  width = 9, height = 6.8, dpi = 150
 )
 cat("Saved score_distributions.png\n")
 
