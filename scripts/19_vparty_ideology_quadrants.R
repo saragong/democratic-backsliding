@@ -14,9 +14,14 @@
 #
 # DESIGN CHOICES THAT MATTER FOR READING THE FIGURE
 #
-#   Top tags are chosen GLOBALLY, not per panel. If each panel showed its own
-#   most frequent tags, the panels would show different tags and could not be
-#   compared -- which is the one thing the 2 x 5 layout exists to allow.
+#   Top tags are chosen PER PANEL, not globally. Movements come and go, so the
+#   most common tags in the OECD in the 1970s are not the ones that matter
+#   outside the OECD in the 2010s, and forcing one global set meant every
+#   panel showed the same six mainstream families while the populist and
+#   nationalist tags that motivate the question never appeared anywhere.
+#   The cost is that panels no longer share a tag set; the labels carry the
+#   identity, so nothing is ambiguous, and a tag present in several panels can
+#   still be followed by name.
 #
 #   Axes are IDENTICAL in every panel, with quadrant guides at the pooled
 #   medians, so a tag moving right across the decades is genuinely moving and
@@ -30,15 +35,16 @@
 #   mainstream families (social democracy, conservatism, christian democracy),
 #   so the tags that motivated the question -- right_wing_populism, nationalism
 #   and the like -- do not make the top 6 and are not on the figure. They are
-#   in the CSV, and raising N_TAGS brings them onto it at the cost of reusing
-#   colours.
+#   in the CSV, and raising N_TAGS_PER_PANEL brings more of them onto it.
 #
-#   Colour AND shape both encode the tag, and the palette is capped at six
-#   entries. A larger N_TAGS is available as a toggle but reuses colours, which
-#   the figure warns about rather than silently doing. Double-encoding is what
-#   makes a tag followable across the decade panels: with decade as a FACET,
-#   the points of one tag live in different panels and cannot be joined by a
-#   line, so identity has to be carried by the marker itself.
+#   Tags are labelled DIRECTLY on the points, not encoded in colour and shape
+#   against a legend. With a per-panel tag set the union across the ten panels
+#   runs well past any palette that stays distinguishable, so colour-coding
+#   would have to reuse combinations and two different tags would look alike.
+#   Direct labels also answer the question a reader actually has -- "what is
+#   that point" -- without a round trip to a 20-entry legend. Labels are
+#   placed by ggrepel; points are a single colour, since colour would now be
+#   decoration carrying no information.
 #
 # COVERAGE, stated on the figure rather than buried here: only about 1,500 of
 # the 8,049 tagged parties carry both a V-Party id and a tag, so every panel
@@ -67,6 +73,7 @@
 
 library(tidyverse)
 library(readxl)
+library(ggrepel)
 library(here)
 
 source(here::here("scripts", "vparty_helpers.R"))
@@ -87,22 +94,22 @@ TAG_COLUMNS <- c(
   "ideology_wikipedia", "ideology_wikidata"
 )
 
-# How many tags to show. Six is the width of the validated palette below; the
-# script warns and recycles colours above that.
-N_TAGS <- 6
+# How many tags to show IN EACH PANEL, by number of distinct parties carrying
+# the tag in that panel. Labels are placed rather than colour-coded, so this
+# is bounded by legibility rather than by a palette: 8 is comfortable at this
+# panel size, and the union across the ten panels lands around 15-20 distinct
+# tags, which the run prints so crowding can be checked.
+N_TAGS_PER_PANEL <- 8
 
 # A tag x panel cell below this many party-years is dropped: a "mean" over four
 # observations placed on a quadrant chart invites exactly the over-reading the
 # figure is meant to prevent.
 MIN_TAG_CELL_N <- 15
 
-# Okabe-Ito based, validated the same way as SERIES_COLORS in rdd_helpers.R:
-# worst pairwise separation dE 43.3 normal / 17.2 deuteranopic / 8.5
-# protanopic, and every entry clears 3:1 contrast on white (5.19, 3.87, 3.42,
-# 3.06, 21.0, 4.86). The protanopic figure is the weak one, which is why shape
-# co-encodes the tag rather than colour carrying it alone.
-TAG_COLORS <- c("#0072B2", "#D55E00", "#009E73", "#CC79A7", "#000000", "#8C6D1F")
-TAG_SHAPES <- c(16, 17, 15, 18, 8, 4)
+# One colour for every point. Tags are identified by their labels, so colour
+# would be decoration; a single ink keeps the eye on position, which is what
+# the figure is about. Okabe-Ito blue, 5.19:1 on white.
+POINT_COLOR <- "#0072B2"
 
 out_dir <- here::here("output", "runs", "_sweeps", "vparty_ideology_quadrants")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
@@ -238,15 +245,10 @@ tag_means_for <- function(vocab_name) {
   if (nrow(joined) == 0) {
     return(tibble())
   }
-  # Global frequency, so the same tags appear in every panel -- see the header.
-  top_tags <- joined |>
-    count(tag, sort = TRUE) |>
-    slice_head(n = N_TAGS) |>
-    pull(tag)
-
-  # Every tag, not only the plotted ones -- see the header. is_plotted marks
-  # which made the figure so the CSV is self-explaining.
-  joined |>
+  # Every tag's cell means first; the per-panel top set is picked afterwards,
+  # so tag_means.csv keeps every tag that clears MIN_TAG_CELL_N and only the
+  # figure is thinned.
+  cells <- joined |>
     summarise(
       n_party_years = n(),
       n_parties = n_distinct(v2paid),
@@ -254,11 +256,23 @@ tag_means_for <- function(vocab_name) {
       mean_popul = mean(.data[[B]]),
       .by = c(group, decade, tag)
     ) |>
-    filter(n_party_years >= MIN_TAG_CELL_N) |>
+    filter(n_party_years >= MIN_TAG_CELL_N)
+
+  if (nrow(cells) == 0) {
+    return(tibble())
+  }
+
+  # Ranked WITHIN each panel, by distinct parties rather than party-years: the
+  # question is how many parties carry the tag here, and it is also what the
+  # point area shows, so the two agree. Ties broken by party-years.
+  cells |>
+    mutate(
+      tag_rank = rank(-n_parties + -n_party_years / 1e6, ties.method = "first"),
+      .by = c(group, decade)
+    ) |>
     mutate(
       vocab = vocab_name,
-      is_plotted = tag %in% top_tags,
-      tag_rank = match(tag, top_tags),
+      is_plotted = tag_rank <= N_TAGS_PER_PANEL,
       .before = 1
     )
 }
@@ -266,40 +280,36 @@ tag_means_for <- function(vocab_name) {
 # ---- plot --------------------------------------------------------------------
 
 quadrant_figure <- function(all_dat, vocab_name) {
-  dat <- all_dat |>
-    filter(is_plotted) |>
-    mutate(tag = fct_reorder(tag, tag_rank, .fun = min))
-  n_lvl <- nlevels(dat$tag)
-  if (n_lvl > length(TAG_COLORS)) {
-    warning(
-      "N_TAGS = ", n_lvl, " exceeds the ", length(TAG_COLORS),
-      "-entry validated palette; colours will repeat.",
-      call. = FALSE
-    )
-  }
-  cols <- rep_len(TAG_COLORS, n_lvl)
-  shps <- rep_len(TAG_SHAPES, n_lvl)
+  dat <- all_dat |> filter(is_plotted)
 
-  # One padded range for both the data and the median guides, shared by all ten
-  # panels of this figure.
+  # One padded range for both the data and the median guides, shared by all
+  # ten panels of this figure.
   pad_range <- function(v, guide) {
     r <- range(c(v, guide), na.rm = TRUE)
-    r + c(-1, 1) * max(diff(r) * 0.08, 0.02)
+    r + c(-1, 1) * max(diff(r) * 0.10, 0.02)
   }
   lim_a <- pad_range(dat$mean_antiplural, med_a)
   lim_b <- pad_range(dat$mean_popul, med_b)
 
-  ggplot(dat, aes(x = mean_popul, y = mean_antiplural, colour = tag)) +
+  n_union <- n_distinct(dat$tag)
+  per_panel <- dat |> count(group, decade) |> pull(n)
+
+  ggplot(dat, aes(x = mean_popul, y = mean_antiplural)) +
     geom_hline(yintercept = med_a, colour = "grey80", linewidth = 0.3) +
     geom_vline(xintercept = med_b, colour = "grey80", linewidth = 0.3) +
-    geom_point(aes(size = n_parties, shape = tag), alpha = 0.9) +
+    geom_point(aes(size = n_parties), colour = POINT_COLOR, alpha = 0.85) +
+    # Direct labels rather than a legend -- see the header. min.segment.length
+    # draws a leader line whenever a label has had to move, so a displaced
+    # label is never silently attached to the wrong point.
+    geom_text_repel(
+      aes(label = tag),
+      size = 2.1, colour = "grey15", segment.colour = "grey65",
+      segment.size = 0.2, min.segment.length = 0.15,
+      box.padding = 0.28, point.padding = 0.12,
+      max.overlaps = Inf, seed = 1
+    ) +
     facet_grid(group ~ decade) +
-    scale_colour_manual(values = cols, name = NULL) +
-    scale_shape_manual(values = shps, name = NULL) +
     scale_size_area(max_size = 5, name = "Parties") +
-    # Identical in every panel, but sized to the tag means rather than to the
-    # index range -- see the header. The guides are inside the range by
-    # construction, since a median of the raw scores sits among the means.
     coord_fixed(xlim = lim_b, ylim = lim_a) +
     scale_x_continuous(breaks = scales::pretty_breaks(4)) +
     scale_y_continuous(breaks = scales::pretty_breaks(4)) +
@@ -309,47 +319,41 @@ quadrant_figure <- function(all_dat, vocab_name) {
         vocab_name
       ),
       subtitle = paste(
-        strwrap(sprintf(
-          paste(
-            "Each point is one tag's mean score over the parties carrying it in",
-            "that decade and group; point area is the number of parties. Grey",
-            "lines are the pooled medians (populism %.2f, anti-pluralism %.2f),",
-            "identical in every panel, as are the axes.",
-            "Top %d tags by overall frequency, chosen once so the same tags",
-            "appear in every panel; tag_means.csv carries every tag, including",
-            "the less common populist and nationalist ones. Cells under %d",
-            "party-years are dropped. Axes are common to all panels but scaled",
-            "to the tag means, not to the full [0, 1] index range.",
-            "V-Party %d-%d. Tag coverage per panel: %s. Coverage is uneven",
-            "but the parties it misses are close to the ones it keeps, so no",
-            "panel mean sits more than 0.011 from its all-party value --",
-            "3%% of the OECD / non-OECD separation."
-          ),
-          med_b, med_a, N_TAGS, MIN_TAG_CELL_N,
-          VPARTY_YEAR_MIN, VPARTY_YEAR_MAX,
-          coverage_by_group(vocab_name)
-        ), 120),
+        strwrap(sprintf(paste(
+          "Each point is one tag's mean score over the parties carrying it in",
+          "that decade and group; point area is the number of parties. Grey",
+          "lines are the pooled medians (populism %.2f, anti-pluralism %.2f),",
+          "identical in every panel, as are the axes. Each panel shows its OWN",
+          "top %d tags by party count, so the sets differ between panels --",
+          "%d distinct tags appear across the ten, %s. Cells",
+          "under %d party-years are dropped; tag_means.csv carries every tag.",
+          "V-Party %d-%d. Tag coverage per panel: %s. Coverage is uneven but",
+          "the parties it misses are close to the ones it keeps, so no panel",
+          "mean sits more than 0.011 from its all-party value."
+        ),
+        med_b, med_a, N_TAGS_PER_PANEL, n_union,
+        if (min(per_panel) == max(per_panel)) {
+          sprintf("%d in each", min(per_panel))
+        } else {
+          sprintf("%d to %d per panel", min(per_panel), max(per_panel))
+        },
+        MIN_TAG_CELL_N,
+        VPARTY_YEAR_MIN, VPARTY_YEAR_MAX, coverage_by_group(vocab_name)), 130),
         collapse = "\n"
       ),
       x = "Mean populism (v2xpa_popul)",
       y = "Mean anti-pluralism (v2xpa_antiplural)"
     ) +
-    guides(
-      colour = guide_legend(order = 1, override.aes = list(size = 2.6)),
-      shape = guide_legend(order = 1),
-      size = guide_legend(order = 2)
-    ) +
     theme_bw(base_size = 9) +
     theme(
       panel.grid.minor = element_blank(),
       panel.grid.major = element_line(colour = "grey94", linewidth = 0.25),
-      panel.spacing = unit(0.35, "lines"),
+      panel.spacing = unit(0.4, "lines"),
       strip.background = element_rect(fill = "grey95", colour = "grey70"),
       strip.text = element_text(size = 8),
       plot.title = element_text(face = "bold"),
       plot.subtitle = element_text(size = 7.5, colour = "grey25"),
       legend.position = "bottom",
-      legend.box = "vertical",
       legend.margin = margin(t = -2),
       legend.key.size = unit(0.35, "cm")
     )
@@ -374,9 +378,8 @@ for (v in TAG_COLUMNS) {
     width = 13, height = 7.4, dpi = 150
   )
   cat(sprintf(
-    "Saved quadrants_%s.png (%d tags plotted, %d cells plotted, %d cells in CSV)\n",
-    v, n_distinct(dat$tag[dat$is_plotted]),
-    sum(dat$is_plotted), nrow(dat)
+    "Saved quadrants_%s.png (%d distinct tags across panels, %d cells plotted, %d in CSV)\n",
+    v, n_distinct(dat$tag[dat$is_plotted]), sum(dat$is_plotted), nrow(dat)
   ))
 }
 
