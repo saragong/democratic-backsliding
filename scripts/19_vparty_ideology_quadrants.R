@@ -106,10 +106,31 @@ N_TAGS_PER_PANEL <- 8
 # figure is meant to prevent.
 MIN_TAG_CELL_N <- 15
 
-# One colour for every point. Tags are identified by their labels, so colour
-# would be decoration; a single ink keeps the eye on position, which is what
-# the figure is about. Okabe-Ito blue, 5.19:1 on white.
-POINT_COLOR <- "#0072B2"
+# One colour per tag, assigned once per vocabulary so a tag keeps its colour
+# in every panel it appears in and can be found in the legend.
+#
+# 18 entries, because the per-panel tag sets union to 16-18. Chosen greedily
+# from a ~45-colour pool (Okabe-Ito, ColorBrewer qualitative and dark
+# diverging endpoints) to maximize the MINIMUM pairwise separation, subject to
+# a 3:1 contrast floor on white -- these carry both small points and coloured
+# label text. Achieved: worst pair dE 18.8, worst contrast 3.02. Hand-picking
+# 18 colours reliably produces a near-duplicate pair (an earlier attempt had
+# two purples at dE 3.8); the greedy selection is there so that cannot recur
+# if the palette is ever extended.
+#
+# Because selection is greedy, the EARLIER entries are the best separated, and
+# tags are assigned in order of overall frequency -- so the tags appearing in
+# the most panels get the most distinguishable colours.
+#
+# Colour is a navigational aid, not the identifier: the labels stay on the
+# points. At 18 categories no palette is colourblind-safe, so a reader who
+# cannot separate two hues still has the label, and the legend is there to
+# look a tag up rather than to decode it.
+TAG_COLORS <- c(
+  "#0072B2", "#E31A1C", "#33A02C", "#C51B7D", "#000000", "#A6761D",
+  "#54278F", "#35978F", "#BC80BD", "#666666", "#D55E00", "#006D2C",
+  "#7F3B08", "#B2182B", "#009E73", "#7570B3", "#984EA3", "#01665E"
+)
 
 out_dir <- here::here("output", "runs", "_sweeps", "vparty_ideology_quadrants")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
@@ -282,14 +303,40 @@ tag_means_for <- function(vocab_name) {
 quadrant_figure <- function(all_dat, vocab_name) {
   dat <- all_dat |> filter(is_plotted)
 
+  # Colour assignment is per FIGURE, not per panel, so a tag is the same
+  # colour wherever it appears. Ordered by how many panels a tag reaches, then
+  # by parties, so the most widespread tags take the best-separated colours
+  # and the legend reads in a useful order.
+  tag_order <- dat |>
+    summarise(panels = n(), parties = sum(n_parties), .by = tag) |>
+    arrange(desc(panels), desc(parties)) |>
+    pull(tag)
+  if (length(tag_order) > length(TAG_COLORS)) {
+    stop(
+      "Need ", length(tag_order), " tag colours but the validated palette has ",
+      length(TAG_COLORS), ". Lower N_TAGS_PER_PANEL or extend TAG_COLORS ",
+      "using the greedy max-min-separation procedure documented there.",
+      call. = FALSE
+    )
+  }
+  pal <- setNames(TAG_COLORS[seq_along(tag_order)], tag_order)
+  dat <- dat |> mutate(tag = factor(tag, levels = tag_order))
+
   # One padded range for both the data and the median guides, shared by all
   # ten panels of this figure.
-  pad_range <- function(v, guide) {
+  #
+  # Padding is generous, and asymmetric, because it is what the LABELS need
+  # rather than what the points need. Labels are wide and horizontal, so x
+  # gets more room than y; and since repel is confined to these limits (see
+  # geom_text_repel below), too little padding leaves it nowhere to move a
+  # label to and it gives up and overlaps. Too much just shrinks the points
+  # into the middle. These values were set by looking at the densest panel.
+  pad_range <- function(v, guide, frac) {
     r <- range(c(v, guide), na.rm = TRUE)
-    r + c(-1, 1) * max(diff(r) * 0.10, 0.02)
+    r + c(-1, 1) * max(diff(r) * frac, 0.02)
   }
-  lim_a <- pad_range(dat$mean_antiplural, med_a)
-  lim_b <- pad_range(dat$mean_popul, med_b)
+  lim_a <- pad_range(dat$mean_antiplural, med_a, 0.10)
+  lim_b <- pad_range(dat$mean_popul, med_b, 0.26)
 
   n_union <- n_distinct(dat$tag)
   per_panel <- dat |> count(group, decade) |> pull(n)
@@ -297,22 +344,36 @@ quadrant_figure <- function(all_dat, vocab_name) {
   ggplot(dat, aes(x = mean_popul, y = mean_antiplural)) +
     geom_hline(yintercept = med_a, colour = "grey80", linewidth = 0.3) +
     geom_vline(xintercept = med_b, colour = "grey80", linewidth = 0.3) +
-    geom_point(aes(size = n_parties), colour = POINT_COLOR, alpha = 0.85) +
+    geom_point(aes(size = n_parties, colour = tag), alpha = 0.9) +
     # Direct labels rather than a legend -- see the header. min.segment.length
     # draws a leader line whenever a label has had to move, so a displaced
     # label is never silently attached to the wrong point.
     geom_text_repel(
-      aes(label = tag),
-      size = 2.1, colour = "grey15", segment.colour = "grey65",
-      segment.size = 0.2, min.segment.length = 0.15,
-      box.padding = 0.28, point.padding = 0.12,
-      max.overlaps = Inf, seed = 1
+      aes(label = tag, colour = tag),
+      size = 2.1, segment.size = 0.2, min.segment.length = 0.15,
+      # point.padding has to clear the MARKER, which is area-scaled up to
+      # size 5 here -- at 0.12 the largest points sat on top of their own
+      # labels and ate the first few characters.
+      box.padding = 0.35, point.padding = 0.4,
+      # Keep labels inside the panel. Without this, repel happily pushes a
+      # label past the axis and ggplot clips it mid-word, which reads as a
+      # different tag ("liberal_conservatis").
+      xlim = lim_b, ylim = lim_a,
+      max.overlaps = Inf, seed = 1, show.legend = FALSE
     ) +
     facet_grid(group ~ decade) +
+    scale_colour_manual(values = pal, name = NULL, drop = FALSE) +
     scale_size_area(max_size = 5, name = "Parties") +
     coord_fixed(xlim = lim_b, ylim = lim_a) +
     scale_x_continuous(breaks = scales::pretty_breaks(4)) +
     scale_y_continuous(breaks = scales::pretty_breaks(4)) +
+    guides(
+      colour = guide_legend(
+        order = 1, nrow = 3, byrow = TRUE,
+        override.aes = list(size = 2.4, label = "")
+      ),
+      size = guide_legend(order = 2)
+    ) +
     labs(
       title = sprintf(
         "Where the most common %s tags sit on illiberalism x populism",
@@ -375,7 +436,7 @@ for (v in TAG_COLUMNS) {
   ggsave(
     file.path(out_dir, sprintf("quadrants_%s.png", v)),
     fig,
-    width = 13, height = 7.4, dpi = 150
+    width = 14.5, height = 7.8, dpi = 150
   )
   cat(sprintf(
     "Saved quadrants_%s.png (%d distinct tags across panels, %d cells plotted, %d in CSV)\n",
