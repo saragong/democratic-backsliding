@@ -141,10 +141,32 @@ build_cells <- function(df) {
   })
 }
 
-# Diagonal mass: the mean Jaccard on the leading diagonal. One number per panel
-# for "how much do these two indices agree here", so the visual reading of the
-# figure can be checked against something.
-summarise_cells <- function(cells) {
+# Diagonal mass: the mean Jaccard on the leading diagonal, over the mean off
+# it. One number per panel for "how concentrated is this heatmap", so the
+# visual reading can be checked against something.
+#
+# IT IS NOT A MEASURE OF ASSOCIATION, and the difference matters for reading
+# the figure. Jaccard is |both| / |either| on RAW counts, so a cell is bright
+# wherever the two marginals both pile up, whether or not the indices are
+# related. Across these ten panels diag_ratio correlates 0.78 with the share
+# of parties in the lowest anti-pluralism bin -- almost as strongly as it
+# correlates with the actual association (0.71 with Pearson). Two thirds of
+# OECD parties sit in that lowest bin, which is most of why the OECD (1,1)
+# corner glows in every decade.
+#
+# So the rank correlation is carried alongside, per panel, and shown on the
+# panel strip. It is the marginal-free statement, and the two genuinely
+# disagree: across OECD decades Pearson rises monotonically 0.22 -> 0.53 while
+# diag_ratio wanders 1.62, 1.77, 1.78, 1.14, 1.55. Read the correlation for
+# "are these indices related here"; read the heatmap for "where do the parties
+# actually sit".
+summarise_cells <- function(cells, df) {
+  assoc <- df |>
+    summarise(
+      pearson = cor(.data[[A]], .data[[B]]),
+      spearman = cor(.data[[A]], .data[[B]], method = "spearman"),
+      .by = c(group, decade)
+    )
   cells |>
     summarise(
       n_party_years = first(n_pairs),
@@ -152,7 +174,8 @@ summarise_cells <- function(cells) {
       offdiag_mean = mean(jaccard[row_i != col_i], na.rm = TRUE),
       .by = c(group, decade)
     ) |>
-    mutate(diag_ratio = diag_mean / offdiag_mean)
+    mutate(diag_ratio = diag_mean / offdiag_mean) |>
+    left_join(assoc, by = c("group", "decade"))
 }
 
 # ---- plot --------------------------------------------------------------------
@@ -185,18 +208,20 @@ panel_figure <- function(cells, summary, universe_label, fill_max) {
   ) |>
     left_join(summary, by = c("group", "decade")) |>
     mutate(strip = sprintf(
-      "%s \u00b7 %s \u00b7 n = %s",
+      "%s \u00b7 %s \u00b7 n = %s \u00b7 r = %s",
       group, decade,
       ifelse(is.na(n_party_years), "0",
-             format(n_party_years, big.mark = ","))
+             format(n_party_years, big.mark = ",")),
+      ifelse(is.na(spearman), "--", sprintf("%.2f", spearman))
     )) |>
     pull(strip)
 
   drawn <- drawn |>
     left_join(
       summary |> mutate(strip = sprintf(
-        "%s \u00b7 %s \u00b7 n = %s",
-        group, decade, format(n_party_years, big.mark = ",")
+        "%s \u00b7 %s \u00b7 n = %s \u00b7 r = %s",
+        group, decade, format(n_party_years, big.mark = ","),
+        sprintf("%.2f", spearman)
       )) |> select(group, decade, strip),
       by = c("group", "decade")
     ) |>
@@ -223,8 +248,10 @@ panel_figure <- function(cells, summary, universe_label, fill_max) {
             "Jaccard = the count in both bins over the count in either bin,",
             "across %s bins of each index on [0, 1].",
             "A perfectly redundant pair would light only the diagonal.",
-            "One shared colour scale across all panels, so the change over time",
-            "is readable straight across. V-Party %d-%d.%s"
+            "One shared colour scale across all panels. r is the Spearman",
+            "correlation in that panel: read IT for whether the two indices are",
+            "related, because Jaccard runs on raw counts and is bright wherever",
+            "both marginals pile up, related or not. V-Party %d-%d.%s"
           ),
           N_BINS, VPARTY_YEAR_MIN, VPARTY_YEAR_MAX,
           if (nrow(thin) > 0) {
@@ -276,7 +303,7 @@ cat(sprintf("\nShared fill scale: 0 to %.3f\n", fill_max))
 for (u in names(all_cells)) {
   spec <- UNIVERSES[[u]]
   cells <- all_cells[[u]]
-  summary <- summarise_cells(cells)
+  summary <- summarise_cells(cells, spec$fn(base))
   all_summaries[[u]] <- summary |> mutate(universe = u, .before = 1)
 
   write_csv(cells, file.path(out_dir, sprintf("jaccard_cells_%s.csv", u)))
