@@ -74,6 +74,7 @@
 library(tidyverse)
 library(readxl)
 library(ggrepel)
+library(gt)
 library(here)
 
 source(here::here("scripts", "vparty_helpers.R"))
@@ -137,7 +138,10 @@ dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
 # ---- data --------------------------------------------------------------------
 
-vparty <- load_vparty_raw(c("v2paid", "country_text_id", "year", A, B))
+vparty <- load_vparty_raw(c(
+  "v2paid", "v2paenname", "v2pashname", "country_name",
+  "country_text_id", "year", A, B
+))
 
 base <- vparty |>
   filter(
@@ -179,6 +183,27 @@ tag_long <- tags_raw |>
   select(vdem_id_1, vocab, tag) |>
   distinct()
 
+# readr's read_csv() silently parses a "1970s" column as the NUMBER 1970 --
+# its column guesser falls through to a number parser that strips trailing
+# non-numeric characters, even though guess_parser() on the same values
+# returns "character". So a collaborator doing
+# read_csv(...) |> filter(decade == "2010s") gets zero rows and no warning.
+# Verified, and it caught me twice while auditing these files.
+#
+# Rather than hope nobody hits it, every CSV written here carries an integer
+# decade_start alongside the label. That column survives any parser, and it
+# is the one to join or filter on.
+with_decade_key <- function(df) {
+  if (!"decade" %in% names(df)) {
+    return(df)
+  }
+  dplyr::mutate(
+    df,
+    decade_start = as.integer(sub("s$", "", as.character(decade))),
+    .after = decade
+  )
+}
+
 # ---- coverage ----------------------------------------------------------------
 
 coverage <- tag_long |>
@@ -200,7 +225,7 @@ coverage <- tag_long |>
 
 cat("Tag coverage against scored V-Party parties:\n")
 print(as.data.frame(coverage), row.names = FALSE)
-write_csv(coverage, file.path(out_dir, "tag_coverage.csv"))
+write_csv(with_decade_key(coverage), file.path(out_dir, "tag_coverage.csv"))
 
 # Coverage PER PANEL, not just pooled, because the 2 x 5 layout rests on the
 # ten panels being comparable and pooled coverage cannot show whether they
@@ -235,7 +260,7 @@ panel_coverage <- map_dfr(TAG_COLUMNS, function(v) {
     ) |>
     mutate(vocab = v, pct_tagged = 100 * tagged_parties / parties, .before = 1)
 })
-write_csv(panel_coverage, file.path(out_dir, "panel_coverage.csv"))
+write_csv(with_decade_key(panel_coverage), file.path(out_dir, "panel_coverage.csv"))
 
 # One coverage range per OECD group, for the subtitle.
 coverage_by_group <- function(vocab_name) {
@@ -444,5 +469,96 @@ for (v in TAG_COLUMNS) {
   ))
 }
 
-write_csv(bind_rows(all_means), file.path(out_dir, "tag_means.csv"))
+write_csv(with_decade_key(bind_rows(all_means)), file.path(out_dir, "tag_means.csv"))
+
+# ==============================================================================
+# Which parties are behind each point
+#
+# Every point on a figure is a mean over parties, and the obvious next
+# question is which ones. This writes that out: one row per party per plotted
+# (tag x decade x OECD) cell, with the party's name, country, how many times
+# it was observed in that cell, and its own mean scores.
+#
+# Restricted to PLOTTED cells, so the tables and the figures show the same
+# thing. tag_means.csv still has every tag; if a cell is not on a figure its
+# parties are not listed here.
+#
+# Sorted within a cell by anti-pluralism, descending. The question these
+# tables get opened for is "what is dragging this tag up the y axis", so the
+# answer should be the first row rather than something to search for.
+# ==============================================================================
+
+party_rows <- function(vocab_name, plotted) {
+  base |>
+    inner_join(
+      tag_long |> filter(vocab == vocab_name) |> select(vdem_id_1, tag),
+      by = c("v2paid" = "vdem_id_1"), relationship = "many-to-many"
+    ) |>
+    semi_join(plotted, by = c("group", "decade", "tag")) |>
+    summarise(
+      n_obs = n(),
+      first_year = min(year),
+      last_year = max(year),
+      antiplural = mean(.data[[A]]),
+      popul = mean(.data[[B]]),
+      .by = c(group, decade, tag, v2paid, v2paenname, v2pashname, country_name)
+    ) |>
+    arrange(group, decade, tag, desc(antiplural)) |>
+    mutate(vocab = vocab_name, .before = 1)
+}
+
+all_parties <- map_dfr(names(all_means), function(v) {
+  party_rows(v, all_means[[v]] |> filter(is_plotted) |> select(group, decade, tag))
+})
+write_csv(with_decade_key(all_parties), file.path(out_dir, "tag_parties.csv"))
+cat(sprintf(
+  "\nParty listing: %d rows across %d vocabularies -> tag_parties.csv\n",
+  nrow(all_parties), n_distinct(all_parties$vocab)
+))
+
+# One HTML per vocabulary, sections keyed on panel and tag. gt is given the
+# whole listing rather than a truncated one -- these are reference tables, and
+# a reader checking whether a point is driven by one odd party needs the row
+# that is not in the top ten.
+for (v in unique(all_parties$vocab)) {
+  d <- all_parties |> filter(vocab == v)
+  if (nrow(d) == 0) next
+  tbl <- d |>
+    transmute(
+      section = sprintf("%s \u00b7 %s \u00b7 %s", group, decade, tag),
+      Party = v2paenname,
+      Abbr. = v2pashname,
+      Country = country_name,
+      Obs = n_obs,
+      Years = ifelse(first_year == last_year,
+                     as.character(first_year),
+                     sprintf("%d-%d", first_year, last_year)),
+      `Anti-pluralism` = round(antiplural, 3),
+      Populism = round(popul, 3)
+    )
+  gt_tbl <- tbl |>
+    gt::gt(groupname_col = "section") |>
+    gt::tab_header(
+      title = sprintf("Parties behind each point: %s", v),
+      subtitle = sprintf(
+        paste(
+          "One row per party per plotted cell, sorted by anti-pluralism within",
+          "each cell. Scores are that party's own mean over its observations",
+          "in that decade. V-Party %d-%d; %d parties over %d cells."
+        ),
+        VPARTY_YEAR_MIN, VPARTY_YEAR_MAX, nrow(d),
+        n_distinct(paste(d$group, d$decade, d$tag))
+      )
+    ) |>
+    gt::opt_row_striping() |>
+    gt::tab_options(
+      table.font.size = gt::px(11),
+      row_group.font.weight = "bold",
+      row_group.background.color = "#f0f0f0",
+      data_row.padding = gt::px(2)
+    )
+  path <- file.path(out_dir, sprintf("tag_parties_%s.html", v))
+  gt::gtsave(gt_tbl, path)
+  cat(sprintf("Saved %s (%d rows)\n", basename(path), nrow(d)))
+}
 message("\nIdeology quadrants written to ", out_dir)

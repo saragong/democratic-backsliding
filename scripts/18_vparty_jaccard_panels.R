@@ -137,6 +137,27 @@ UNIVERSES <- list(
   )
 )
 
+# readr's read_csv() silently parses a "1970s" column as the NUMBER 1970 --
+# its column guesser falls through to a number parser that strips trailing
+# non-numeric characters, even though guess_parser() on the same values
+# returns "character". So a collaborator doing
+# read_csv(...) |> filter(decade == "2010s") gets zero rows and no warning.
+# Verified, and it caught me twice while auditing these files.
+#
+# Rather than hope nobody hits it, every CSV written here carries an integer
+# decade_start alongside the label. That column survives any parser, and it
+# is the one to join or filter on.
+with_decade_key <- function(df) {
+  if (!"decade" %in% names(df)) {
+    return(df)
+  }
+  dplyr::mutate(
+    df,
+    decade_start = as.integer(sub("s$", "", as.character(decade))),
+    .after = decade
+  )
+}
+
 # ---- cells -------------------------------------------------------------------
 
 # Breaks are computed ONCE, on [0, 1], not per panel -- see BIN_MODE above.
@@ -349,7 +370,7 @@ for (u in names(all_cells)) {
   summary <- summarise_cells(cells, spec$fn(base))
   all_summaries[[u]] <- summary |> mutate(universe = u, .before = 1)
 
-  write_csv(cells, file.path(out_dir, sprintf("jaccard_cells_%s.csv", u)))
+  write_csv(with_decade_key(cells), file.path(out_dir, sprintf("jaccard_cells_%s.csv", u)))
 
   fig <- panel_figure(cells, summary, spec$label, fill_max)
   ggsave(
@@ -368,5 +389,5 @@ for (u in names(all_cells)) {
   )
 }
 
-write_csv(bind_rows(all_summaries), file.path(out_dir, "panel_summary.csv"))
+write_csv(with_decade_key(bind_rows(all_summaries)), file.path(out_dir, "panel_summary.csv"))
 message("\nV-Party Jaccard panels written to ", out_dir)
