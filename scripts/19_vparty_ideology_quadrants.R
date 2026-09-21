@@ -40,11 +40,12 @@
 #   the points of one tag live in different panels and cannot be joined by a
 #   line, so identity has to be carried by the marker itself.
 #
-# COVERAGE CAVEAT, stated on the figure rather than buried here: only about
-# 1,500 of the 8,049 tagged parties carry both a V-Party id and a tag, so every
-# panel rests on a subset of V-Party, and the rile_* variants rest on a thinner
-# one than the ideology_* variants. Per-panel coverage is in
-# panel_coverage.csv and summarized on each figure.
+# COVERAGE, stated on the figure rather than buried here: only about 1,500 of
+# the 8,049 tagged parties carry both a V-Party id and a tag, so every panel
+# rests on a subset of V-Party, and the rile_* variants rest on a thinner one
+# (822 parties) than the ideology_* variants (~1,500). Per-panel coverage is
+# in panel_coverage.csv and summarized on each figure. The selection this
+# induces is measured, and small -- see the panel_coverage block below.
 #
 # WEIGHTING: a tag's mean is over PARTY-YEARS, so a party observed in eight
 # elections counts eight times and one observed twice counts twice. Checked
@@ -173,19 +174,28 @@ cat("Tag coverage against scored V-Party parties:\n")
 print(as.data.frame(coverage), row.names = FALSE)
 write_csv(coverage, file.path(out_dir, "tag_coverage.csv"))
 
-# Coverage PER PANEL, not just pooled. The 2 x 5 layout invites two different
-# comparisons and they are not equally safe:
+# Coverage PER PANEL, not just pooled, because the 2 x 5 layout rests on the
+# ten panels being comparable and pooled coverage cannot show whether they
+# are.
 #
-#   left to right, within a row -- coverage is near-flat (OECD 87-92%,
-#     non-OECD 70-83%), so a tag moving across decades is moving, not being
-#     re-sampled.
-#   top to bottom, between rows -- OECD parties are tagged at about 91% and
-#     non-OECD at about 76%, so the two rows describe differently-selected
-#     party populations and the gap between them is partly a data-coverage
-#     artifact rather than a substantive difference.
+# Coverage is uneven: OECD panels are 87-92% tagged, non-OECD 70-83%. That
+# looks like it should bias the between-row comparison, and an earlier version
+# of this comment said it did. It does not, and the difference is worth
+# measuring rather than assuming, because the bias depends not on the coverage
+# gap but on how far UNTAGGED parties differ from tagged ones:
 #
-# Reported here and on the figure so that second comparison carries its
-# caveat, rather than the reader inferring it is as clean as the first.
+#   bias in a panel mean = (1 - coverage) x (tagged mean - untagged mean)
+#
+# Untagged parties turn out to sit only slightly higher on anti-pluralism
+# (0.04 in the OECD, 0.03 outside), and they are a small minority, so the
+# product is small. Measured per panel, the largest gap between a panel's
+# plotted mean and its true all-party mean is 0.011 -- against an OECD /
+# non-OECD separation of 0.376, i.e. 3% of the thing being compared. Both
+# comparisons the figure invites are therefore safe.
+#
+# Coverage is still reported per panel: it is the evidence for that claim, and
+# it is what would have to be re-checked if the tag file were ever extended
+# unevenly.
 panel_coverage <- map_dfr(TAG_COLUMNS, function(v) {
   ids <- tag_long |> filter(vocab == v) |> pull(vdem_id_1) |> unique()
   base |>
@@ -310,10 +320,10 @@ quadrant_figure <- function(all_dat, vocab_name) {
             "the less common populist and nationalist ones. Cells under %d",
             "party-years are dropped. Axes are common to all panels but scaled",
             "to the tag means, not to the full [0, 1] index range.",
-            "V-Party %d-%d. Tag coverage per panel: %s -- near-flat across",
-            "decades, so reading left to right is safe, but the two rows are",
-            "differently covered, so the OECD / non-OECD gap is partly a",
-            "coverage artifact."
+            "V-Party %d-%d. Tag coverage per panel: %s. Coverage is uneven",
+            "but the parties it misses are close to the ones it keeps, so no",
+            "panel mean sits more than 0.011 from its all-party value --",
+            "3%% of the OECD / non-OECD separation."
           ),
           med_b, med_a, N_TAGS, MIN_TAG_CELL_N,
           VPARTY_YEAR_MIN, VPARTY_YEAR_MAX,
