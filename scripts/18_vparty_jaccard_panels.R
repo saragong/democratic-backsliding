@@ -271,8 +271,15 @@ panel_figure <- function(cells, summary, universe_label, fill_max) {
     # Bin INDICES on both axes rather than the "0.0-0.1" labels: ten text
     # labels per axis times ten panels is unreadable, and the indices carry the
     # same information once the axis title says what they are.
+    #
+    # y runs UPWARD (bin 1 at the bottom, bin 10 at the top), not in matrix
+    # order. 16_instrument_overlap.R reverses it because it is drawing a
+    # matrix; here the figure sits next to 19_vparty_ideology_quadrants.R,
+    # which plots anti-pluralism on a conventional axis, and flipping between
+    # the two invites reading one of them upside down. The leading diagonal
+    # therefore runs bottom-left to top-right, as on a scatter.
     scale_x_continuous(breaks = c(1, 5, 10), expand = c(0, 0)) +
-    scale_y_reverse(breaks = c(1, 5, 10), expand = c(0, 0)) +
+    scale_y_continuous(breaks = c(1, 5, 10), expand = c(0, 0)) +
     coord_fixed() +
     labs(
       title = sprintf("Anti-pluralism vs populism: %s", universe_label),
