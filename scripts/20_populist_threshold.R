@@ -211,9 +211,43 @@ popu_years <- popu_matched |>
   distinct(vdem_id_1, year) |>
   mutate(populist = 1L)
 
+# Zeros are imputed ONLY in countries where at least one PopuList populist
+# actually landed in V-Party after the merge -- not in all 31 PopuList
+# countries.
+#
+# The difference is a guard against the merge, not against PopuList. Only 132
+# of PopuList's 268 parties reach a V-Party id, and that attrition is not
+# spread evenly: a country can lose every one of its listed populists to a
+# failed Party Facts link. In such a country, imputing zeros marks its
+# genuinely populist parties as non-populist and feeds the logit pure false
+# negatives, precisely in the upper range of the populism score where the
+# cutpoint is decided. Requiring one surviving positive per country does not
+# fix a country that lost SOME of its populists, but it removes the case
+# where the country contributes nothing but wrongly-labelled zeros.
+#
+# The cost is real and is reported: countries dropped this way had parties
+# that might legitimately have been zeros, so the negative class is smaller
+# and slightly more concentrated in populist-heavy countries.
+countries_with_matched_populist <- vparty |>
+  filter(v2paid %in% unique(popu_years$vdem_id_1)) |>
+  pull(country_name) |>
+  unique()
+
+dropped_countries <- setdiff(popu_countries, countries_with_matched_populist)
+cat(sprintf(
+  "\nImputed-zero universe: %d of %d PopuList countries retain a matched populist\n",
+  length(countries_with_matched_populist), length(popu_countries)
+))
+if (length(dropped_countries) > 0) {
+  cat(sprintf(
+    "  dropped (no PopuList populist survived the merge): %s\n",
+    paste(sort(dropped_countries), collapse = ", ")
+  ))
+}
+
 universe_imputed <- vparty |>
   filter(
-    country_name %in% popu_countries,
+    country_name %in% countries_with_matched_populist,
     year >= COVERAGE_MIN, year <= COVERAGE_MAX
   ) |>
   left_join(popu_years, by = c("v2paid" = "vdem_id_1", "year")) |>
@@ -262,7 +296,23 @@ fit_one <- function(df, label) {
     quiet = TRUE, direction = "<"
   )
 
-  grab <- function(method) {
+  # Two cutpoints, answering two different questions.
+  #
+  # YOUDEN maximizes sensitivity + specificity - 1, weighting the two classes
+  # equally regardless of how many of each there are. It is the standard
+  # "ROC-optimal" point and is the right one when the classes are imbalanced
+  # and you care about both kinds of error, which is the case here: populists
+  # are a fifth of the universe.
+  #
+  # ACCURACY maximizes (TP + TN) / N, which weights by prevalence. With a
+  # minority positive class this pulls the cutpoint UP -- calling fewer
+  # parties populist is cheap in accuracy terms because most parties are not
+  # populist. Reported because it is the other natural reading of "best", and
+  # because seeing the two apart is what shows the choice is doing work.
+  #
+  # pROC has no accuracy method, so it is computed directly over every
+  # candidate cutpoint on the score.
+  grab_roc <- function(method) {
     co <- coords(roc_obj, "best", best.method = method,
                  ret = c("threshold", "sensitivity", "specificity"),
                  transpose = FALSE)
@@ -276,7 +326,50 @@ fit_one <- function(df, label) {
     )
   }
 
-  cuts <- bind_rows(grab("youden"), grab("closest.topleft"))
+  grab_accuracy <- function() {
+    x <- df[[FIT_SCORE]]
+    y <- df$populist == 1
+    # Midpoints between adjacent observed values, so every distinct split of
+    # the data is considered exactly once.
+    u <- sort(unique(x))
+    cands <- if (length(u) < 2) u else c(u[1] - 1e-9, (head(u, -1) + tail(u, -1)) / 2)
+    acc <- vapply(cands, function(t) mean((x > t) == y), numeric(1))
+    best <- cands[acc == max(acc)]
+    t0 <- median(best)
+    tibble(
+      method = "accuracy",
+      threshold = t0,
+      sensitivity = mean(x[y] > t0),
+      specificity = mean(x[!y] <= t0)
+    )
+  }
+
+  cuts <- bind_rows(grab_roc("youden"), grab_accuracy())
+
+  # Accuracy AT each chosen cutpoint, so the two can be compared on the same
+  # footing rather than each on its own criterion.
+  cuts$accuracy <- vapply(cuts$threshold, function(t) {
+    mean((df[[FIT_SCORE]] > t) == (df$populist == 1))
+  }, numeric(1))
+  cuts$youden_j <- cuts$sensitivity + cuts$specificity - 1
+
+  # A cutpoint with zero specificity (or zero sensitivity) is the degenerate
+  # "call everything one class" solution. Accuracy will happily choose it
+  # whenever one class dominates -- in the listed_only universe, 77% of
+  # party-years are populist, so predicting "all populist" scores 0.768 and
+  # wins. It is a real cutpoint in the arithmetic and a useless one for
+  # classifying anything, so it is flagged rather than quietly reported.
+  degenerate <- cuts$specificity <= .Machine$double.eps |
+    cuts$sensitivity <= .Machine$double.eps
+  if (any(degenerate)) {
+    warning(
+      label, ": the ", paste(cuts$method[degenerate], collapse = " and "),
+      " cutpoint is degenerate (Youden's J = 0) -- it assigns every ",
+      "observation to one class. Do not use it as a threshold.",
+      call. = FALSE
+    )
+  }
+  cuts$degenerate <- degenerate
 
   list(
     label = label,
@@ -328,14 +421,18 @@ for (u in names(UNIVERSES)) {
         logit_coef = f$coef, logit_se = f$coef_se,
         method = f$cuts$method[i],
         sensitivity = f$cuts$sensitivity[i],
-        specificity = f$cuts$specificity[i]
+        specificity = f$cuts$specificity[i],
+        accuracy = f$cuts$accuracy[i],
+        youden_j = f$cuts$youden_j[i],
+        degenerate = f$cuts$degenerate[i]
       ),
       tr
     )
     cat(sprintf(
-      "  %-16s cutpoint %.4f on %s (sens %.2f, spec %.2f) -> %.1fth pct -> %.4f on %s\n",
+      "  %-9s cut %.4f on %s (sens %.2f spec %.2f J %.2f acc %.3f) -> %.1fth pct -> %.4f on %s\n",
       f$cuts$method[i], tr$threshold_absolute, FIT_SCORE,
       f$cuts$sensitivity[i], f$cuts$specificity[i],
+      f$cuts$youden_j[i], f$cuts$accuracy[i],
       tr$percentile, tr$threshold_percentile_value, APPLY_SCORE
     ))
   }
@@ -348,9 +445,17 @@ write_csv(thresholds, file.path(out_dir, "thresholds.csv"))
 # 5. The headline numbers, for 12_rdd_analysis.R
 # ------------------------------------------------------------------------------
 
-headline <- thresholds |>
-  filter(universe == "imputed_zero", method == "youden") |>
-  slice(1)
+# Both cutpoints from the headline universe, so 12_rdd_analysis.R can be run
+# at either without re-deriving anything. `youden` stays the default -- it
+# weights the two error types equally, which is what the sample restriction
+# needs -- but `accuracy` is a legitimate alternative reading of "best" and
+# lands somewhere very different, so it travels alongside rather than being
+# a number someone has to recompute.
+headline_universe <- "imputed_zero"
+cuts_out <- thresholds |>
+  filter(universe == headline_universe, !degenerate)
+stopifnot(nrow(cuts_out) >= 1)
+headline <- cuts_out |> filter(method == "youden") |> slice(1)
 
 out <- list(
   fit_score = FIT_SCORE,
@@ -361,6 +466,12 @@ out <- list(
   n = headline$n,
   # For ILLIBERAL_CUTOFF / OTHER_CUTOFF_MAX, the absolute transfer.
   threshold_abs = headline$threshold_absolute,
+  # Every non-degenerate cutpoint from this universe: method, the raw value,
+  # and its percentile transfer onto the anti-pluralism scale.
+  cutpoints = cuts_out |>
+    select(method, threshold_absolute, percentile,
+           threshold_percentile_value, sensitivity, specificity,
+           accuracy, youden_j),
   # ... and the percentile transfer, as an absolute value on the
   # anti-pluralism scale. Given as a NUMBER rather than a "qNN" string on
   # purpose: "qNN" would be re-resolved by 12_rdd_analysis.R against whatever
@@ -376,9 +487,17 @@ out <- list(
 )
 saveRDS(out, file.path(data_dir, "populist_threshold.rds"))
 cat(sprintf(
-  "\nHeadline (%s, %s): %.4f absolute, %.4f at the same percentile (%.1fth)\nSaved data/populist_threshold.rds\n",
+  "\nHeadline (%s, %s): %.4f absolute, %.4f at the same percentile (%.1fth)\n",
   out$universe, out$method, out$threshold_abs, out$threshold_pct, out$percentile
 ))
+cat("All usable cutpoints carried in the RDS:\n")
+print(
+  out$cutpoints |>
+    mutate(across(where(is.numeric), \(x) round(x, 4))) |>
+    as.data.frame(),
+  row.names = FALSE
+)
+cat("Saved data/populist_threshold.rds\n")
 
 # ------------------------------------------------------------------------------
 # 6. Figures

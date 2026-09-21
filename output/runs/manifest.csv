@@ -98,9 +98,7 @@ instr-antiplural_w3_trt-ertOrDdcg_gapany_illibany_exclyr_pre,v2xpa_antiplural,3,
 instr-antiplural_w3_trt-polyarchy_gapany_illibany_exclyr_pre,v2xpa_antiplural,3,polyarchy_decline,-Inf,-Inf,FALSE,-Inf,none,-Inf,none,1347,NA,-0.0156,0.2766,2026-09-20 16:04:36,Inf,TRUE,Inf,none
 instr-antiplural_w4_trt-ert_gapany_illibany_exclyr_pre,v2xpa_antiplural,4,backsliding_Nyr,-Inf,-Inf,FALSE,-Inf,none,-Inf,none,1347,58,-0.0397,0.3728,2026-09-20 16:05:08,Inf,TRUE,Inf,none
 instr-antiplural_w4_trt-ertOrDdcg_gapany_illibany_exclyr_pre,v2xpa_antiplural,4,backsliding_union_Nyr,-Inf,-Inf,FALSE,-Inf,none,-Inf,none,1347,72,-0.0269,0.5492,2026-09-20 16:05:10,Inf,TRUE,Inf,none
-instr-antiplural_w5_trt-ert_gapany_illib0p362_opp0p362_exclyr,v2xpa_antiplural,5,backsliding_Nyr,-Inf,0.362,FALSE,-Inf,none,0.362,absolute,348,51,-0.1461,0.2339,2026-09-20 16:05:11,0.362,FALSE,0.362,absolute
 instr-antiplural_w4_trt-polyarchy_gapany_illibany_exclyr_pre,v2xpa_antiplural,4,polyarchy_decline,-Inf,-Inf,FALSE,-Inf,none,-Inf,none,1347,NA,-0.0169,0.3308,2026-09-20 16:05:12,Inf,TRUE,Inf,none
-instr-antiplural_w5_trt-ert_gapany_illib0p382_opp0p382_exclyr,v2xpa_antiplural,5,backsliding_Nyr,-Inf,0.382,FALSE,-Inf,none,0.382,absolute,359,53,-0.1435,0.2218,2026-09-20 16:05:16,0.382,FALSE,0.382,absolute
 instr-antiplural_w5_trt-ert_gapany_illibany_exclyr_pre,v2xpa_antiplural,5,backsliding_Nyr,-Inf,-Inf,FALSE,-Inf,none,-Inf,none,1347,76,-0.0106,0.832,2026-09-20 16:05:17,Inf,TRUE,Inf,none
 instr-antiplural_w5_trt-ertOrDdcg_gapany_illibany_exclyr_pre,v2xpa_antiplural,5,backsliding_union_Nyr,-Inf,-Inf,FALSE,-Inf,none,-Inf,none,1347,90,-5e-04,0.9916,2026-09-20 16:05:18,Inf,TRUE,Inf,none
 instr-antiplural_w5_trt-polyarchy_gapany_illibany_exclyr_pre,v2xpa_antiplural,5,polyarchy_decline,-Inf,-Inf,FALSE,-Inf,none,-Inf,none,1347,NA,-0.0231,0.2266,2026-09-20 16:05:20,Inf,TRUE,Inf,none
@@ -122,3 +120,7 @@ instr-antiplural_w10_trt-polyarchy_gapany_illibany_exclyr_pre,v2xpa_antiplural,1
 instr-popul_w5_trt-ert_gapany_illibany_exclyr,v2xpa_popul,5,backsliding_Nyr,-Inf,-Inf,FALSE,-Inf,none,-Inf,none,1347,142,0.0187,0.7429,2026-09-20 16:11:34,Inf,FALSE,Inf,none
 instr-antiplural_w5_trt-polyarchy_gapany_illibany_exclyr,v2xpa_antiplural,5,polyarchy_decline,-Inf,-Inf,FALSE,-Inf,none,-Inf,none,1347,NA,0.0175,0.3351,2026-09-20 16:12:00,Inf,FALSE,Inf,none
 instr-antiplural_w5_trt-ert_gapany_illibany_exclyr,v2xpa_antiplural,5,backsliding_Nyr,-Inf,-Inf,FALSE,-Inf,none,-Inf,none,1347,142,-0.0252,0.6613,2026-09-20 18:57:41,Inf,FALSE,Inf,none
+instr-antiplural_w5_trt-ert_gapany_illib0p362_opp0p362_exclyr,v2xpa_antiplural,5,backsliding_Nyr,-Inf,0.362,FALSE,-Inf,none,0.362,absolute,348,51,-0.1461,0.2339,2026-09-21 14:18:48,0.362,FALSE,0.362,absolute
+instr-antiplural_w5_trt-ert_gapany_illib0p382_opp0p382_exclyr,v2xpa_antiplural,5,backsliding_Nyr,-Inf,0.382,FALSE,-Inf,none,0.382,absolute,359,53,-0.1435,0.2218,2026-09-21 14:18:49,0.382,FALSE,0.382,absolute
+instr-antiplural_w5_trt-ert_gapany_illib0p6535_opp0p6535_exclyr,v2xpa_antiplural,5,backsliding_Nyr,-Inf,0.6535,FALSE,-Inf,none,0.6535,absolute,411,48,0.1209,0.3848,2026-09-21 14:18:50,0.6535,FALSE,0.6535,absolute
+instr-antiplural_w5_trt-ert_gapany_illib0p822_opp0p822_exclyr,v2xpa_antiplural,5,backsliding_Nyr,-Inf,0.822,FALSE,-Inf,none,0.822,absolute,323,33,0.149,0.2823,2026-09-21 14:18:51,0.822,FALSE,0.822,absolute
