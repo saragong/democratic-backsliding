@@ -44,17 +44,34 @@
 # so the choice is visible rather than assumed, and reports the AUC itself as
 # what it actually is: how well the continuous score separates the classes.
 #
-# TWO UNIVERSES (the negative class is the whole difficulty)
+# THE NEGATIVE CLASS IS THE WHOLE DIFFICULTY
 #
-#   imputed_zero (headline)  PopuList lists the parties that ARE populist, far
-#       right, far left or eurosceptic; everything else in its 31 countries is
-#       implicitly none of those. So the universe is every V-Party party-year
-#       in those countries over PopuList's coverage, populist = 1 only for a
-#       listed party in a listed year. This is how PopuList is normally used.
-#   listed_only (robustness)  Only the parties PopuList lists, 201 populist vs
-#       67 not. The 67 are parties that are far-right/far-left/eurosceptic but
-#       NOT populist -- a right-tail-selected control group, so a cutpoint
-#       fitted here is calibrated on the hard cases only and sits too high.
+# PopuList is a LIST, not a census: it names the European parties that are
+# populist OR far right OR far left OR eurosceptic. So it carries 201 ones and
+# 67 zeros, and those zeros exist only because a party can qualify on one of
+# the other three grounds without being populist. Checked: all 67 of them are
+# far right, far left or eurosceptic.
+#
+# That rules out the obvious approach of fitting on the listed parties alone.
+# Its negative class would not be ordinary parties but OTHER RADICALS -- the
+# French Communist Party, Sweden's Left Party, Poland's National Movement --
+# which are populism-adjacent enough that labelling them 0 is closer to
+# mislabelling than to sampling. Fitting on them asks the classifier to
+# separate populist radicals from non-populist radicals, which is both harder
+# than and different from the question here. It was tried, and it behaved
+# exactly as that description predicts: 77% of party-years positive, mean
+# populism among the "zeros" 0.521, AUC 0.644, and an accuracy cutpoint that
+# collapsed to "call everything populist". Dropped.
+#
+# So the universe is the one PopuList's own inclusion rule implies. Its
+# criterion is roughly "parties above 1% of the vote in 31 European countries
+# that are populist / far right / far left / eurosceptic", so a party in one
+# of those countries that is NOT listed is implicitly none of those things.
+# Universe = every V-Party party-year in those countries within coverage;
+# populist = 1 only for a listed party in a listed year, 0 otherwise. The
+# negative class is then what it should be -- Sweden's Centre Party,
+# Switzerland's Radical Democratic Party -- 20% positive, mean populism among
+# the zeros 0.259, AUC 0.890.
 #
 # THE CAVEAT THAT TRAVELS WITH THE NUMBER
 #
@@ -276,24 +293,9 @@ universe_imputed <- vparty |>
   mutate(populist = coalesce(populist, 0L))
 
 # Listed-only: the parties PopuList names, at their V-Party observations.
-listed_ids <- popu_matched |>
-  filter(!is.na(vdem_id_1)) |>
-  distinct(vdem_id_1, populist)
-
-universe_listed <- vparty |>
-  inner_join(listed_ids, by = c("v2paid" = "vdem_id_1"),
-             relationship = "many-to-many") |>
-  filter(year >= COVERAGE_MIN, year <= COVERAGE_MAX)
-
-UNIVERSES <- list(
-  imputed_zero = list(
-    data = universe_imputed,
-    label = "All V-Party parties in PopuList's countries; unlisted = not populist"
-  ),
-  listed_only = list(
-    data = universe_listed,
-    label = "Only parties PopuList lists (right-tail-selected controls)"
-  )
+UNIVERSE_LABEL <- paste(
+  "All V-Party parties in PopuList's countries;",
+  "unlisted = not populist"
 )
 
 # ------------------------------------------------------------------------------
@@ -376,11 +378,12 @@ fit_one <- function(df, label) {
   cuts$youden_j <- cuts$sensitivity + cuts$specificity - 1
 
   # A cutpoint with zero specificity (or zero sensitivity) is the degenerate
-  # "call everything one class" solution. Accuracy will happily choose it
-  # whenever one class dominates -- in the listed_only universe, 77% of
-  # party-years are populist, so predicting "all populist" scores 0.768 and
-  # wins. It is a real cutpoint in the arithmetic and a useless one for
-  # classifying anything, so it is flagged rather than quietly reported.
+  # "call everything one class" solution. Accuracy will choose it whenever one
+  # class dominates badly enough, since predicting the majority everywhere
+  # then scores well. It does not fire on the current universe (20% positive),
+  # but it did fire on the listed-parties-only universe this script used to
+  # carry (77% positive, accuracy 0.768 for "all populist"), which is why the
+  # guard is here rather than assumed unnecessary.
   degenerate <- cuts$specificity <= .Machine$double.eps |
     cuts$sensitivity <= .Machine$double.eps
   if (any(degenerate)) {
@@ -424,41 +427,37 @@ transfer <- function(thr) {
   )
 }
 
-rows <- list()
-fits <- list()
-for (u in names(UNIVERSES)) {
-  f <- fit_one(UNIVERSES[[u]]$data, UNIVERSES[[u]]$label)
-  fits[[u]] <- f
+fit <- fit_one(universe_imputed, UNIVERSE_LABEL)
+cat(sprintf(
+  "\n  N = %d (%d populist, %.1f%%)\n  logit coef on %s = %.3f (%.3f)\n  AUC = %.3f\n",
+  fit$n, fit$n_pos, 100 * fit$n_pos / fit$n, FIT_SCORE,
+  fit$coef, fit$coef_se, fit$auc
+))
+
+rows <- lapply(seq_len(nrow(fit$cuts)), function(i) {
+  tr <- transfer(fit$cuts$threshold[i])
   cat(sprintf(
-    "\n=== %s ===\n  N = %d (%d populist, %.1f%%)\n  logit coef on %s = %.3f (%.3f)\n  AUC = %.3f\n",
-    u, f$n, f$n_pos, 100 * f$n_pos / f$n, FIT_SCORE, f$coef, f$coef_se, f$auc
+    "  %-9s cut %.4f on %s (sens %.2f spec %.2f J %.2f acc %.3f) -> %.1fth pct -> %.4f on %s\n",
+    fit$cuts$method[i], tr$threshold_absolute, FIT_SCORE,
+    fit$cuts$sensitivity[i], fit$cuts$specificity[i],
+    fit$cuts$youden_j[i], fit$cuts$accuracy[i],
+    tr$percentile, tr$threshold_percentile_value, APPLY_SCORE
   ))
-  for (i in seq_len(nrow(f$cuts))) {
-    tr <- transfer(f$cuts$threshold[i])
-    rows[[length(rows) + 1]] <- bind_cols(
-      tibble(
-        universe = u,
-        universe_label = f$label,
-        n = f$n, n_populist = f$n_pos, auc = f$auc,
-        logit_coef = f$coef, logit_se = f$coef_se,
-        method = f$cuts$method[i],
-        sensitivity = f$cuts$sensitivity[i],
-        specificity = f$cuts$specificity[i],
-        accuracy = f$cuts$accuracy[i],
-        youden_j = f$cuts$youden_j[i],
-        degenerate = f$cuts$degenerate[i]
-      ),
-      tr
-    )
-    cat(sprintf(
-      "  %-9s cut %.4f on %s (sens %.2f spec %.2f J %.2f acc %.3f) -> %.1fth pct -> %.4f on %s\n",
-      f$cuts$method[i], tr$threshold_absolute, FIT_SCORE,
-      f$cuts$sensitivity[i], f$cuts$specificity[i],
-      f$cuts$youden_j[i], f$cuts$accuracy[i],
-      tr$percentile, tr$threshold_percentile_value, APPLY_SCORE
-    ))
-  }
-}
+  bind_cols(
+    tibble(
+      universe_label = fit$label,
+      n = fit$n, n_populist = fit$n_pos, auc = fit$auc,
+      logit_coef = fit$coef, logit_se = fit$coef_se,
+      method = fit$cuts$method[i],
+      sensitivity = fit$cuts$sensitivity[i],
+      specificity = fit$cuts$specificity[i],
+      accuracy = fit$cuts$accuracy[i],
+      youden_j = fit$cuts$youden_j[i],
+      degenerate = fit$cuts$degenerate[i]
+    ),
+    tr
+  )
+})
 
 thresholds <- bind_rows(rows)
 write_csv(thresholds, file.path(out_dir, "thresholds.csv"))
@@ -470,16 +469,14 @@ write_csv(thresholds, file.path(out_dir, "thresholds.csv"))
 # Both cutpoints from the headline universe travel in the output, so
 # 12_rdd_analysis.R can be run at either without re-deriving anything;
 # HEADLINE_METHOD decides which one is named as the default.
-headline_universe <- "imputed_zero"
-cuts_out <- thresholds |>
-  filter(universe == headline_universe, !degenerate)
+cuts_out <- thresholds |> filter(!degenerate)
 stopifnot(nrow(cuts_out) >= 1)
 headline <- cuts_out |> filter(method == HEADLINE_METHOD) |> slice(1)
 if (nrow(headline) == 0) {
   stop(
     "HEADLINE_METHOD = '", HEADLINE_METHOD, "' produced no usable cutpoint ",
-    "in the ", headline_universe, " universe (it may have been dropped as ",
-    "degenerate). Available: ", paste(cuts_out$method, collapse = ", "),
+    "(it may have been dropped as degenerate). Available: ",
+    paste(cuts_out$method, collapse = ", "),
     call. = FALSE
   )
 }
@@ -487,7 +484,7 @@ if (nrow(headline) == 0) {
 out <- list(
   fit_score = FIT_SCORE,
   apply_score = APPLY_SCORE,
-  universe = headline$universe,
+  universe = UNIVERSE_LABEL,
   method = headline$method,
   auc = headline$auc,
   n = headline$n,
@@ -514,8 +511,8 @@ out <- list(
 )
 saveRDS(out, file.path(data_dir, "populist_threshold.rds"))
 cat(sprintf(
-  "\nHeadline (%s, %s): %.4f absolute, %.4f at the same percentile (%.1fth)\n",
-  out$universe, out$method, out$threshold_abs, out$threshold_pct, out$percentile
+  "\nHeadline (%s): %.4f absolute, %.4f at the same percentile (%.1fth)\n",
+  out$method, out$threshold_abs, out$threshold_pct, out$percentile
 ))
 cat("All usable cutpoints carried in the RDS:\n")
 print(
@@ -530,19 +527,15 @@ cat("Saved data/populist_threshold.rds\n")
 # 6. Figures
 # ------------------------------------------------------------------------------
 
-roc_df <- bind_rows(lapply(names(fits), function(u) {
-  r <- fits[[u]]$roc
-  tibble(
-    universe = sprintf("%s (AUC %.3f)", u, fits[[u]]$auc),
-    fpr = 1 - r$specificities,
-    tpr = r$sensitivities
-  )
-}))
+roc_df <- tibble(
+  fpr = 1 - fit$roc$specificities,
+  tpr = fit$roc$sensitivities
+)
 
-p_roc <- ggplot(roc_df, aes(fpr, tpr, colour = universe)) +
+p_roc <- ggplot(roc_df, aes(fpr, tpr)) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed",
               colour = "grey60", linewidth = 0.4) +
-  geom_line(linewidth = 0.8) +
+  geom_line(linewidth = 0.8, colour = "#0072B2") +
   # Both cutpoints marked, the headline one filled. Showing only the chosen
   # one would hide how far apart they are, which is the thing a reader of
   # this figure most needs to see.
@@ -550,21 +543,33 @@ p_roc <- ggplot(roc_df, aes(fpr, tpr, colour = universe)) +
     data = thresholds |>
       filter(!degenerate) |>
       mutate(
-        universe = sprintf("%s (AUC %.3f)", universe, auc),
         fpr = 1 - specificity, tpr = sensitivity,
-        is_headline = method == HEADLINE_METHOD
+        lab = sprintf("%s (%.3f)", method, threshold_absolute)
       ),
-    aes(fpr, tpr, shape = is_headline), size = 2.6, stroke = 1, fill = "white"
+    aes(fpr, tpr, shape = method == HEADLINE_METHOD),
+    size = 2.8, stroke = 1, fill = "white", colour = "#0072B2"
+  ) +
+  geom_text(
+    data = thresholds |>
+      filter(!degenerate) |>
+      mutate(
+        fpr = 1 - specificity, tpr = sensitivity,
+        lab = sprintf("%s (%.3f)", method, threshold_absolute)
+      ),
+    aes(fpr, tpr, label = lab),
+    hjust = -0.12, vjust = 1.6, size = 2.8, colour = "grey20"
   ) +
   scale_shape_manual(
     values = c(`FALSE` = 21, `TRUE` = 19),
     labels = c(`FALSE` = "other cutpoint", `TRUE` = HEADLINE_METHOD),
     name = NULL
   ) +
-  scale_colour_manual(values = c("#0072B2", "#D55E00"), name = NULL) +
   coord_fixed() +
   labs(
-    title = sprintf("Does %s separate PopuList's populist parties?", FIT_SCORE),
+    title = sprintf(
+      "Does %s separate PopuList's populist parties?  AUC %.3f",
+      FIT_SCORE, fit$auc
+    ),
     subtitle = paste(
       strwrap(sprintf(paste(
         "ROC of the raw V-Party populism score. Both cutpoints are marked;",
