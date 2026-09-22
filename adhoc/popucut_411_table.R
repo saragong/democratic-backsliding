@@ -9,8 +9,13 @@
 #
 # Winner and loser are by VOTE SHARE, not by score -- so the illiberal party is
 # sometimes the winner and sometimes the loser, which is the whole point of the
-# design. The score difference column is signed the same way (winner minus
-# loser), so a NEGATIVE difference is an election the illiberal party lost.
+# design. The gap column is signed winner minus loser:
+#
+#   POSITIVE  the WINNER is the more illiberal of the two  -> shaded RED
+#   NEGATIVE  the winner is the LESS illiberal of the two  -> shaded GREEN
+#
+# which needs diverging_fill()'s argument negated, since that ramp runs red for
+# negative and green for positive.
 #
 #   Rscript --no-init-file adhoc/popucut_411_table.R
 #
@@ -59,6 +64,13 @@ if (length(missing) > 0 || !file.exists(parties_path)) {
 }
 
 out_dir <- sweep_dir("popucut_411_table")
+
+# "Anti-pluralism (v2xpa_antiplural)" is right for a subtitle and far too long
+# for a column header repeated twice. Strip the parenthetical -- this yields a
+# usable short name for every instrument in the registry ("Populism",
+# "Anti-elitism", "Minority rights"), so it does not need a second lookup
+# table that could drift out of step with the first.
+SCORE_SHORT <- sub(" \\(.*$", "", PARTY_SCORE_DISPLAY[[T411_INSTRUMENT]])
 
 # ---- the sample --------------------------------------------------------------
 
@@ -196,15 +208,14 @@ gdp_cap <- cap(gdp_cols)
 poly_cap <- cap(poly_cols)
 diff_cap <- max(abs(tbl_dat$score_diff), na.rm = TRUE)
 
-# Two scales, used for two different jobs. The outcome blocks get the
-# diverging one, where red-below-zero / green-above is the natural reading of
-# a growth or democracy change. The score difference gets the sequential one:
-# its sign says which side of the top 2 was the illiberal party, not whether
-# anything went well, and colouring that green would read as approval.
-shade <- function(gt_tbl, cols, max_abs, fill = diverging_fill) {
+# One diverging ramp everywhere, so red always means the direction a reader of
+# this paper cares about: worse growth, falling polyarchy, and an illiberal
+# party winning. `flip` negates the input for the gap column, whose raw sign
+# runs the other way (positive = illiberal winner, which must be RED).
+shade <- function(gt_tbl, cols, max_abs, flip = FALSE) {
   data_color(
     gt_tbl, columns = all_of(cols),
-    fn = function(x) fill(x, max_abs = max_abs)
+    fn = function(x) diverging_fill(if (flip) -x else x, max_abs = max_abs)
   )
 }
 
@@ -232,21 +243,33 @@ gt_tbl <- disp |>
       "The PopuList %d: one top-2 party illiberal, the other not",
       length(sample_ids)
     ),
-    subtitle = sprintf(paste(
-      "%s, cut at %.4f (accuracy-maximizing, calibrated against The PopuList",
-      "4.0 in 01g_populist_threshold.R). Winner and loser are by vote or seat",
-      "share, so the illiberal party is the WINNER where Score diff is",
-      "positive and the LOSER where it is negative. Changes are measured from",
-      "the year before the election, the same span every estimate in the repo",
-      "uses: GDP per capita as a percentage change, polyarchy in index points."
-    ), INSTRUMENT_DISPLAY[[T411_INSTRUMENT]], cut_abs)
+    subtitle = html(sprintf(paste(
+      "Both party scores are <b>%s</b>, V-Party's illiberalism measure, on",
+      "[0,&thinsp;1] with higher = more illiberal; the sample is elections",
+      "where one top-2 party scores above %.4f and the other does not (the",
+      "accuracy-maximizing PopuList cut, calibrated in",
+      "01g_populist_threshold.R). Winner and loser are by vote or seat share,",
+      "so the illiberal party is sometimes which ever one won:",
+      "<b>a positive gap means the WINNER is the more illiberal of the two",
+      "(shaded <span style=\"color:#b2182b\">red</span>); a negative gap means",
+      "the winner is the LESS illiberal",
+      "(shaded <span style=\"color:#1a9850\">green</span>)</b>. Changes are",
+      "measured from the year before the election, the same span every",
+      "estimate in the repo uses: GDP per capita as a percentage change,",
+      "polyarchy in index points."
+    ), INSTRUMENT_DISPLAY[[T411_INSTRUMENT]], cut_abs))
   ) |>
   tab_spanner("Winner", columns = c("Winning party", "Vote %", "Score")) |>
   tab_spanner("Loser", columns = c("Losing party", "Vote %.", "Score.")) |>
   tab_spanner("GDP pc change", columns = all_of(gdp_disp)) |>
   tab_spanner("Polyarchy change", columns = all_of(poly_disp)) |>
   cols_label(
-    `Vote %.` = "Vote %", `Score.` = "Score",
+    `Vote %.` = "Vote %",
+    `Score` = SCORE_SHORT, `Score.` = SCORE_SHORT,
+    `Score diff` = html(sprintf(
+      "%s gap<br><span style=\"font-weight:normal\">(winner &minus; loser)</span>",
+      SCORE_SHORT
+    )),
     !!!setNames(as.list(paste0(T411_HORIZONS, "y")), gdp_disp),
     !!!setNames(as.list(paste0(T411_HORIZONS, "y")), poly_disp)
   ) |>
@@ -258,7 +281,7 @@ gt_tbl <- disp |>
   sub_missing(missing_text = "--") |>
   shade(gdp_disp, gdp_cap) |>
   shade(poly_disp, poly_cap) |>
-  shade("Score diff", diff_cap, fill = magnitude_fill) |>
+  shade("Score diff", diff_cap, flip = TRUE) |>
   cols_align("left", columns = c("Winning party", "Losing party")) |>
   tab_style(cell_text(weight = "bold"), locations = cells_row_groups()) |>
   apply_table_style(font_size = 10) |>
@@ -267,16 +290,19 @@ gt_tbl <- disp |>
     "with one symmetric domain per block so a colour means the same magnitude",
     "at 1, 5 and 10 years. The domain is capped at the 95th percentile of",
     "|value| (GDP %.0f%%, polyarchy %.3f) so that a handful of collapses do",
-    "not wash out the rest; capped cells render at full intensity. Score diff",
-    "is shaded by MAGNITUDE on a single-hue scale over its own full range, so",
-    "the deepest blue cells are the elections where the two top-2 parties are",
-    "furthest apart on %s -- the sign is left to the number, because it says",
-    "which side the illiberal party was on, not whether anything went well.",
-    "%d elections, %d countries,",
-    "%d-%d. Blank cells are years the outcome panel does not cover."
-  ), 100 * gdp_cap, poly_cap, INSTRUMENT_DISPLAY[[T411_INSTRUMENT]],
+    "not wash out the rest; capped cells render at full intensity. The %s gap",
+    "is shaded on the same red-green scale over its own full range, with the",
+    "sign reversed so that RED is an election the more illiberal party WON and",
+    "GREEN one it lost -- red therefore means the same direction everywhere in",
+    "the table: worse growth, falling polyarchy, an illiberal party winning.",
+    "The deepest cells either way are the elections where the two top-2",
+    "parties are furthest apart. %d elections, %d countries, %d-%d; the",
+    "illiberal party won %d and lost %d. Blank cells are years the outcome",
+    "panel does not cover."
+  ), 100 * gdp_cap, poly_cap, SCORE_SHORT,
   nrow(disp), n_distinct(disp$Country),
-  min(disp$Year), max(disp$Year)))
+  min(disp$Year), max(disp$Year),
+  sum(tbl_dat$score_diff > 0), sum(tbl_dat$score_diff < 0)))
 
 gtsave(gt_tbl, file.path(out_dir, "popucut_411.html"))
 cat(sprintf("Saved %s\n", file.path(out_dir, "popucut_411.html")))

@@ -719,32 +719,6 @@ apply_threshold <- function(data, var, parsed, name,
   out
 }
 
-# A single-hue SEQUENTIAL ramp on |value|: pale at zero, saturated at max_abs.
-#
-# The sibling of diverging_fill(), for the case where only the magnitude is
-# meant to be read off the colour. Using a red-green diverging scale for a
-# quantity whose sign is not good-vs-bad invites the reader to take green as
-# approval -- on a winner-minus-loser score difference, green would silently
-# mean "the illiberal party won", which is not a judgement the colour should
-# be making. Values beyond max_abs clamp rather than drop out.
-magnitude_fill <- function(values, max_abs = NULL) {
-  finite <- values[is.finite(values)]
-  if (is.null(max_abs)) {
-    max_abs <- if (length(finite)) max(abs(finite)) else 1
-  }
-  if (!is.finite(max_abs) || max_abs <= 0) max_abs <- 1
-  ramp <- grDevices::colorRamp(c("#ffffff", "#c6dbef", "#4292c6", "#08306b"),
-                               space = "Lab")
-  scaled <- pmin(abs(values), max_abs) / max_abs
-  out <- rep("#ffffff", length(values))
-  ok <- is.finite(scaled)
-  if (any(ok)) {
-    rgb <- ramp(scaled[ok])
-    out[ok] <- grDevices::rgb(rgb[, 1], rgb[, 2], rgb[, 3], maxColorValue = 255)
-  }
-  out
-}
-
 # parse + resolve in one step, returning just the NUMBER.
 #
 # Callers that need a threshold as a number rather than a spec object -- a
