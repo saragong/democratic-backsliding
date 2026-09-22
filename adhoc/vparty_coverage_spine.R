@@ -20,7 +20,7 @@
 #
 #   Rscript --no-init-file adhoc/vparty_coverage_spine.R
 #
-# Output: output/runs/_sweeps/vparty_coverage_spine/
+# Output: output/adhoc/
 #           coverage_spine_<score>.png
 #           coverage_spine_<score>.csv   one row per bin x group
 # ==============================================================================
@@ -28,7 +28,7 @@
 library(tidyverse)
 library(here)
 
-source(here::here("scripts", "rdd_helpers.R"))    # SERIES_COLORS, sweep_dir()
+source(here::here("scripts", "rdd_helpers.R"))    # SERIES_COLORS, adhoc_path()
 source(here::here("scripts", "vparty_helpers.R")) # oecd_group()
 
 # ---- toggles -----------------------------------------------------------------
@@ -63,7 +63,6 @@ if (!file.exists(spine_path)) {
   )
 }
 
-out_dir <- sweep_dir("vparty_coverage_spine")
 
 # ---- one row per election ----------------------------------------------------
 
@@ -145,7 +144,7 @@ wide <- cells |>
   ) |>
   arrange(group, bin_start)
 
-write_csv(wide, file.path(out_dir, sprintf("coverage_spine_%s.csv", COVERAGE_SCORE)))
+write_csv(wide, adhoc_path(sprintf("coverage_spine_%s.csv", COVERAGE_SCORE)))
 
 cat("\nCoverage by group (all bins pooled):\n")
 print(
@@ -246,8 +245,8 @@ p <- ggplot(plot_dat, aes(x = bin_start, y = share, fill = coverage)) +
   )
 
 ggsave(
-  file.path(out_dir, sprintf("coverage_spine_%s.png", COVERAGE_SCORE)), p,
+  adhoc_path(sprintf("coverage_spine_%s.png", COVERAGE_SCORE)), p,
   width = 9.5, height = 6.4, dpi = 150
 )
 
-message("\nCoverage figure written to ", out_dir)
+message("\nCoverage figure written to ", ADHOC_ROOT)

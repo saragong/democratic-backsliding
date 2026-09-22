@@ -34,6 +34,13 @@ source(here::here("scripts", "vdem_indices.R"))
 
 RUNS_ROOT <- here::here("output", "runs")
 
+# Where the one-off scripts in adhoc/ write. Kept out of output/runs/, which
+# belongs to the pipeline: a run folder is named by run_slug() and describes a
+# configuration of the analysis, and a _sweeps folder aggregates a set of
+# those. An adhoc script is neither -- it answers a single question once, and
+# filing its output under runs/ would imply a provenance it does not have.
+ADHOC_ROOT <- here::here("output", "adhoc")
+
 # Short, filesystem-safe label for an instrument variable. Keeps slugs
 # readable ("instr-antiplural" rather than "instr-v2xpa_antiplural").
 INSTRUMENT_LABELS <- c(
@@ -213,6 +220,14 @@ sweep_dir <- function(name) {
   dir <- file.path(RUNS_ROOT, "_sweeps", name)
   dir.create(dir, recursive = TRUE, showWarnings = FALSE)
   dir
+}
+
+# Output path for an adhoc script. Flat rather than a folder per script: each
+# writes only a handful of files and they are prefixed by subject, so a
+# directory per script would be one folder per file.
+adhoc_path <- function(...) {
+  dir.create(ADHOC_ROOT, recursive = TRUE, showWarnings = FALSE)
+  file.path(ADHOC_ROOT, ...)
 }
 
 # Record what a sweep held FIXED and what it VARIED, so a sweep folder is

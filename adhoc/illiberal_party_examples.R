@@ -9,21 +9,21 @@
 # Three tables, because the top of the score distribution and the parties that
 # actually identify the effect are not the same set:
 #
-#   examples_narrow        the identifying variation -- highest-scoring parties
+#   ..._narrow             the identifying variation -- highest-scoring parties
 #                          within +/- 5 pp of a tie, split into narrowly won
 #                          and narrowly lost. These are the cases the estimate
 #                          is built from.
-#   examples_top_scorers   the top of the distribution regardless of margin.
+#   ..._top_scorers the top of the distribution regardless of margin.
 #                          Almost all are hegemonic-party regimes winning by
 #                          50-98 pp, which is exactly why they contribute
 #                          nothing at the cutoff -- worth showing so the
 #                          measure's top end is not mistaken for the sample.
-#   examples_repeat        parties appearing in more than one narrow election,
+#   ..._repeat      parties appearing in more than one narrow election,
 #                          including ones that appear on BOTH sides.
 #
 #   Rscript --no-init-file adhoc/illiberal_party_examples.R
 #
-# Output: output/runs/_sweeps/illiberal_party_examples/
+# Output: output/adhoc/illiberal_party_examples{,_narrow,_top_scorers,_repeat}.*
 # ==============================================================================
 
 library(tidyverse)
@@ -59,7 +59,6 @@ if (!file.exists(build_path) || !file.exists(parties_path)) {
   stop("No build at ", build_path, ". Run 11_build_rdd_data.R first.", call. = FALSE)
 }
 
-out_dir <- sweep_dir("illiberal_party_examples")
 
 # ---- party names -------------------------------------------------------------
 
@@ -113,7 +112,7 @@ ex <- d |>
 stopifnot(nrow(ex) == nrow(d))
 write_csv(
   ex |> arrange(desc(ap_score)),
-  file.path(out_dir, "illiberal_party_examples.csv")
+  adhoc_path("illiberal_party_examples.csv")
 )
 
 # ---- shared formatting -------------------------------------------------------
@@ -199,7 +198,7 @@ narrow_tbl <- bind_rows(
 
 save_grouped(
   narrow_tbl,
-  file.path(out_dir, "examples_narrow.html"),
+  adhoc_path("illiberal_party_examples_narrow.html"),
   sprintf(
     "Highest-scoring anti-pluralist parties in near-tied elections (top %d each side)",
     EXAMPLES_N
@@ -224,13 +223,13 @@ top_tbl <- ex |>
 
 save_grouped(
   top_tbl,
-  file.path(out_dir, "examples_top_scorers.html"),
+  adhoc_path("illiberal_party_examples_top_scorers.html"),
   sprintf("Highest %s scores overall, any margin", INSTRUMENT_DISPLAY[[EXAMPLES_INSTRUMENT]]),
   paste(
     "The ceiling of the score is occupied by hegemonic-party regimes winning",
     "by enormous margins, which is why they contribute nothing to an estimate",
     "taken at a near-tie. Shown so the top of the measure is not mistaken for",
-    "the variation the design uses -- for that, see examples_narrow.html."
+    "the variation the design uses -- for that, see illiberal_party_examples_narrow.html."
   ),
   OUTCOME_NOTE
 )
@@ -268,7 +267,7 @@ save_grouped(
                       "Appears on BOTH sides of the cutoff",
                       "Appears more than once on one side")
     ),
-  file.path(out_dir, "examples_repeat.html"),
+  adhoc_path("illiberal_party_examples_repeat.html"),
   sprintf("Parties in more than one near-tied election (within %g pp)", EXAMPLES_NARROW_MARGIN),
   paste(
     "A party that narrowly won one election and narrowly lost another is the",
@@ -286,4 +285,4 @@ cat(sprintf(
   nrow(narrow), EXAMPLES_NARROW_MARGIN,
   sum(narrow$side == "won"), sum(narrow$side == "lost"), sum(repeats$both_sides)
 ))
-message("\nExamples written to ", out_dir)
+message("\nExamples written to ", ADHOC_ROOT)

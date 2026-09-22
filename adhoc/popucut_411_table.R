@@ -23,11 +23,10 @@
 #
 #   Rscript --no-init-file adhoc/popucut_411_table.R
 #
-# Output: output/runs/_sweeps/popucut_411_table/
-#           popucut_411.html   shaded, grouped by country
-#           popucut_411.csv    same numbers, unformatted
-#           sanity_check_rdd.csv
-#         adhoc/popucut_411.csv  the same frame, next to this script
+# Output: output/adhoc/
+#           popucut_411.html                shaded, grouped by country
+#           popucut_411.csv                 the dataset, unformatted
+#           popucut_411_sanity_check.csv    the RDD comparison below
 # ==============================================================================
 
 library(tidyverse)
@@ -70,7 +69,9 @@ if (length(missing) > 0 || !file.exists(parties_path)) {
   )
 }
 
-out_dir <- sweep_dir("popucut_411_table")
+# adhoc_path(), not sweep_dir(): this is a one-off table, not a configuration
+# of the analysis, so it does not belong under output/runs/. adhoc_path()
+# creates ADHOC_ROOT on first use, so nothing else here has to.
 
 # "Anti-pluralism (v2xpa_antiplural)" is right for a subtitle and far too long
 # for a column header repeated twice. Strip the parenthetical -- this yields a
@@ -200,19 +201,8 @@ for (h in T411_HORIZONS) {
   stopifnot(worst < 1e-8)
 }
 
-# Two destinations on purpose. The copy in the run folder is the companion to
-# the HTML and travels with it; the copy in adhoc/ is the dataset itself, next
-# to the script that builds it, where it can be picked up without knowing the
-# sweep-folder convention. Same frame, written once from one object, so they
-# cannot disagree.
-csv_paths <- c(
-  file.path(out_dir, "popucut_411.csv"),
-  here::here("adhoc", "popucut_411.csv")
-)
-walk(csv_paths, function(f) {
-  write_csv(tbl_dat, f)
-  cat(sprintf("Saved %s\n", f))
-})
+write_csv(tbl_dat, adhoc_path("popucut_411.csv"))
+cat(sprintf("Saved %s\n", adhoc_path("popucut_411.csv")))
 
 # ---- the table ---------------------------------------------------------------
 
@@ -339,8 +329,8 @@ gt_tbl <- disp |>
   min(disp$Year), max(disp$Year),
   sum(tbl_dat$score_diff > 0), sum(tbl_dat$score_diff < 0)))
 
-gtsave(gt_tbl, file.path(out_dir, "popucut_411.html"))
-cat(sprintf("Saved %s\n", file.path(out_dir, "popucut_411.html")))
+gtsave(gt_tbl, adhoc_path("popucut_411.html"))
+cat(sprintf("Saved %s\n", adhoc_path("popucut_411.html")))
 
 cat(sprintf(
   "\n%d elections, %d countries, %d-%d. Illiberal party WON %d, LOST %d.\n",
@@ -442,7 +432,7 @@ check <- map_dfr(T411_HORIZONS, function(h) {
   )
 })
 
-write_csv(check, file.path(out_dir, "sanity_check_rdd.csv"))
+write_csv(check, adhoc_path("popucut_411_sanity_check.csv"))
 
 cat("\n  Reduced-form RD on GDP per capita, outcome measured from the year before the election:\n\n")
 print(
@@ -485,4 +475,4 @@ if (nrow(matched) == 0) {
   ))
 }
 
-message("\nTable written to ", out_dir)
+message("\nTable written to ", ADHOC_ROOT)
