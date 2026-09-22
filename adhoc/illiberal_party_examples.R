@@ -66,26 +66,9 @@ out_dir <- sweep_dir("illiberal_party_examples")
 d <- readRDS(build_path)
 parties <- readRDS(parties_path)
 
-# Name the party AS OF THE ELECTION, by the same rule 11_build_rdd_data.R's
-# match_vparty() uses to pick the score: the most recent V-Party row at or
-# before the election year. Taking the party's latest name instead would label
-# a 1994 election with a name the party only adopted in 2015, which for
-# renamed and merged parties is exactly the kind of quiet mismatch that makes
-# a reader distrust the whole table.
-vparty_names <- load_vparty_raw(
-  c("v2paid", "year", "v2paenname", "v2pashname")
-)
-
-name_at <- parties |>
-  distinct(vdem_id_1, election_year) |>
-  filter(!is.na(vdem_id_1)) |>
-  left_join(vparty_names, by = c("vdem_id_1" = "v2paid"),
-            relationship = "many-to-many") |>
-  filter(year <= election_year) |>
-  group_by(vdem_id_1, election_year) |>
-  slice_max(year, n = 1, with_ties = FALSE) |>
-  ungroup() |>
-  select(vdem_id_1, election_year, party_name = v2paenname, party_abbr = v2pashname)
+# Names as of the election year -- see vparty_names_at() in vparty_helpers.R
+# for why the party's latest name is the wrong one to use.
+name_at <- vparty_names_at(parties)
 
 # One row per election: the MORE anti-pluralist of the top 2 and its opponent.
 # Ordered by the score, not by vote share, so "ap_" is always the illiberal

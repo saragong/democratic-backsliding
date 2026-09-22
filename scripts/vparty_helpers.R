@@ -253,3 +253,46 @@ jaccard_long <- function(df, var_a, var_b, breaks_a, breaks_b) {
     n_pairs = nrow(binned)
   )
 }
+
+# ------------------------------------------------------------------------------
+# 5. Party names as of an election
+#
+# V-Party is party-YEAR grain and parties get renamed, merge and re-register,
+# so a party has several names over its life. Label an election with the name
+# the party had AT THAT ELECTION, by the same rule 11_build_rdd_data.R's
+# match_vparty() uses to pick the score: the most recent V-Party row at or
+# before the election year. Taking the latest name instead would label a 1994
+# election with a name adopted in 2015, which for renamed parties is the kind
+# of quiet mismatch that makes a reader distrust the whole table.
+#
+# `keys` is a data frame with vdem_id_1 and election_year. Returns those two
+# columns plus party_name (English) and party_abbr (short form).
+# ------------------------------------------------------------------------------
+vparty_names_at <- function(keys) {
+  stopifnot(all(c("vdem_id_1", "election_year") %in% names(keys)))
+  nm <- load_vparty_raw(c("v2paid", "year", "v2paenname", "v2pashname"))
+  keys |>
+    dplyr::distinct(vdem_id_1, election_year) |>
+    dplyr::filter(!is.na(vdem_id_1)) |>
+    dplyr::left_join(
+      nm, by = c("vdem_id_1" = "v2paid"), relationship = "many-to-many"
+    ) |>
+    dplyr::filter(year <= election_year) |>
+    dplyr::group_by(vdem_id_1, election_year) |>
+    dplyr::slice_max(year, n = 1, with_ties = FALSE) |>
+    dplyr::ungroup() |>
+    dplyr::select(
+      vdem_id_1, election_year,
+      party_name = v2paenname, party_abbr = v2pashname
+    )
+}
+
+# One display label from a name and an abbreviation, falling back through to a
+# candidate name and finally a placeholder, so a table never shows a blank.
+party_label <- function(name, abbr, fallback = NULL) {
+  out <- ifelse(
+    is.na(abbr) | abbr == "", name, sprintf("%s (%s)", name, abbr)
+  )
+  if (!is.null(fallback)) out <- ifelse(is.na(out), fallback, out)
+  ifelse(is.na(out), "(unnamed)", out)
+}
