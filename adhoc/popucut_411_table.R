@@ -39,33 +39,55 @@ source(here::here("scripts", "vparty_helpers.R"))
 
 # ---- toggles -----------------------------------------------------------------
 
-if (!exists("T411_INSTRUMENT")) T411_INSTRUMENT <- "v2xpa_antiplural"
+if (!exists("T411_INSTRUMENT")) {
+  T411_INSTRUMENT <- "v2xpa_antiplural"
+}
 if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
   TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- FALSE
 }
 # The horizons shown as change columns. The sample itself does not depend on
 # them -- the same 411 elections appear at every window.
-if (!exists("T411_HORIZONS")) T411_HORIZONS <- c(1, 5, 10)
+if (!exists("T411_HORIZONS")) {
+  T411_HORIZONS <- c(1, 5, 10)
+}
 # The window whose build defines the sample. Any of them would give the same
 # 411; 5 is the headline.
-if (!exists("T411_SAMPLE_WINDOW")) T411_SAMPLE_WINDOW <- 5
+if (!exists("T411_SAMPLE_WINDOW")) {
+  T411_SAMPLE_WINDOW <- 5
+}
 
 build_suffix <- if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else "_exclyr"
 build_path <- function(n) {
-  here::here("data", "rdd_build", sprintf(
-    "rdd_%s_w%d%s.rds", T411_INSTRUMENT, n, build_suffix
-  ))
+  here::here(
+    "data",
+    "rdd_build",
+    sprintf(
+      "rdd_%s_w%d%s.rds",
+      T411_INSTRUMENT,
+      n,
+      build_suffix
+    )
+  )
 }
-parties_path <- here::here("data", "rdd_build", sprintf(
-  "rdd_%s_w%d%s_parties.rds", T411_INSTRUMENT, T411_SAMPLE_WINDOW, build_suffix
-))
+parties_path <- here::here(
+  "data",
+  "rdd_build",
+  sprintf(
+    "rdd_%s_w%d%s_parties.rds",
+    T411_INSTRUMENT,
+    T411_SAMPLE_WINDOW,
+    build_suffix
+  )
+)
 
 needed <- unique(c(T411_SAMPLE_WINDOW, T411_HORIZONS))
 missing <- needed[!file.exists(vapply(needed, build_path, character(1)))]
 if (length(missing) > 0 || !file.exists(parties_path)) {
   stop(
-    "Missing build(s) for window(s) ", paste(missing, collapse = ", "),
-    ". Run 11_build_rdd_data.R at those windows first.", call. = FALSE
+    "Missing build(s) for window(s) ",
+    paste(missing, collapse = ", "),
+    ". Run 11_build_rdd_data.R at those windows first.",
+    call. = FALSE
   )
 }
 
@@ -91,24 +113,36 @@ sample_ids <- d |>
 
 cat(sprintf(
   "PopuList cut = %.4f; %d of %d elections have one top-2 party above it and one at or below.\n",
-  cut_abs, length(sample_ids), nrow(d)
+  cut_abs,
+  length(sample_ids),
+  nrow(d)
 ))
 
 # ---- winner and loser, by vote share ----------------------------------------
 
 parties <- readRDS(parties_path) |>
   filter(election_id %in% sample_ids) |>
-  left_join(vparty_names_at(readRDS(parties_path)),
-            by = c("vdem_id_1", "election_year"))
+  left_join(
+    vparty_names_at(readRDS(parties_path)),
+    by = c("vdem_id_1", "election_year")
+  )
 
 wl <- parties |>
   group_by(election_id) |>
   arrange(desc(final_share), .by_group = TRUE) |>
   summarise(
-    win_party = party_label(first(party_name), first(party_abbr), first(candidate)),
+    win_party = party_label(
+      first(party_name),
+      first(party_abbr),
+      first(candidate)
+    ),
     win_share = first(final_share),
     win_score = first(.data[[T411_INSTRUMENT]]),
-    lose_party = party_label(last(party_name), last(party_abbr), last(candidate)),
+    lose_party = party_label(
+      last(party_name),
+      last(party_abbr),
+      last(candidate)
+    ),
     lose_share = last(final_share),
     lose_score = last(.data[[T411_INSTRUMENT]]),
     .groups = "drop"
@@ -141,7 +175,13 @@ panel <- readRDS(here::here("data", "combined_panel.rds")) |>
 
 base <- d |>
   filter(election_id %in% sample_ids) |>
-  select(election_id, country_name, country_text_id, election_year, election_type)
+  select(
+    election_id,
+    country_name,
+    country_text_id,
+    election_year,
+    election_type
+  )
 
 level_at <- function(offset) {
   base |>
@@ -169,7 +209,8 @@ changes <- reduce(
         !!sprintf("poly_chg_%dy", h) := v2x_polyarchy - polyarchy_pre
       )
   }),
-  left_join, by = "election_id"
+  left_join,
+  by = "election_id"
 )
 
 tbl_dat <- base |>
@@ -196,7 +237,9 @@ for (h in T411_HORIZONS) {
   worst <- max(abs(log1p(chk$g) - chk$Y_gdp_growth))
   cat(sprintf(
     "  w%-2d reconciled against the build on %d elections (max |diff| in log points: %.2e)\n",
-    h, nrow(chk), worst
+    h,
+    nrow(chk),
+    worst
   ))
   stopifnot(worst < 1e-8)
 }
@@ -230,7 +273,8 @@ diff_cap <- max(abs(tbl_dat$score_diff), na.rm = TRUE)
 # runs the other way (positive = illiberal winner, which must be RED).
 shade <- function(gt_tbl, cols, max_abs, flip = FALSE) {
   data_color(
-    gt_tbl, columns = all_of(cols),
+    gt_tbl,
+    columns = all_of(cols),
     fn = function(x) diverging_fill(if (flip) -x else x, max_abs = max_abs)
   )
 }
@@ -239,20 +283,34 @@ disp <- tbl_dat |>
   transmute(
     Country = country_name,
     Year = election_year,
-    Type = recode(election_type, presidential = "Pres.", parliamentary = "Parl."),
+    Type = recode(
+      election_type,
+      presidential = "Pres.",
+      parliamentary = "Parl."
+    ),
     # Who ran and how the vote fell first, then how illiberal each side was.
     # The three score columns sit together in their own spanner rather than
     # one inside each of Winner and Loser: the reader wants to compare the two
     # scores and their gap side by side, and it is the only arrangement that
     # puts the margin ahead of them without splitting a spanner.
-    `Winning party` = win_party, `Vote %` = win_share,
-    `Losing party` = lose_party, `Vote %.` = lose_share,
+    `Winning party` = win_party,
+    `Vote %` = win_share,
+    `Losing party` = lose_party,
+    `Vote %.` = lose_share,
     `Margin (pp)` = vote_margin,
-    `Score` = win_score, `Score.` = lose_score, `Score diff` = score_diff,
+    `Score` = win_score,
+    `Score.` = lose_score,
+    `Score diff` = score_diff,
     `GDP pc (pre)` = gdp_pc_pre,
-    !!!setNames(map(gdp_cols, ~ tbl_dat[[.x]]), sprintf("GDP %dy", T411_HORIZONS)),
+    !!!setNames(
+      map(gdp_cols, ~ tbl_dat[[.x]]),
+      sprintf("GDP %dy", T411_HORIZONS)
+    ),
     `Polyarchy (pre)` = polyarchy_pre,
-    !!!setNames(map(poly_cols, ~ tbl_dat[[.x]]), sprintf("Poly %dy", T411_HORIZONS))
+    !!!setNames(
+      map(poly_cols, ~ tbl_dat[[.x]]),
+      sprintf("Poly %dy", T411_HORIZONS)
+    )
   )
 
 gdp_disp <- sprintf("GDP %dy", T411_HORIZONS)
@@ -265,21 +323,25 @@ gt_tbl <- disp |>
       "The PopuList %d: one top-2 party illiberal, the other not",
       length(sample_ids)
     ),
-    subtitle = html(sprintf(paste(
-      "Both party scores are <b>%s</b>, V-Party's illiberalism measure, on",
-      "[0,&thinsp;1] with higher = more illiberal; the sample is elections",
-      "where one top-2 party scores above %.4f and the other does not (the",
-      "accuracy-maximizing PopuList cut, calibrated in",
-      "01g_populist_threshold.R). Winner and loser are by vote or seat share,",
-      "so the illiberal party is sometimes which ever one won:",
-      "<b>a positive gap means the WINNER is the more illiberal of the two",
-      "(shaded <span style=\"color:#b2182b\">red</span>); a negative gap means",
-      "the winner is the LESS illiberal",
-      "(shaded <span style=\"color:#1a9850\">green</span>)</b>. Changes are",
-      "measured from the year before the election, the same span every",
-      "estimate in the repo uses: GDP per capita as a percentage change,",
-      "polyarchy in index points."
-    ), INSTRUMENT_DISPLAY[[T411_INSTRUMENT]], cut_abs))
+    subtitle = html(sprintf(
+      paste(
+        "Both party scores are <b>%s</b>, V-Party's illiberalism measure, on",
+        "[0,&thinsp;1] with higher = more illiberal; the sample is elections",
+        "where one top-2 party scores above %.4f and the other does not (the",
+        "accuracy-maximizing PopuList cut, calibrated in",
+        "01g_populist_threshold.R). Winner and loser are by vote or seat share,",
+        "so the illiberal party is sometimes which ever one won:",
+        "<b>a positive gap means the WINNER is the more illiberal of the two",
+        "(shaded <span style=\"color:#b2182b\">red</span>); a negative gap means",
+        "the winner is the LESS illiberal",
+        "(shaded <span style=\"color:#1a9850\">green</span>)</b>. Changes are",
+        "measured from the year before the election, the same span every",
+        "estimate in the repo uses: GDP per capita as a percentage change,",
+        "polyarchy in index points."
+      ),
+      INSTRUMENT_DISPLAY[[T411_INSTRUMENT]],
+      cut_abs
+    ))
   ) |>
   tab_spanner("Winner", columns = c("Winning party", "Vote %")) |>
   tab_spanner("Loser", columns = c("Losing party", "Vote %.")) |>
@@ -290,8 +352,11 @@ gt_tbl <- disp |>
   tab_spanner("GDP pc change", columns = all_of(gdp_disp)) |>
   tab_spanner("Polyarchy change", columns = all_of(poly_disp)) |>
   cols_label(
-    `Winning party` = "Party", `Losing party` = "Party", `Vote %.` = "Vote %",
-    `Score` = "Winner", `Score.` = "Loser",
+    `Winning party` = "Party",
+    `Losing party` = "Party",
+    `Vote %.` = "Vote %",
+    `Score` = "Winner",
+    `Score.` = "Loser",
     `Score diff` = html(
       "Gap<br><span style=\"font-weight:normal\">(winner &minus; loser)</span>"
     ),
@@ -299,7 +364,10 @@ gt_tbl <- disp |>
     !!!setNames(as.list(paste0(T411_HORIZONS, "y")), poly_disp)
   ) |>
   fmt_number(columns = c("Vote %", "Vote %.", "Margin (pp)"), decimals = 1) |>
-  fmt_number(columns = c("Score", "Score.", "Score diff", "Polyarchy (pre)"), decimals = 3) |>
+  fmt_number(
+    columns = c("Score", "Score.", "Score diff", "Polyarchy (pre)"),
+    decimals = 3
+  ) |>
   fmt_number(columns = "GDP pc (pre)", decimals = 0, use_seps = TRUE) |>
   fmt_percent(columns = all_of(gdp_disp), decimals = 0) |>
   fmt_number(columns = all_of(poly_disp), decimals = 3, force_sign = TRUE) |>
@@ -310,33 +378,44 @@ gt_tbl <- disp |>
   cols_align("left", columns = c("Winning party", "Losing party")) |>
   tab_style(cell_text(weight = "bold"), locations = cells_row_groups()) |>
   apply_table_style(font_size = 10) |>
-  tab_source_note(sprintf(paste(
-    "Shading is a diverging scale centred at zero -- red below, green above --",
-    "with one symmetric domain per block so a colour means the same magnitude",
-    "at 1, 5 and 10 years. The domain is capped at the 95th percentile of",
-    "|value| (GDP %.0f%%, polyarchy %.3f) so that a handful of collapses do",
-    "not wash out the rest; capped cells render at full intensity. The %s gap",
-    "is shaded on the same red-green scale over its own full range, with the",
-    "sign reversed so that RED is an election the more illiberal party WON and",
-    "GREEN one it lost -- red therefore means the same direction everywhere in",
-    "the table: worse growth, falling polyarchy, an illiberal party winning.",
-    "The deepest cells either way are the elections where the two top-2",
-    "parties are furthest apart. %d elections, %d countries, %d-%d; the",
-    "illiberal party won %d and lost %d. Blank cells are years the outcome",
-    "panel does not cover."
-  ), 100 * gdp_cap, poly_cap, SCORE_SHORT,
-  nrow(disp), n_distinct(disp$Country),
-  min(disp$Year), max(disp$Year),
-  sum(tbl_dat$score_diff > 0), sum(tbl_dat$score_diff < 0)))
+  tab_source_note(sprintf(
+    paste(
+      "Shading is a diverging scale centred at zero -- red below, green above --",
+      "with one symmetric domain per block so a colour means the same magnitude",
+      "at 1, 5 and 10 years. The domain is capped at the 95th percentile of",
+      "|value| (GDP %.0f%%, polyarchy %.3f) so that a handful of collapses do",
+      "not wash out the rest; capped cells render at full intensity. The %s gap",
+      "is shaded on the same red-green scale over its own full range, with the",
+      "sign reversed so that RED is an election the more illiberal party WON and",
+      "GREEN one it lost -- red therefore means the same direction everywhere in",
+      "the table: worse growth, falling polyarchy, an illiberal party winning.",
+      "The deepest cells either way are the elections where the two top-2",
+      "parties are furthest apart. %d elections, %d countries, %d-%d; the",
+      "illiberal party won %d and lost %d. Blank cells are years the outcome",
+      "panel does not cover."
+    ),
+    100 * gdp_cap,
+    poly_cap,
+    SCORE_SHORT,
+    nrow(disp),
+    n_distinct(disp$Country),
+    min(disp$Year),
+    max(disp$Year),
+    sum(tbl_dat$score_diff > 0),
+    sum(tbl_dat$score_diff < 0)
+  ))
 
 gtsave(gt_tbl, adhoc_path("popucut_411.html"))
 cat(sprintf("Saved %s\n", adhoc_path("popucut_411.html")))
 
 cat(sprintf(
   "\n%d elections, %d countries, %d-%d. Illiberal party WON %d, LOST %d.\n",
-  nrow(tbl_dat), n_distinct(tbl_dat$country_name),
-  min(tbl_dat$election_year), max(tbl_dat$election_year),
-  sum(tbl_dat$score_diff > 0), sum(tbl_dat$score_diff < 0)
+  nrow(tbl_dat),
+  n_distinct(tbl_dat$country_name),
+  min(tbl_dat$election_year),
+  max(tbl_dat$election_year),
+  sum(tbl_dat$score_diff > 0),
+  sum(tbl_dat$score_diff < 0)
 ))
 
 # ==============================================================================
@@ -354,8 +433,14 @@ cat(sprintf(
 # Step 1 below is what closes that loop.
 # ==============================================================================
 
-cat("\n", strrep("-", 78), "\nSANITY CHECK: the headline RDD, rebuilt from this table's own columns\n",
-    strrep("-", 78), "\n", sep = "")
+cat(
+  "\n",
+  strrep("-", 78),
+  "\nSANITY CHECK: the headline RDD, rebuilt from this table's own columns\n",
+  strrep("-", 78),
+  "\n",
+  sep = ""
+)
 
 rv <- tbl_dat$running_var
 
@@ -366,26 +451,39 @@ rv_build <- d |>
   filter(election_id %in% sample_ids) |>
   arrange(match(election_id, tbl_dat$election_id)) |>
   pull(running_var)
-stopifnot(identical(tbl_dat$election_id, d$election_id[match(tbl_dat$election_id, d$election_id)]))
+stopifnot(identical(
+  tbl_dat$election_id,
+  d$election_id[match(tbl_dat$election_id, d$election_id)]
+))
 max_rv_gap <- max(abs(rv - rv_build))
 cat(sprintf(
   "  running variable rebuilt from Margin x sign(gap): max |diff| = %.2e over %d elections\n",
-  max_rv_gap, length(rv)
+  max_rv_gap,
+  length(rv)
 ))
 stopifnot(max_rv_gap < 1e-9)
 cat(sprintf(
   "  treated side (illiberal party won) = %d, control side = %d\n",
-  sum(rv > 0), sum(rv < 0)
+  sum(rv > 0),
+  sum(rv < 0)
 ))
 
 # Step 2: the RDD itself, on log1p of the displayed percentage change, which
 # is the log change the analysis uses.
 canon_path <- function(h) {
-  file.path(RUNS_ROOT, run_slug(list(
-    instrument = T411_INSTRUMENT, window = h, treatment = "backsliding_Nyr",
-    score_gap_min = -Inf, illiberal_cutoff = cut_abs, other_cutoff_max = cut_abs,
-    incl_election_year = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR
-  )), "rdd_results.csv")
+  file.path(
+    RUNS_ROOT,
+    run_slug(list(
+      instrument = T411_INSTRUMENT,
+      window = h,
+      treatment = "backsliding_Nyr",
+      score_gap_min = -Inf,
+      illiberal_cutoff = cut_abs,
+      other_cutoff_max = cut_abs,
+      incl_election_year = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR
+    )),
+    "rdd_results.csv"
+  )
 }
 
 # The treatment is the one input the table does not display; it is pulled from
@@ -408,41 +506,62 @@ check <- map_dfr(T411_HORIZONS, function(h) {
   rf <- extract_rd(safe_rdrobust(y, rv))
   late <- extract_rd(safe_rdrobust(y, rv, fuzzy = trt))
   row <- tibble(
-    window = h, n_table = rf$N,
-    est_table = rf$coef, se_table = rf$se, pval_table = rf$pval,
+    window = h,
+    n_table = rf$N,
+    est_table = rf$coef,
+    se_table = rf$se,
+    pval_table = rf$pval,
     # BOTH bandwidths, because rdd_results.csv's "bandwidth" column is the
     # LATE's, not the reduced form's (12_rdd_analysis.R line 382). Comparing
     # the reduced form's against it would fail on a naming difference and look
     # like a substantive mismatch -- which is exactly what happened when this
     # check was first written.
-    bw_rf_table = rf$bw, bw_late_table = late$bw,
+    bw_rf_table = rf$bw,
+    bw_late_table = late$bw,
     late_table = late$coef
   )
   cp <- canon_path(h)
   if (!file.exists(cp)) {
-    return(mutate(row, n_run = NA_integer_, est_run = NA_real_,
-                  se_run = NA_real_, bw_run = NA_real_, late_run = NA_real_,
-                  source = "run folder missing"))
+    return(mutate(
+      row,
+      n_run = NA_integer_,
+      est_run = NA_real_,
+      se_run = NA_real_,
+      bw_run = NA_real_,
+      late_run = NA_real_,
+      source = "run folder missing"
+    ))
   }
-  canon <- read_csv(cp, show_col_types = FALSE) |> filter(outcome == "Y_gdp_growth")
+  canon <- read_csv(cp, show_col_types = FALSE) |>
+    filter(outcome == "Y_gdp_growth")
   mutate(
-    row, n_run = canon$n_outcome, est_run = canon$rd_estimate,
-    se_run = canon$rd_se, bw_run = canon$bandwidth,
-    late_run = canon$late_estimate, source = basename(dirname(cp))
+    row,
+    n_run = canon$n_outcome,
+    est_run = canon$rd_estimate,
+    se_run = canon$rd_se,
+    bw_run = canon$bandwidth,
+    late_run = canon$late_estimate,
+    source = basename(dirname(cp))
   )
 })
 
 write_csv(check, adhoc_path("popucut_411_sanity_check.csv"))
 
-cat("\n  Reduced-form RD on GDP per capita, outcome measured from the year before the election:\n\n")
+cat(
+  "\n  Reduced-form RD on GDP per capita, outcome measured from the year before the election:\n\n"
+)
 print(
   check |>
     transmute(
       window,
-      `N (table)` = n_table, `N (run)` = n_run,
-      `est (table)` = round(est_table, 5), `est (run)` = round(est_run, 5),
-      `se (table)` = round(se_table, 5), `se (run)` = round(se_run, 5),
-      `LATE bw (table)` = round(bw_late_table, 3), `bw col (run)` = round(bw_run, 3),
+      `N (table)` = n_table,
+      `N (run)` = n_run,
+      `est (table)` = round(est_table, 5),
+      `est (run)` = round(est_run, 5),
+      `se (table)` = round(se_table, 5),
+      `se (run)` = round(se_run, 5),
+      `LATE bw (table)` = round(bw_late_table, 3),
+      `bw col (run)` = round(bw_run, 3),
       `RF bw (table)` = round(bw_rf_table, 3)
     ) |>
     as.data.frame(),
@@ -463,16 +582,157 @@ if (nrow(matched) == 0) {
     call. = FALSE
   )
 } else {
-  worst <- with(matched, max(c(
-    abs(est_table - est_run), abs(se_table - se_run),
-    abs(late_table - late_run), abs(bw_late_table - bw_run)
-  )))
+  worst <- with(
+    matched,
+    max(c(
+      abs(est_table - est_run),
+      abs(se_table - se_run),
+      abs(late_table - late_run),
+      abs(bw_late_table - bw_run)
+    ))
+  )
   stopifnot(all(matched$n_table == matched$n_run))
   stopifnot(worst < 1e-8)
   cat(sprintf(
     "\n  PASS -- matches %s at %d horizon(s); largest discrepancy %.2e.\n",
-    paste(unique(matched$source), collapse = ", "), nrow(matched), worst
+    paste(unique(matched$source), collapse = ", "),
+    nrow(matched),
+    worst
   ))
 }
 
 message("\nTable written to ", ADHOC_ROOT)
+
+# ==============================================================================
+# Six sharp RDDs from the exported frame
+#
+# The sanity check above, generalised: the same running variable, run across
+# all six outcome columns instead of GDP alone, with every rdrobust argument
+# written out rather than left to the package default, and the fitted objects
+# kept so bandwidths and variance choices can be inspected afterwards.
+#
+# UNITS -- these are NOT the headline numbers. The GDP rows run on
+# gdp_chg_Ny, the PROPORTIONAL change the table displays, not on log1p() of
+# it, so they answer a different question from the analysis and must not be
+# quoted against it: at w5 this gives -0.250 (0.127) where the log-change
+# specification the paper uses gives -0.192 (0.090). The arguments below are
+# otherwise exactly the package defaults safe_rdrobust() relies on -- checked,
+# running this same call on log1p(gdp_chg_5y) reproduces -0.19220 (0.08982)
+# to five decimals -- so the units are the whole of the difference. The
+# polyarchy rows are in index points either way and are unaffected.
+# ==============================================================================
+
+# rd_dat, not d: `d` is the build, still live above, and reassigning it here
+# would leave the two meanings of the name one scroll apart.
+rd_dat <- tbl_dat
+
+required <- c(
+  "win_score",
+  "lose_score",
+  "vote_margin",
+  "running_var",
+  "gdp_chg_1y",
+  "gdp_chg_5y",
+  "gdp_chg_10y",
+  "poly_chg_1y",
+  "poly_chg_5y",
+  "poly_chg_10y"
+)
+missing_columns <- setdiff(required, names(rd_dat))
+if (length(missing_columns) > 0) {
+  stop("Missing required columns: ", paste(missing_columns, collapse = ", "))
+}
+
+# Positive: the party with the higher anti-pluralism score won.
+# Negative: the party with the higher anti-pluralism score lost.
+rd_dat$illiberal_margin <- ifelse(
+  rd_dat$win_score > rd_dat$lose_score,
+  rd_dat$vote_margin,
+  ifelse(rd_dat$lose_score > rd_dat$win_score, -rd_dat$vote_margin, NA_real_)
+)
+
+if (!isTRUE(all.equal(
+  rd_dat$illiberal_margin, rd_dat$running_var,
+  tolerance = 1e-10
+))) {
+  stop(
+    "Reconstructed illiberal-party margin does not match the supplied running_var."
+  )
+}
+
+outcomes <- c(
+  gdp_chg_1y = "GDP change, 1 year (proportional)",
+  gdp_chg_5y = "GDP change, 5 years (proportional)",
+  gdp_chg_10y = "GDP change, 10 years (proportional)",
+  poly_chg_1y = "Polyarchy change, 1 year (index points)",
+  poly_chg_5y = "Polyarchy change, 5 years (index points)",
+  poly_chg_10y = "Polyarchy change, 10 years (index points)"
+)
+
+models <- vector("list", length(outcomes))
+names(models) <- names(outcomes)
+
+extract_result <- function(fit, variable, label) {
+  data.frame(
+    outcome = variable,
+    label = label,
+    n = sum(fit$N),
+    n_left = fit$N[1],
+    n_right = fit$N[2],
+    n_h_left = fit$N_h[1],
+    n_h_right = fit$N_h[2],
+    h_left = fit$bws["h", "left"],
+    h_right = fit$bws["h", "right"],
+    b_left = fit$bws["b", "left"],
+    b_right = fit$bws["b", "right"],
+    estimate_conventional = fit$coef["Conventional", 1],
+    se_conventional = fit$se["Conventional", 1],
+    estimate_bias_corrected = fit$coef["Robust", 1],
+    se_robust = fit$se["Robust", 1],
+    p_robust = fit$pv["Robust", 1],
+    ci_robust_low = fit$ci["Robust", 1],
+    ci_robust_high = fit$ci["Robust", 2],
+    row.names = NULL,
+    check.names = FALSE
+  )
+}
+
+results <- vector("list", length(outcomes))
+
+for (i in seq_along(outcomes)) {
+  variable <- names(outcomes)[i]
+  keep <- is.finite(rd_dat$illiberal_margin) & is.finite(rd_dat[[variable]])
+
+  # Explicitly state the package defaults used for the requested design:
+  # local linear point estimate, local quadratic bias correction,
+  # triangular kernel, common MSE-optimal bandwidth, and NN variance.
+  fit <- rdrobust::rdrobust(
+    y = rd_dat[[variable]][keep],
+    x = rd_dat$illiberal_margin[keep],
+    c = 0,
+    p = 1,
+    q = 2,
+    kernel = "triangular",
+    bwselect = "mserd",
+    vce = "nn",
+    nnmatch = 3,
+    masspoints = "adjust",
+    all = TRUE
+  )
+
+  models[[i]] <- fit
+  results[[i]] <- extract_result(fit, variable, unname(outcomes[i]))
+}
+
+results <- do.call(rbind, results)
+
+# adhoc_path(), like every other output of this script, rather than the
+# output_file / models_file the block arrived referencing -- neither was ever
+# defined, so it errored here on the way out.
+results_file <- adhoc_path("popucut_411_rdd.csv")
+models_file <- adhoc_path("popucut_411_rdd_models.rds")
+write.csv(results, results_file, row.names = FALSE)
+saveRDS(models, models_file)
+cat(sprintf("Saved %s\nSaved %s\n", results_file, models_file))
+
+print(results, row.names = FALSE, digits = 5)
