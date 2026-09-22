@@ -573,6 +573,41 @@ cat(sprintf(
   ILLIBERALISM_VAR
 ))
 
+# The top-2 spine BEFORE Step 3 drops the elections V-Party cannot score, saved
+# so that coverage can be studied from outside this script. Everything
+# downstream sees only the elections where BOTH top-2 parties have a score, so
+# the elections where one or neither does exist nowhere else on disk -- and
+# reconstructing them means redoing the whole two-stage lineage match above.
+#
+# It is written from top2_scored, which depends only on ELECTION_TYPE and
+# SAMPLE_YEARS: not on the window, not on the treatment, and not on
+# ILLIBERALISM_VAR (that only picks which of the already-carried
+# PARTY_SCORE_VARS becomes illiberalism_score, so the saved columns are the
+# same either way). The filename names those two toggles and nothing else, so
+# every window of a given spine rewrites one identical file rather than ten
+# near-copies.
+spine_path <- file.path(
+  data_dir, "rdd_build",
+  sprintf(
+    "top2_spine_%s%s.rds", ELECTION_TYPE,
+    if (SAMPLE_YEARS == "all") "" else paste0("_", SAMPLE_YEARS)
+  )
+)
+dir.create(dirname(spine_path), recursive = TRUE, showWarnings = FALSE)
+saveRDS(
+  top2_scored |>
+    select(
+      election_id, election_type, country_abb, country_text_id, country_name,
+      election_year, election_date, party_id, vdem_id_1, candidate,
+      final_share, rank, all_of(PARTY_SCORE_VARS)
+    ),
+  spine_path
+)
+cat(sprintf(
+  "Step 2b: wrote the pre-filter top-2 spine (%d rows, %d elections) to %s\n",
+  nrow(top2_scored), n_distinct(top2_scored$election_id), basename(spine_path)
+))
+
 # ------------------------------------------------------------------------------
 # Step 3 -- running variable
 # ------------------------------------------------------------------------------
