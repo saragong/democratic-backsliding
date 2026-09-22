@@ -719,6 +719,66 @@ apply_threshold <- function(data, var, parsed, name,
   out
 }
 
+# parse + resolve in one step, returning just the NUMBER.
+#
+# Callers that need a threshold as a number rather than a spec object -- a
+# folder name via fmt_slug_num(), a cfg that run_slug() will turn back into a
+# folder name, a sentence in a subtitle -- all want the same two calls in the
+# same order, and getting the order wrong (resolving after a filter has bitten)
+# is the mistake resolve_threshold() warns about. One entry point so there is
+# one place to get it right.
+resolve_threshold_abs <- function(spec, name, values, none_value = -Inf) {
+  resolve_threshold(
+    parse_threshold(spec, name, none_value = none_value), values, name
+  )$absolute
+}
+
+# One English sentence naming every ACTIVE restriction, from the three resolved
+# absolute thresholds. Every table subtitle and figure subtitle that describes a
+# sample goes through here, so the sample restriction travels with the output
+# instead of living only in a folder name.
+#
+# It must name every active axis. This list was written when there were two axes
+# and was not extended when other_cutoff_max was added, so the PopuList sweeps
+# described themselves as the one-sided "illiberal_score > 0.6535" (603
+# elections) while actually estimating the two-sided pair condition (411). For
+# that specification the pair condition IS the design, so the label was not a
+# cosmetic slip -- it named a different design from the one being run.
+#
+# When the floor and the ceiling sit at the same value the pair reads as one
+# statement rather than two, and saying so is clearer than making the reader
+# notice that the two numbers coincide.
+restriction_sentence <- function(score_gap_min = -Inf,
+                                 illiberal_cutoff = -Inf,
+                                 other_cutoff_max = Inf,
+                                 none = "all elections") {
+  # c() drops NULLs, so an inactive axis contributes nothing rather than an
+  # empty string that paste() would render as a stray comma.
+  parts <- c(
+    if (is.finite(score_gap_min)) {
+      sprintf("score_gap_z >= %s", format(score_gap_min, trim = TRUE))
+    },
+    if (is.finite(illiberal_cutoff) && is.finite(other_cutoff_max) &&
+          isTRUE(all.equal(illiberal_cutoff, other_cutoff_max))) {
+      sprintf(
+        "one top-2 party illiberal and the other not (illiberal_score > %s >= other_score)",
+        format(illiberal_cutoff, trim = TRUE)
+      )
+    } else {
+      c(
+        if (is.finite(illiberal_cutoff)) {
+          sprintf("illiberal_score > %s", format(illiberal_cutoff, trim = TRUE))
+        },
+        if (is.finite(other_cutoff_max)) {
+          sprintf("other_score <= %s", format(other_cutoff_max, trim = TRUE))
+        }
+      )
+    }
+  )
+  if (length(parts) == 0) none else paste(parts, collapse = ", ")
+}
+
+
 # Several coefficient grids stacked into ONE table, one section per grid.
 #
 # The awkward part is that each grid has a different column axis -- 5 quantile

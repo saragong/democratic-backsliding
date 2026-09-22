@@ -5,9 +5,9 @@ fixed,split_on,v2pariglef_neg (negated; higher = more LEFT)
 fixed,incl_election_year,FALSE
 fixed,placebo,FALSE
 fixed,score_gap_min,-Inf
-fixed,illiberal_cutoff,-Inf
-fixed,other_cutoff_max,Inf
-fixed,sample,no restriction beyond the split
+fixed,illiberal_cutoff,0.6535
+fixed,other_cutoff_max,0.6535
+fixed,sample,one top-2 party illiberal and the other not (illiberal_score > 0.6535 >= other_score)
 swept,subset,"right, left "
 swept,window,"1, 2, 3, 4, 5, 6, 7, 8, 9, 10"
 swept,outcome,"Y_gdp_growth     , Y_gdp_growth_wb  , Y_gdp_growth_imf , Y_inflation      , Y_unemployment   , Y_trade_pct_gdp  , Y_top10_share    , Y_gini_disp      , Y_gini_mkt       , Y_debt           , Y_deficit        , Y_checks_balances, Y_jucon          , Y_legcon         , Y_hos_power      , Y_hog_power      , Y_hos_power_vdem , Y_hog_power_vdem , Y_polyarchy      , Y_libdem         , Y_partipdem      , Y_delibdem       , Y_egaldem        , Y_elecoff        , Y_frefair        , Y_frassoc        , Y_suffr          , Y_freexp         , Y_cl_rol         , Y_cspart         , Y_dd             , Y_locelec        , Y_regelec        , Y_delib          , Y_eqprotec       , Y_eqaccess       , Y_eqdr           "

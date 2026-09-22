@@ -94,12 +94,6 @@ build_suffix <- paste0(
 # Quantile specs resolve against the w5 build, which is arbitrary but has to be
 # SOME build; a quantile of score_gap_z barely moves across windows because the
 # window changes the outcomes, not the top-2 scores. Flagged rather than hidden.
-resolve_sweep_threshold <- function(spec, name, values, none_value = -Inf) {
-  resolve_threshold(
-    parse_threshold(spec, name, none_value = none_value), values, name
-  )$absolute
-}
-
 local({
   ref_path <- file.path(
     data_dir, "rdd_build",
@@ -113,13 +107,13 @@ local({
     )
   }
   ref <- readRDS(ref_path)
-  SWEEP_SCORE_GAP_MIN <<- resolve_sweep_threshold(
+  SWEEP_SCORE_GAP_MIN <<- resolve_threshold_abs(
     SWEEP_SCORE_GAP_MIN, "SWEEP_SCORE_GAP_MIN", ref$score_gap_z
   )
-  SWEEP_ILLIBERAL_CUTOFF <<- resolve_sweep_threshold(
+  SWEEP_ILLIBERAL_CUTOFF <<- resolve_threshold_abs(
     SWEEP_ILLIBERAL_CUTOFF, "SWEEP_ILLIBERAL_CUTOFF", ref$illiberal_score
   )
-  SWEEP_OTHER_CUTOFF_MAX <<- resolve_sweep_threshold(
+  SWEEP_OTHER_CUTOFF_MAX <<- resolve_threshold_abs(
     SWEEP_OTHER_CUTOFF_MAX, "SWEEP_OTHER_CUTOFF_MAX", ref$other_score,
     none_value = Inf
   )
@@ -287,45 +281,9 @@ first_stage <- collect("rdd_first_stage_results.csv")
 write_csv(results, file.path(out_dir, "window_sweep_results.csv"))
 write_csv(first_stage, file.path(out_dir, "window_sweep_first_stage.csv"))
 
-# c() drops NULLs; paste(NULL, "x", sep = ", ") would leave a leading comma.
-# Must name EVERY active restriction. This list was written when there were
-# two axes and was not extended when OTHER_CUTOFF_MAX was added, so the
-# PopuList sweeps described themselves as the one-sided
-# "illiberal_score > 0.6535" (603 elections) while actually estimating the
-# two-sided pair condition (411). For 2b the pair condition IS the
-# specification, so the label was not a cosmetic slip -- it named a different
-# design from the one being run.
-#
-# When the floor and the ceiling sit at the same value the pair reads as one
-# statement rather than two, and saying so is clearer than making the reader
-# notice the numbers coincide.
-restriction_parts <- c(
-  if (is.finite(SWEEP_SCORE_GAP_MIN)) {
-    sprintf("score_gap_z >= %s", SWEEP_SCORE_GAP_MIN)
-  },
-  if (is.finite(SWEEP_ILLIBERAL_CUTOFF) &&
-        is.finite(SWEEP_OTHER_CUTOFF_MAX) &&
-        isTRUE(all.equal(SWEEP_ILLIBERAL_CUTOFF, SWEEP_OTHER_CUTOFF_MAX))) {
-    sprintf(
-      "one top-2 party illiberal and the other not (illiberal_score > %s >= other_score)",
-      format(SWEEP_ILLIBERAL_CUTOFF)
-    )
-  } else {
-    c(
-      if (is.finite(SWEEP_ILLIBERAL_CUTOFF)) {
-        sprintf("illiberal_score > %s", format(SWEEP_ILLIBERAL_CUTOFF))
-      },
-      if (is.finite(SWEEP_OTHER_CUTOFF_MAX)) {
-        sprintf("other_score <= %s", format(SWEEP_OTHER_CUTOFF_MAX))
-      }
-    )
-  }
+restriction_label <- restriction_sentence(
+  SWEEP_SCORE_GAP_MIN, SWEEP_ILLIBERAL_CUTOFF, SWEEP_OTHER_CUTOFF_MAX
 )
-restriction_label <- if (length(restriction_parts) == 0) {
-  "all elections"
-} else {
-  paste(restriction_parts, collapse = ", ")
-}
 # Every figure and table this sweep writes carries this string, so a placebo
 # sweep says so on its face rather than only in its folder name.
 window_label <- if (PLACEBO_PRE_WINDOW) {

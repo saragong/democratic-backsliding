@@ -247,7 +247,7 @@ hold numbers only.
 | `_sweeps/vparty_ideology_quadrants/` | 1d: where the most common Wikipedia/Wikidata ideology tags sit on the illiberalism x populism plane, same 2 x 5 grid |
 | `_sweeps/populist_threshold/` | 2b: the PopuList-calibrated cutoff for "illiberal", and the ROC it comes from |
 | `_sweeps/cell_rdd_<instr>/` | reduced-form RD on the decade x OECD grid, every outcome, w1-10, full and PopuList-restricted samples |
-| `_sweeps/econleft_split_rdd_<instr>/` | the main RD run separately on elections where the anti-pluralist party is the more RIGHT-wing of the top 2 (822) and where it is the more LEFT-wing (517) -- the sign-discordant test of whether the growth result is really about the economic right |
+| `_sweeps/econleft_split_rdd_<instr><restriction>/` | the main RD run separately on elections where the anti-pluralist party is the more RIGHT-wing of the top 2 and where it is the more LEFT-wing -- the sign-discordant test of whether the growth result is really about the economic right. `<restriction>` carries the sample the split is taken within, spelled as in a run slug and omitted axis by axis at its no-op value: no suffix = all 1,347 scored elections (822 right / 517 left), `_illib0p6535_opp0p6535` = the 411 where one top-2 party is illiberal and the other is not (241 / 170) |
 
 The pre-run-folder output that used to sit in `_legacy/` has been deleted. It is
 recoverable from the commit that preceded the cleanup, and the numbers in it
@@ -270,6 +270,8 @@ Rscript --no-init-file scripts/18_vparty_jaccard_panels.R  # 1c
 Rscript --no-init-file scripts/19_vparty_ideology_quadrants.R  # 1d
 Rscript --no-init-file scripts/21_cell_rdd.R               # decade x OECD cells
 Rscript --no-init-file scripts/22_econleft_split_rdd.R     # econ L-R sign split
+SPLIT_SAMPLE=popucut \
+  Rscript --no-init-file scripts/22_econleft_split_rdd.R   # ... within the PopuList 411
 
 ```
 
