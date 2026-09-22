@@ -81,8 +81,21 @@ source(here::here("scripts", "vparty_helpers.R"))
 
 # ---- toggles -----------------------------------------------------------------
 
-A <- "v2xpa_antiplural" # y axis
-B <- "v2xpa_popul" # x axis
+# Each entry is one figure: a (y, x) pair of V-Party scores, plotted with the
+# same machinery. Axis titles, filenames and whether coord_fixed() applies are
+# all derived from VPARTY_SCORES in vparty_helpers.R.
+#
+# The second pair asks where tags sit on economic left-right given their
+# anti-pluralism, so anti-pluralism moves to x. It uses the RAW right-positive
+# v2pariglef, not the negated version the RDD carries, so the axis reads
+# left-to-right in the conventional direction.
+if (!exists("QUADRANT_PAIRS")) {
+  QUADRANT_PAIRS <- list(
+    c(y = "v2xpa_antiplural", x = "v2xpa_popul"),
+    c(y = "v2pariglef", x = "v2xpa_antiplural")
+  )
+}
+ALL_PAIR_SCORES <- unique(unlist(QUADRANT_PAIRS))
 
 # The four tag vocabularies in the file. rile_* and ideology_* are different
 # KINDS of tag (a left-right bucket vs a named ideology), and the wikipedia and
@@ -140,13 +153,22 @@ dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
 vparty <- load_vparty_raw(c(
   "v2paid", "v2paenname", "v2pashname", "country_name",
-  "country_text_id", "year", A, B
+  "country_text_id", "year", ALL_PAIR_SCORES
 ))
 
+# Filtered on the year window AND on anti-pluralism being scored -- nothing
+# narrower. Anti-pluralism is on every pair's axes, so a party without it can
+# never reach a figure and does not belong in a coverage denominator; but a
+# party missing v2pariglef must still count for the populism figure, so the
+# per-pair drop happens below rather than here.
+#
+# This denominator is load-bearing: filtering only on the year window would
+# put 2,432 parties in it rather than 1,930, silently understating every
+# coverage figure by a fifth.
 base <- vparty |>
   filter(
-    !is.na(.data[[A]]), !is.na(.data[[B]]),
-    year >= VPARTY_YEAR_MIN, year <= VPARTY_YEAR_MAX
+    year >= VPARTY_YEAR_MIN, year <= VPARTY_YEAR_MAX,
+    !is.na(.data[["v2xpa_antiplural"]])
   ) |>
   mutate(
     group = oecd_group(country_text_id),
@@ -278,11 +300,24 @@ coverage_by_group <- function(vocab_name) {
 
 # Pooled medians, computed on the WHOLE scored sample rather than per panel, so
 # the quadrant guides sit in the same place in all ten panels.
-med_a <- median(base[[A]], na.rm = TRUE)
-med_b <- median(base[[B]], na.rm = TRUE)
+# Collected across pairs so the party listing below covers every cell that
+# appears on any figure, and is written once rather than per pair.
+plotted_keys <- list()
 
-tag_means_for <- function(vocab_name) {
-  joined <- base |>
+for (pr in QUADRANT_PAIRS) {
+  A <- unname(pr[["y"]])
+  B <- unname(pr[["x"]])
+  pslug <- pair_slug(A, B)
+  cat(sprintf("\n========== %s (y) vs %s (x) ==========\n", A, B))
+
+  # This pair's usable rows. base is filtered only on year, so each pair drops
+  # only what IT is missing.
+  pair_base <- base |> filter(!is.na(.data[[A]]), !is.na(.data[[B]]))
+  med_a <- median(pair_base[[A]], na.rm = TRUE)
+  med_b <- median(pair_base[[B]], na.rm = TRUE)
+
+  tag_means_for <- function(vocab_name) {
+  joined <- pair_base |>
     inner_join(
       tag_long |> filter(vocab == vocab_name) |> select(vdem_id_1, tag),
       by = c("v2paid" = "vdem_id_1"),
@@ -321,11 +356,11 @@ tag_means_for <- function(vocab_name) {
       is_plotted = tag_rank <= N_TAGS_PER_PANEL,
       .before = 1
     )
-}
+  }
 
-# ---- plot --------------------------------------------------------------------
+  # ---- plot --------------------------------------------------------------------
 
-quadrant_figure <- function(all_dat, vocab_name) {
+  quadrant_figure <- function(all_dat, vocab_name) {
   dat <- all_dat |> filter(is_plotted)
 
   # Colour assignment is per FIGURE, not per panel, so a tag is the same
@@ -389,7 +424,14 @@ quadrant_figure <- function(all_dat, vocab_name) {
     facet_grid(group ~ decade) +
     scale_colour_manual(values = pal, name = NULL, drop = FALSE) +
     scale_size_area(max_size = 5, name = "Parties") +
-    coord_fixed(xlim = lim_b, ylim = lim_a) +
+    # coord_fixed only when a unit means the same on both axes. It does for
+    # two [0, 1] indices; it does not when one runs 0-1 and the other -4 to
+    # +4, where forcing equal aspect would squash the figure to a sliver.
+    (if (vparty_score(A, "unit_interval") && vparty_score(B, "unit_interval")) {
+      coord_fixed(xlim = lim_b, ylim = lim_a)
+    } else {
+      coord_cartesian(xlim = lim_b, ylim = lim_a)
+    }) +
     scale_x_continuous(breaks = scales::pretty_breaks(4)) +
     scale_y_continuous(breaks = scales::pretty_breaks(4)) +
     guides(
@@ -401,34 +443,35 @@ quadrant_figure <- function(all_dat, vocab_name) {
     ) +
     labs(
       title = sprintf(
-        "Where the most common %s tags sit on illiberalism x populism",
-        vocab_name
+        "Where the most common %s tags sit: %s (y) vs %s (x)",
+        vocab_name, vparty_score(A, "display"), vparty_score(B, "display")
       ),
       subtitle = paste(
         strwrap(sprintf(paste(
           "Each point is one tag's mean score over the parties carrying it in",
           "that decade and group; point area is the number of parties. Grey",
-          "lines are the pooled medians (populism %.2f, anti-pluralism %.2f),",
+          "lines are the pooled medians (%s %.2f on x, %s %.2f on y),",
           "identical in every panel, as are the axes. Each panel shows its OWN",
           "top %d tags by party count, so the sets differ between panels --",
           "%d distinct tags appear across the ten, %s. Cells",
-          "under %d party-years are dropped; tag_means.csv carries every tag.",
+          "under %d party-years are dropped; tag_means_%s.csv carries every tag.",
           "V-Party %d-%d. Tag coverage per panel: %s. Coverage is uneven but",
           "the parties it misses are close to the ones it keeps, so no panel",
           "mean sits more than 0.011 from its all-party value."
         ),
-        med_b, med_a, N_TAGS_PER_PANEL, n_union,
+        vparty_score(B, "slug"), med_b, vparty_score(A, "slug"), med_a,
+        N_TAGS_PER_PANEL, n_union,
         if (min(per_panel) == max(per_panel)) {
           sprintf("%d in each", min(per_panel))
         } else {
           sprintf("%d to %d per panel", min(per_panel), max(per_panel))
         },
-        MIN_TAG_CELL_N,
+        MIN_TAG_CELL_N, pslug,
         VPARTY_YEAR_MIN, VPARTY_YEAR_MAX, coverage_by_group(vocab_name)), 130),
         collapse = "\n"
       ),
-      x = "Mean populism (v2xpa_popul)",
-      y = "Mean anti-pluralism (v2xpa_antiplural)"
+      x = sprintf("Mean %s", vparty_score(B, "display")),
+      y = sprintf("Mean %s", vparty_score(A, "display"))
     ) +
     theme_bw(base_size = 9) +
     theme(
@@ -443,13 +486,13 @@ quadrant_figure <- function(all_dat, vocab_name) {
       legend.margin = margin(t = -2),
       legend.key.size = unit(0.35, "cm")
     )
-}
+  }
 
-# ---- run ---------------------------------------------------------------------
+  # ---- run ---------------------------------------------------------------------
 
-all_means <- list()
+  all_means <- list()
 
-for (v in TAG_COLUMNS) {
+  for (v in TAG_COLUMNS) {
   dat <- tag_means_for(v)
   if (nrow(dat) == 0) {
     warning("No usable cells for ", v, "; skipping.", call. = FALSE)
@@ -459,17 +502,24 @@ for (v in TAG_COLUMNS) {
 
   fig <- quadrant_figure(dat, v)
   ggsave(
-    file.path(out_dir, sprintf("quadrants_%s.png", v)),
+    file.path(out_dir, sprintf("quadrants_%s_%s.png", pslug, v)),
     fig,
     width = 14.5, height = 7.8, dpi = 150
   )
   cat(sprintf(
-    "Saved quadrants_%s.png (%d distinct tags across panels, %d cells plotted, %d in CSV)\n",
-    v, n_distinct(dat$tag[dat$is_plotted]), sum(dat$is_plotted), nrow(dat)
+    "Saved quadrants_%s_%s.png (%d distinct tags across panels, %d cells plotted, %d in CSV)\n",
+    pslug, v, n_distinct(dat$tag[dat$is_plotted]), sum(dat$is_plotted), nrow(dat)
   ))
+  }
+
+  write_csv(
+  with_decade_key(bind_rows(all_means) |> mutate(score_y = A, score_x = B, .before = 1)),
+  file.path(out_dir, sprintf("tag_means_%s.csv", pslug))
+  )
+  plotted_keys[[pslug]] <- bind_rows(all_means) |>
+    filter(is_plotted) |> distinct(group, decade, tag)
 }
 
-write_csv(with_decade_key(bind_rows(all_means)), file.path(out_dir, "tag_means.csv"))
 
 # ==============================================================================
 # Which parties are behind each point
@@ -499,16 +549,26 @@ party_rows <- function(vocab_name, plotted) {
       n_obs = n(),
       first_year = min(year),
       last_year = max(year),
-      antiplural = mean(.data[[A]]),
-      popul = mean(.data[[B]]),
+      # Every score any pair plots, not just the current pair's two, so this
+      # table serves both figures and does not have to be written twice.
+      across(all_of(ALL_PAIR_SCORES), \(x) mean(x, na.rm = TRUE)),
       .by = c(group, decade, tag, v2paid, v2paenname, v2pashname, country_name)
     ) |>
-    arrange(group, decade, tag, desc(antiplural)) |>
+    arrange(group, decade, tag, desc(.data[["v2xpa_antiplural"]])) |>
     mutate(vocab = vocab_name, .before = 1)
 }
 
-all_parties <- map_dfr(names(all_means), function(v) {
-  party_rows(v, all_means[[v]] |> filter(is_plotted) |> select(group, decade, tag))
+# Union of the cells plotted by any pair. A cell that reaches a figure under
+# either pairing gets its parties listed, so the table is a superset of both
+# figures rather than tied to whichever pair happened to run last.
+plotted_union <- bind_rows(plotted_keys) |> distinct(group, decade, tag)
+all_parties <- map_dfr(TAG_COLUMNS, function(v) {
+  keys <- plotted_union |>
+    semi_join(
+      tag_long |> filter(vocab == v) |> distinct(tag), by = "tag"
+    )
+  if (nrow(keys) == 0) return(tibble())
+  party_rows(v, keys)
 })
 write_csv(with_decade_key(all_parties), file.path(out_dir, "tag_parties.csv"))
 cat(sprintf(
@@ -533,8 +593,9 @@ for (v in unique(all_parties$vocab)) {
       Years = ifelse(first_year == last_year,
                      as.character(first_year),
                      sprintf("%d-%d", first_year, last_year)),
-      `Anti-pluralism` = round(antiplural, 3),
-      Populism = round(popul, 3)
+      `Anti-pluralism` = round(v2xpa_antiplural, 3),
+      Populism = round(v2xpa_popul, 3),
+      `Econ L-R` = round(v2pariglef, 3)
     )
   gt_tbl <- tbl |>
     gt::gt(groupname_col = "section") |>

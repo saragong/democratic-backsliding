@@ -247,6 +247,7 @@ hold numbers only.
 | `_sweeps/vparty_ideology_quadrants/` | 1d: where the most common Wikipedia/Wikidata ideology tags sit on the illiberalism x populism plane, same 2 x 5 grid |
 | `_sweeps/populist_threshold/` | 2b: the PopuList-calibrated cutoff for "illiberal", and the ROC it comes from |
 | `_sweeps/cell_rdd_<instr>/` | reduced-form RD on the decade x OECD grid, every outcome, w1-10, full and PopuList-restricted samples |
+| `_sweeps/econleft_split_rdd_<instr>/` | the main RD run separately on elections where the anti-pluralist party is the more RIGHT-wing of the top 2 (822) and where it is the more LEFT-wing (517) -- the sign-discordant test of whether the growth result is really about the economic right |
 
 The pre-run-folder output that used to sit in `_legacy/` has been deleted. It is
 recoverable from the commit that preceded the cleanup, and the numbers in it
@@ -268,11 +269,18 @@ Rscript --no-init-file scripts/17_party_outcomes_rdd.R     # 1a
 Rscript --no-init-file scripts/18_vparty_jaccard_panels.R  # 1c
 Rscript --no-init-file scripts/19_vparty_ideology_quadrants.R  # 1d
 Rscript --no-init-file scripts/21_cell_rdd.R               # decade x OECD cells
+Rscript --no-init-file scripts/22_econleft_split_rdd.R     # econ L-R sign split
 
 ```
 
 Scripts 18 and 19 read raw V-Party and never touch a build, so they source
-`scripts/vparty_helpers.R` rather than `scripts/rdd_helpers.R`.
+`scripts/vparty_helpers.R` rather than `scripts/rdd_helpers.R`. Each plots a
+LIST of score pairs and suffixes its outputs with a pair slug
+(`antiplural_vs_popul`, `econlr_vs_antiplural`); the axes, the Jaccard bin
+mode and whether `coord_fixed()` applies are all derived from `VPARTY_SCORES`
+in that helper. The left-right figures use the RAW right-positive
+`v2pariglef`, not the negated `v2pariglef_neg` the RDD carries, so the axis
+reads left-to-right conventionally -- the axis title says so.
 `01g_populist_threshold.R` is a calibration step and sources neither; it sits
 in the loader tier because `12_rdd_analysis.R` now consumes its output through
 the `"popucut"` spec, so it has to run before the build.

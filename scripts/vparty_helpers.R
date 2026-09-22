@@ -48,6 +48,77 @@ load_vparty_raw <- function(cols = NULL) {
 }
 
 # ------------------------------------------------------------------------------
+# 2. Party scores: slug, display name, and scale type
+#
+# Scripts 18 and 19 plot one PAIR of scores against each other and need three
+# things per variable: a filesystem-safe slug for the output name, a display
+# name for the axis, and whether it is a [0, 1] index.
+#
+# The scale type is not decoration. It decides two things that silently break
+# otherwise: Jaccard binning (equal-width bins are only meaningful on [0, 1];
+# bin_breaks() errors on an expert scale) and coord_fixed() (equal aspect is
+# only meaningful when a unit means the same on both axes, which it does not
+# when one runs 0-1 and the other -4 to +4).
+#
+# rdd_helpers.R has a similar registry, but 18 and 19 deliberately do not
+# source it -- they never touch a build -- so this is the V-Party-side copy.
+# It carries the RAW v2pariglef, right-positive, not the negated version the
+# RDD uses: on a descriptive scatter "left-right" should read left-to-right.
+VPARTY_SCORES <- list(
+  v2xpa_antiplural = list(
+    slug = "antiplural",
+    display = "Anti-pluralism (v2xpa_antiplural)",
+    unit_interval = TRUE
+  ),
+  v2xpa_popul = list(
+    slug = "popul",
+    display = "Populism (v2xpa_popul)",
+    unit_interval = TRUE
+  ),
+  v2pariglef = list(
+    slug = "econlr",
+    display = "Economic left-right (v2pariglef; higher = RIGHT)",
+    unit_interval = FALSE
+  ),
+  v2paanteli = list(
+    slug = "anteli",
+    display = "Anti-elitism (v2paanteli)",
+    unit_interval = FALSE
+  ),
+  v2paminor = list(
+    slug = "minor",
+    display = "Minority rights (v2paminor; higher = MORE supportive)",
+    unit_interval = FALSE
+  )
+)
+
+vparty_score <- function(var, field) {
+  if (is.null(VPARTY_SCORES[[var]])) {
+    stop(
+      "No entry for '", var, "' in VPARTY_SCORES (scripts/vparty_helpers.R). ",
+      "Add one giving its slug, display name and whether it is a [0, 1] index.",
+      call. = FALSE
+    )
+  }
+  VPARTY_SCORES[[var]][[field]]
+}
+
+# Equal-width bins mean "same score" and are only defined on [0, 1]; quantile
+# bins mean "same rank" and work on any scale. A pair is binned by score only
+# when BOTH axes allow it, so the diagonal means one thing rather than two.
+pair_bin_mode <- function(var_a, var_b) {
+  if (vparty_score(var_a, "unit_interval") && vparty_score(var_b, "unit_interval")) {
+    "equal01"
+  } else {
+    "deciles"
+  }
+}
+
+pair_slug <- function(var_a, var_b) {
+  sprintf("%s_vs_%s", vparty_score(var_a, "slug"), vparty_score(var_b, "slug"))
+}
+
+# ------------------------------------------------------------------------------
 # 2. The two splits
 # ------------------------------------------------------------------------------
 
