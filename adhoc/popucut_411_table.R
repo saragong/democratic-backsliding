@@ -27,6 +27,7 @@
 #           popucut_411.html   shaded, grouped by country
 #           popucut_411.csv    same numbers, unformatted
 #           sanity_check_rdd.csv
+#         adhoc/popucut_411.csv  the same frame, next to this script
 # ==============================================================================
 
 library(tidyverse)
@@ -113,7 +114,14 @@ wl <- parties |>
   ) |>
   mutate(
     score_diff = win_score - lose_score,
-    vote_margin = win_share - lose_share
+    vote_margin = win_share - lose_share,
+    # The RDD's running variable is the margin of the ILLIBERAL party, which
+    # is not the margin of the winner: vote_margin is always positive, and the
+    # sign comes from which side the illiberal party was on, which is exactly
+    # what score_diff records. Carried in the exported data so the CSV alone
+    # is enough to re-run the design; the sanity check at the bottom asserts
+    # it against the build's own running_var.
+    running_var = vote_margin * sign(score_diff)
   )
 
 # By construction of the sample the two scores straddle the cut, so they can
@@ -192,7 +200,19 @@ for (h in T411_HORIZONS) {
   stopifnot(worst < 1e-8)
 }
 
-write_csv(tbl_dat, file.path(out_dir, "popucut_411.csv"))
+# Two destinations on purpose. The copy in the run folder is the companion to
+# the HTML and travels with it; the copy in adhoc/ is the dataset itself, next
+# to the script that builds it, where it can be picked up without knowing the
+# sweep-folder convention. Same frame, written once from one object, so they
+# cannot disagree.
+csv_paths <- c(
+  file.path(out_dir, "popucut_411.csv"),
+  here::here("adhoc", "popucut_411.csv")
+)
+walk(csv_paths, function(f) {
+  write_csv(tbl_dat, f)
+  cat(sprintf("Saved %s\n", f))
+})
 
 # ---- the table ---------------------------------------------------------------
 
@@ -337,23 +357,17 @@ cat(sprintf(
 # outcome columns are recomputed from combined_panel.rds. If all of that is
 # right, the headline estimate has to fall out of the displayed columns alone.
 #
-# The running variable is the margin of the ILLIBERAL party, which is not the
-# margin of the winner: the table's Margin column is always positive, and the
-# sign has to come from which side the illiberal party was on. That is exactly
-# what the gap column records, so
-#
-#     running_var = margin  if the winner is the more illiberal (gap > 0)
-#                 = -margin if the loser is                     (gap < 0)
-#
-# Reconstructing it this way, rather than reading the build's running_var,
-# is the point: a sign error in the table's gap column would surface here as
-# an estimate with the wrong sign instead of passing silently.
+# The running variable is tbl_dat$running_var, built up where wl is assembled
+# as margin x sign(gap) -- from the two columns this table displays, never
+# read off the build. That is the point: a sign error in the gap column would
+# surface here as an estimate with the wrong sign instead of passing silently.
+# Step 1 below is what closes that loop.
 # ==============================================================================
 
 cat("\n", strrep("-", 78), "\nSANITY CHECK: the headline RDD, rebuilt from this table's own columns\n",
     strrep("-", 78), "\n", sep = "")
 
-rv <- tbl_dat$vote_margin * sign(tbl_dat$score_diff)
+rv <- tbl_dat$running_var
 
 # Step 1: the reconstruction must reproduce the build's running variable.
 # Vote shares are carried at full precision in the parties file, so this is an
