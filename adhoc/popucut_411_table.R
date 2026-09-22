@@ -17,16 +17,22 @@
 # which needs diverging_fill()'s argument negated, since that ramp runs red for
 # negative and green for positive.
 #
+# The script ends by re-running the headline RDD on nothing but the columns
+# this table displays, and checking it against the canonical run folder. See
+# "sanity check" at the bottom.
+#
 #   Rscript --no-init-file adhoc/popucut_411_table.R
 #
 # Output: output/runs/_sweeps/popucut_411_table/
 #           popucut_411.html   shaded, grouped by country
 #           popucut_411.csv    same numbers, unformatted
+#           sanity_check_rdd.csv
 # ==============================================================================
 
 library(tidyverse)
 library(here)
 library(gt)
+library(rdrobust)
 
 source(here::here("scripts", "rdd_helpers.R"))
 source(here::here("scripts", "vparty_helpers.R"))
@@ -322,4 +328,147 @@ cat(sprintf(
   min(tbl_dat$election_year), max(tbl_dat$election_year),
   sum(tbl_dat$score_diff > 0), sum(tbl_dat$score_diff < 0)
 ))
+
+# ==============================================================================
+# Sanity check: does this table reproduce the headline RDD?
+#
+# The table is assembled by a different route from the analysis -- its sample
+# is filtered here, its winner/loser ordering is by vote share, and its
+# outcome columns are recomputed from combined_panel.rds. If all of that is
+# right, the headline estimate has to fall out of the displayed columns alone.
+#
+# The running variable is the margin of the ILLIBERAL party, which is not the
+# margin of the winner: the table's Margin column is always positive, and the
+# sign has to come from which side the illiberal party was on. That is exactly
+# what the gap column records, so
+#
+#     running_var = margin  if the winner is the more illiberal (gap > 0)
+#                 = -margin if the loser is                     (gap < 0)
+#
+# Reconstructing it this way, rather than reading the build's running_var,
+# is the point: a sign error in the table's gap column would surface here as
+# an estimate with the wrong sign instead of passing silently.
+# ==============================================================================
+
+cat("\n", strrep("-", 78), "\nSANITY CHECK: the headline RDD, rebuilt from this table's own columns\n",
+    strrep("-", 78), "\n", sep = "")
+
+rv <- tbl_dat$vote_margin * sign(tbl_dat$score_diff)
+
+# Step 1: the reconstruction must reproduce the build's running variable.
+# Vote shares are carried at full precision in the parties file, so this is an
+# equality check, not an approximate one.
+rv_build <- d |>
+  filter(election_id %in% sample_ids) |>
+  arrange(match(election_id, tbl_dat$election_id)) |>
+  pull(running_var)
+stopifnot(identical(tbl_dat$election_id, d$election_id[match(tbl_dat$election_id, d$election_id)]))
+max_rv_gap <- max(abs(rv - rv_build))
+cat(sprintf(
+  "  running variable rebuilt from Margin x sign(gap): max |diff| = %.2e over %d elections\n",
+  max_rv_gap, length(rv)
+))
+stopifnot(max_rv_gap < 1e-9)
+cat(sprintf(
+  "  treated side (illiberal party won) = %d, control side = %d\n",
+  sum(rv > 0), sum(rv < 0)
+))
+
+# Step 2: the RDD itself, on log1p of the displayed percentage change, which
+# is the log change the analysis uses.
+canon_path <- function(h) {
+  file.path(RUNS_ROOT, run_slug(list(
+    instrument = T411_INSTRUMENT, window = h, treatment = "backsliding_Nyr",
+    score_gap_min = -Inf, illiberal_cutoff = cut_abs, other_cutoff_max = cut_abs,
+    incl_election_year = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR
+  )), "rdd_results.csv")
+}
+
+# The treatment is the one input the table does not display; it is pulled from
+# the build purely so the fuzzy arm can be reproduced too. It must come from
+# the build AT HORIZON h, not from the sample build: backsliding_Nyr asks
+# whether an episode starts within h years, so it is a different variable at
+# every horizon. Reusing the w5 treatment against the w1 and w10 outcomes made
+# the fuzzy bandwidths disagree while the reduced form matched exactly --
+# which is what a window-mismatched treatment looks like.
+trt_at <- function(h) {
+  readRDS(build_path(h)) |>
+    filter(election_id %in% sample_ids) |>
+    arrange(match(election_id, tbl_dat$election_id)) |>
+    pull(backsliding_Nyr)
+}
+
+check <- map_dfr(T411_HORIZONS, function(h) {
+  y <- log1p(tbl_dat[[sprintf("gdp_chg_%dy", h)]])
+  trt <- trt_at(h)
+  rf <- extract_rd(safe_rdrobust(y, rv))
+  late <- extract_rd(safe_rdrobust(y, rv, fuzzy = trt))
+  row <- tibble(
+    window = h, n_table = rf$N,
+    est_table = rf$coef, se_table = rf$se, pval_table = rf$pval,
+    # BOTH bandwidths, because rdd_results.csv's "bandwidth" column is the
+    # LATE's, not the reduced form's (12_rdd_analysis.R line 382). Comparing
+    # the reduced form's against it would fail on a naming difference and look
+    # like a substantive mismatch -- which is exactly what happened when this
+    # check was first written.
+    bw_rf_table = rf$bw, bw_late_table = late$bw,
+    late_table = late$coef
+  )
+  cp <- canon_path(h)
+  if (!file.exists(cp)) {
+    return(mutate(row, n_run = NA_integer_, est_run = NA_real_,
+                  se_run = NA_real_, bw_run = NA_real_, late_run = NA_real_,
+                  source = "run folder missing"))
+  }
+  canon <- read_csv(cp, show_col_types = FALSE) |> filter(outcome == "Y_gdp_growth")
+  mutate(
+    row, n_run = canon$n_outcome, est_run = canon$rd_estimate,
+    se_run = canon$rd_se, bw_run = canon$bandwidth,
+    late_run = canon$late_estimate, source = basename(dirname(cp))
+  )
+})
+
+write_csv(check, file.path(out_dir, "sanity_check_rdd.csv"))
+
+cat("\n  Reduced-form RD on GDP per capita, outcome measured from the year before the election:\n\n")
+print(
+  check |>
+    transmute(
+      window,
+      `N (table)` = n_table, `N (run)` = n_run,
+      `est (table)` = round(est_table, 5), `est (run)` = round(est_run, 5),
+      `se (table)` = round(se_table, 5), `se (run)` = round(se_run, 5),
+      `LATE bw (table)` = round(bw_late_table, 3), `bw col (run)` = round(bw_run, 3),
+      `RF bw (table)` = round(bw_rf_table, 3)
+    ) |>
+    as.data.frame(),
+  row.names = FALSE
+)
+cat(paste(
+  "\n  Note: rdd_results.csv's 'bandwidth' column holds the fuzzy LATE's",
+  "bandwidth, not the\n  reduced form's, so it is checked against LATE bw.",
+  "The reduced form's own bandwidth\n  is shown last and is not recorded in",
+  "the run folder at all.\n"
+))
+
+matched <- check |> filter(!is.na(est_run))
+if (nrow(matched) == 0) {
+  warning(
+    "No canonical run folder to check against. Run 14_window_sweep.R with ",
+    "SWEEP_ILLIBERAL_CUTOFF = SWEEP_OTHER_CUTOFF_MAX = \"popucut\" first.",
+    call. = FALSE
+  )
+} else {
+  worst <- with(matched, max(c(
+    abs(est_table - est_run), abs(se_table - se_run),
+    abs(late_table - late_run), abs(bw_late_table - bw_run)
+  )))
+  stopifnot(all(matched$n_table == matched$n_run))
+  stopifnot(worst < 1e-8)
+  cat(sprintf(
+    "\n  PASS -- matches %s at %d horizon(s); largest discrepancy %.2e.\n",
+    paste(unique(matched$source), collapse = ", "), nrow(matched), worst
+  ))
+}
+
 message("\nTable written to ", out_dir)
