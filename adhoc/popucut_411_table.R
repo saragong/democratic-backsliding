@@ -224,9 +224,15 @@ disp <- tbl_dat |>
     Country = country_name,
     Year = election_year,
     Type = recode(election_type, presidential = "Pres.", parliamentary = "Parl."),
-    `Winning party` = win_party, `Vote %` = win_share, `Score` = win_score,
-    `Losing party` = lose_party, `Vote %.` = lose_share, `Score.` = lose_score,
-    `Score diff` = score_diff, `Margin (pp)` = vote_margin,
+    # Who ran and how the vote fell first, then how illiberal each side was.
+    # The three score columns sit together in their own spanner rather than
+    # one inside each of Winner and Loser: the reader wants to compare the two
+    # scores and their gap side by side, and it is the only arrangement that
+    # puts the margin ahead of them without splitting a spanner.
+    `Winning party` = win_party, `Vote %` = win_share,
+    `Losing party` = lose_party, `Vote %.` = lose_share,
+    `Margin (pp)` = vote_margin,
+    `Score` = win_score, `Score.` = lose_score, `Score diff` = score_diff,
     `GDP pc (pre)` = gdp_pc_pre,
     !!!setNames(map(gdp_cols, ~ tbl_dat[[.x]]), sprintf("GDP %dy", T411_HORIZONS)),
     `Polyarchy (pre)` = polyarchy_pre,
@@ -259,17 +265,20 @@ gt_tbl <- disp |>
       "polyarchy in index points."
     ), INSTRUMENT_DISPLAY[[T411_INSTRUMENT]], cut_abs))
   ) |>
-  tab_spanner("Winner", columns = c("Winning party", "Vote %", "Score")) |>
-  tab_spanner("Loser", columns = c("Losing party", "Vote %.", "Score.")) |>
+  tab_spanner("Winner", columns = c("Winning party", "Vote %")) |>
+  tab_spanner("Loser", columns = c("Losing party", "Vote %.")) |>
+  tab_spanner(
+    html(sprintf("%s score", SCORE_SHORT)),
+    columns = c("Score", "Score.", "Score diff")
+  ) |>
   tab_spanner("GDP pc change", columns = all_of(gdp_disp)) |>
   tab_spanner("Polyarchy change", columns = all_of(poly_disp)) |>
   cols_label(
-    `Vote %.` = "Vote %",
-    `Score` = SCORE_SHORT, `Score.` = SCORE_SHORT,
-    `Score diff` = html(sprintf(
-      "%s gap<br><span style=\"font-weight:normal\">(winner &minus; loser)</span>",
-      SCORE_SHORT
-    )),
+    `Winning party` = "Party", `Losing party` = "Party", `Vote %.` = "Vote %",
+    `Score` = "Winner", `Score.` = "Loser",
+    `Score diff` = html(
+      "Gap<br><span style=\"font-weight:normal\">(winner &minus; loser)</span>"
+    ),
     !!!setNames(as.list(paste0(T411_HORIZONS, "y")), gdp_disp),
     !!!setNames(as.list(paste0(T411_HORIZONS, "y")), poly_disp)
   ) |>
