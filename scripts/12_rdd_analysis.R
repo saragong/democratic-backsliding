@@ -155,6 +155,9 @@ if (!exists("THRESHOLD_SCALE")) THRESHOLD_SCALE <- NA_character_
 # right? Compared with `>=` / `<=`.
 if (!exists("LR_GAP_MIN")) LR_GAP_MIN <- DEFAULT_LR_GAP_MIN
 if (!exists("LR_GAP_MAX")) LR_GAP_MAX <- DEFAULT_LR_GAP_MAX
+# Keep only pairs on opposite sides of the left-right centre (v2pariglef < 0 for
+# one party, > 0 for the other).
+if (!exists("LR_STRADDLE")) LR_STRADDLE <- DEFAULT_LR_STRADDLE
 
 # Drop elections whose [election_year, election_year + N] window overlaps a
 # Funke et al. populist-leader spell. Conditions on the post-election window;
@@ -190,6 +193,7 @@ prep <- prepare_rdd_sample(sample_opts(
   threshold_scale = THRESHOLD_SCALE,
   lr_gap_min = LR_GAP_MIN,
   lr_gap_max = LR_GAP_MAX,
+  lr_straddle = LR_STRADDLE,
   exclude_funke = EXCLUDE_FUNKE,
   rd_covariates = RD_COVARIATES
 ))

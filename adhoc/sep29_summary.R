@@ -41,8 +41,8 @@ SPECS <- list(
        cfg = do.call(spec, pair(thr$threshold_pct_ctry, "ctry_pct"))),
   list(group = "Thresholds", label = sprintf("Within-country percentile cut, Youden (%.1fth pct)", 100 * thr$threshold_pct_ctry_youden),
        cfg = do.call(spec, pair(thr$threshold_pct_ctry_youden, "ctry_pct"))),
-  list(group = "Left-right gap >= 1 (for the split)", label = "All scored elections", cfg = spec(lr_gap_min = 1)),
-  list(group = "Left-right gap >= 1 (for the split)", label = "One side above 0.5, one below", cfg = do.call(spec, c(pair(0.5), lr_gap_min = 1))),
+  list(group = "Pooled comparisons for the split", label = "Left-right gap >= 1", cfg = spec(lr_gap_min = 1)),
+  list(group = "Pooled comparisons for the split", label = "Parties on opposite sides of the left-right centre", cfg = spec(lr_straddle = TRUE)),
   list(group = "Placebo: left-right gap <= 1", label = "All scored elections", cfg = spec(lr_gap_max = 1)),
   list(group = "Placebo: left-right gap <= 1", label = "PopuList cut 0.65", cfg = do.call(spec, c(pair(thr$threshold_abs), lr_gap_max = 1))),
   list(group = "Placebo: left-right gap <= 1", label = "Within-country cut, accuracy",
@@ -97,7 +97,7 @@ tab <- bind_rows(
   tab,
   split_rows(spec(), "All, no gap floor"),
   split_rows(spec(lr_gap_min = 1), "All, left-right gap >= 1"),
-  split_rows(do.call(spec, c(pair(0.5), lr_gap_min = 1)), "0.5 split, left-right gap >= 1")
+  split_rows(spec(lr_straddle = TRUE), "Opposite sides of the left-right centre")
 )
 
 out_csv <- adhoc_path("sep29_summary.csv")

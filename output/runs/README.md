@@ -20,7 +20,7 @@ output/runs/
 The spec folder name is
 
 ```
-<instrument>_gap<score_gap_min>_illib<illiberal_cutoff>[_opp<other_cutoff_max>][_ctrypct][_lrmin<x>][_lrmax<x>][_nofunke][_covlp][_exclyr][_pre]
+<instrument>_gap<score_gap_min>_illib<illiberal_cutoff>[_opp<other_cutoff_max>][_ctrypct][_lrmin<x>][_lrmax<x>][_lrstraddle][_nofunke][_covlp][_exclyr][_pre]
 ```
 
 Every optional part except `_exclyr` appears only when not at its default, so
@@ -36,6 +36,7 @@ convention, so in practice every current spec carries it.
 | `_opp` | maximum `other_score` (the LESS illiberal of the top 2). Omitted entirely at its default of `Inf`. Paired with `illib` at the same number, this is the "one side illiberal, the other not" restriction |
 | `_ctrypct` | `illib` / `opp` are **within-country percentiles** of anti-pluralism (0-1), not raw scores: the country-specific PopuList cut (`"popucut_ctry"`, `"popucut_ctry_youden"`). See below |
 | `_lrmin<x>` / `_lrmax<x>` | floor / ceiling on the top-2 **left-right gap**, \|difference in V-Party `v2pariglef`\| (`LR_GAP_MIN` / `LR_GAP_MAX`). The ceiling is the "no meaningful left-right difference" placebo |
+| `_lrstraddle` | only pairs on opposite sides of the left-right centre: one top-2 party with `v2pariglef` < 0, the other > 0 (`LR_STRADDLE`) |
 | `_nofunke` | elections whose `[election_year, election_year + N]` window overlaps a Funke et al. populist-leader spell dropped (`EXCLUDE_FUNKE`). Conditions on the post-election window; countries outside Funke's 60, and windows past 2020, are kept |
 | `_covlp` | covariate-adjusted (`RD_COVARIATES = "lp"`, Calonico, Cattaneo, Farrell & Titiunik 2019): every reduced-form and fuzzy fit adds that outcome's leave-country-out local projection on pre-election history (`11b_build_covariates.R`) linearly, not interacted with treatment |
 | `_exclyr` | present only when `TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR = FALSE` (see below) |
@@ -334,7 +335,7 @@ Rscript --no-init-file scripts/19_vparty_ideology_quadrants.R  # 1d
 Rscript --no-init-file scripts/21_cell_rdd.R               # decade x OECD cells
 Rscript --no-init-file scripts/22_econleft_split_rdd.R     # econ L-R sign split
 Rscript --no-init-file -e 'SPLIT_SAMPLE <- "popucut"; source("scripts/22_econleft_split_rdd.R")'   # ... within the PopuList 411
-Rscript --no-init-file -e 'SPLIT_SAMPLE <- "half"; SPLIT_LR_GAP_MIN <- 1; source("scripts/22_econleft_split_rdd.R")'
+Rscript --no-init-file -e 'SPLIT_SAMPLE <- "straddle"; source("scripts/22_econleft_split_rdd.R")'
 Rscript --no-init-file scripts/23_hte_rdd.R                # heterogeneous effects (rdhte)
 
 ```

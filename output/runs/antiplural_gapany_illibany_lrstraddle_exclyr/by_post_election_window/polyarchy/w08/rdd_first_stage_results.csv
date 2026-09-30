@@ -1,0 +1,2 @@
+spec,treatment,n_first_stage,n_first_stage_treated,first_stage_coef,first_stage_se,first_stage_pval,first_stage_bandwidth
+instr-antiplural_w8_trt-polyarchy_gapany_illibany_lrstraddle_exclyr,polyarchy_decline,761,281,-0.016865045725064497,0.024101060365583744,0.4840749254451679,16.622778310383577

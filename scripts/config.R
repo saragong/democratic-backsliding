@@ -52,6 +52,10 @@ DEFAULT_PLACEBO <- FALSE
 DEFAULT_LR_GAP_MIN <- -Inf
 DEFAULT_LR_GAP_MAX <- Inf
 
+# Keep only pairs on opposite sides of the left-right centre: one top-2 party
+# with v2pariglef < 0 and the other > 0.
+DEFAULT_LR_STRADDLE <- FALSE
+
 # Drop elections whose [election_year, election_year + N] window overlaps a
 # Funke, Schularick & Trebesch populist-leader spell.
 DEFAULT_EXCLUDE_FUNKE <- FALSE

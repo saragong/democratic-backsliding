@@ -144,7 +144,7 @@ fmt_slug_num <- function(x) {
 # window and the treatment definition, which vary inside the spec folder.
 SPEC_FIELDS <- c(
   "instrument", "score_gap_min", "illiberal_cutoff", "other_cutoff_max",
-  "threshold_scale", "lr_gap_min", "lr_gap_max", "exclude_funke",
+  "threshold_scale", "lr_gap_min", "lr_gap_max", "lr_straddle", "exclude_funke",
   "rd_covariates", "incl_election_year", "placebo"
 )
 
@@ -160,6 +160,7 @@ spec_values <- function(cfg) {
     threshold_scale = cfg$threshold_scale %||% "raw",
     lr_gap_min = cfg$lr_gap_min %||% -Inf,
     lr_gap_max = cfg$lr_gap_max %||% Inf,
+    lr_straddle = cfg$lr_straddle %||% FALSE,
     exclude_funke = cfg$exclude_funke %||% FALSE,
     rd_covariates = cfg$rd_covariates %||% "none",
     incl_election_year = cfg$incl_election_year %||% DEFAULT_INCL_ELECTION_YEAR,
@@ -183,6 +184,8 @@ spec_values <- function(cfg) {
 #                     of anti-pluralism rather than raw scores, "_ctrypct".
 #   lr_gap_min/max    floor/ceiling on the top-2 left-right gap, "_lrmin<x>"
 #                     / "_lrmax<x>".
+#   lr_straddle       TRUE = the two parties sit on opposite sides of the
+#                     left-right centre, "_lrstraddle".
 #   exclude_funke     TRUE = Funke populist spells dropped, "_nofunke".
 #   rd_covariates     "lp" = local-projection covariate adjustment, "_covlp".
 spec_tail_slug <- function(cfg) {
@@ -200,6 +203,7 @@ spec_tail_slug <- function(cfg) {
     if (v$threshold_scale == "ctry_pct") "_ctrypct" else "",
     if (is.finite(v$lr_gap_min)) paste0("_lrmin", fmt_slug_num(v$lr_gap_min)) else "",
     if (is.finite(v$lr_gap_max)) paste0("_lrmax", fmt_slug_num(v$lr_gap_max)) else "",
+    if (isTRUE(v$lr_straddle)) "_lrstraddle" else "",
     if (isTRUE(v$exclude_funke)) "_nofunke" else "",
     if (v$rd_covariates == "lp") "_covlp" else "",
     if (isTRUE(v$incl_election_year)) "" else "_exclyr",
@@ -1136,6 +1140,7 @@ restriction_sentence <- function(score_gap_min = -Inf,
                                  threshold_scale = "raw",
                                  lr_gap_min = -Inf,
                                  lr_gap_max = Inf,
+                                 lr_straddle = FALSE,
                                  exclude_funke = FALSE) {
   ill_var <- threshold_var("illiberal", threshold_scale)
   oth_var <- threshold_var("other", threshold_scale)
@@ -1167,6 +1172,7 @@ restriction_sentence <- function(score_gap_min = -Inf,
     if (is.finite(lr_gap_max)) {
       sprintf("left-right gap <= %s", format(lr_gap_max, trim = TRUE))
     },
+    if (isTRUE(lr_straddle)) "the two parties on opposite sides of the left-right centre",
     if (isTRUE(exclude_funke)) "excluding windows overlapping a Funke populist spell"
   )
   if (length(parts) == 0) none else paste(parts, collapse = ", ")
@@ -1194,9 +1200,14 @@ illiberal_side_scores <- function(d) {
 }
 
 # |left-right difference| between the two top-2 parties, on V-Party's
-# v2pariglef scale (the build carries it negated; the absolute gap is the same).
+# v2pariglef scale (the build carries it negated; the absolute gap is the same),
+# and whether the two sit on opposite sides of the scale's centre (0). Negation
+# does not change which side of 0 a party is on. An exact 0 is on neither side.
 add_lr_gap <- function(d) {
-  d$lr_gap <- abs(d$v2pariglef_neg__winner - d$v2pariglef_neg__loser)
+  w <- d$v2pariglef_neg__winner
+  l <- d$v2pariglef_neg__loser
+  d$lr_gap <- abs(w - l)
+  d$lr_straddle <- (w < 0 & l > 0) | (w > 0 & l < 0)
   d
 }
 
@@ -1233,6 +1244,22 @@ add_funke_overlap <- function(d, window) {
   d
 }
 
+# Keep only pairs on opposite sides of the left-right centre, logging the cost
+# the way apply_threshold() does. A pair missing either score is dropped.
+apply_lr_straddle <- function(d, on) {
+  if (!isTRUE(on)) {
+    cat(sprintf("  %-16s no restriction (%d rows kept)\n", "LR_STRADDLE", nrow(d)))
+    return(d)
+  }
+  n0 <- nrow(d)
+  d <- d[d$lr_straddle %in% TRUE, , drop = FALSE]
+  cat(sprintf(
+    "  %-16s one party left of centre (v2pariglef < 0), the other right (> 0):  %d -> %d rows (%d dropped)\n",
+    "LR_STRADDLE", n0, nrow(d), n0 - nrow(d)
+  ))
+  d
+}
+
 # Every column the sample restrictions and the heterogeneity covariates read
 # that is derived from the build at load time rather than stored in it.
 add_design_columns <- function(d, window) {
@@ -1255,9 +1282,11 @@ sample_opts <- function(instrument = DEFAULT_INSTRUMENT,
                         threshold_scale = NA_character_,
                         lr_gap_min = DEFAULT_LR_GAP_MIN,
                         lr_gap_max = DEFAULT_LR_GAP_MAX,
+                        lr_straddle = DEFAULT_LR_STRADDLE,
                         exclude_funke = DEFAULT_EXCLUDE_FUNKE,
                         rd_covariates = DEFAULT_RD_COVARIATES) {
   stopifnot(
+    is.logical(lr_straddle), length(lr_straddle) == 1,
     is.logical(exclude_funke), length(exclude_funke) == 1,
     rd_covariates %in% c("none", "lp")
   )
@@ -1345,6 +1374,7 @@ prepare_rdd_sample <- function(opts) {
     threshold_scale = scale,
     lr_gap_min = thr$lr_min$absolute,
     lr_gap_max = thr$lr_max$absolute,
+    lr_straddle = opts$lr_straddle,
     exclude_funke = opts$exclude_funke,
     rd_covariates = opts$rd_covariates,
     incl_election_year = opts$incl,
@@ -1363,6 +1393,7 @@ prepare_rdd_sample <- function(opts) {
   if (scale == "raw") cfg$threshold_scale <- NULL
   if (thr$lr_min$kind == "none") cfg$lr_gap_min <- cfg$lr_gap_min_spec <- NULL
   if (thr$lr_max$kind == "none") cfg$lr_gap_max <- cfg$lr_gap_max_spec <- NULL
+  if (!opts$lr_straddle) cfg$lr_straddle <- NULL
   if (!opts$exclude_funke) cfg$exclude_funke <- NULL
   if (opts$rd_covariates == "none") cfg$rd_covariates <- NULL
 
@@ -1372,6 +1403,7 @@ prepare_rdd_sample <- function(opts) {
   d <- apply_threshold(d, oth_var, thr$other, "OTHER_CUTOFF_MAX", op = "<=")
   d <- apply_threshold(d, "lr_gap", thr$lr_min, "LR_GAP_MIN", op = ">=")
   d <- apply_threshold(d, "lr_gap", thr$lr_max, "LR_GAP_MAX", op = "<=")
+  d <- apply_lr_straddle(d, opts$lr_straddle)
   if (opts$exclude_funke) {
     n0 <- nrow(d)
     d <- d[!d$funke_overlap, , drop = FALSE]
@@ -1390,6 +1422,7 @@ prepare_rdd_sample <- function(opts) {
     threshold_scale = scale,
     lr_gap_min = thr$lr_min$absolute,
     lr_gap_max = thr$lr_max$absolute,
+    lr_straddle = opts$lr_straddle,
     exclude_funke = opts$exclude_funke
   )
   list(d = d, cfg = cfg, label = label, build_file = build_file)

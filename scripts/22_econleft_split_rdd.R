@@ -34,7 +34,7 @@
 #
 #   Rscript --no-init-file scripts/22_econleft_split_rdd.R
 #   Rscript --no-init-file -e 'SPLIT_SAMPLE <- "popucut"; source("scripts/22_econleft_split_rdd.R")'
-#   Rscript --no-init-file -e 'SPLIT_SAMPLE <- "half"; SPLIT_LR_GAP_MIN <- 1; source("scripts/22_econleft_split_rdd.R")'
+#   Rscript --no-init-file -e 'SPLIT_SAMPLE <- "straddle"; source("scripts/22_econleft_split_rdd.R")'
 #
 # Output: output/runs/<spec>/econleft_split/
 #           econleft_split_results.csv   subset x window x outcome
@@ -75,10 +75,13 @@ SPLIT_SAMPLES <- list(
     score_gap_min = -Inf,
     illiberal_cutoff = "popucut", other_cutoff_max = "popucut"
   ),
-  # One top-2 party above 0.5 on anti-pluralism and the other at or below it:
-  # the looser "one side illiberal" sample for the bundled-characteristics
-  # split, where the PopuList 0.65 cut is too conservative.
-  half = list(score_gap_min = -Inf, illiberal_cutoff = 0.5, other_cutoff_max = 0.5)
+  # The two parties on opposite sides of the left-right centre (v2pariglef < 0
+  # for one, > 0 for the other), with no anti-pluralism threshold: every
+  # election where "right" and "left" mean right and left of centre.
+  straddle = list(
+    score_gap_min = -Inf, illiberal_cutoff = -Inf, other_cutoff_max = Inf,
+    lr_straddle = TRUE
+  )
 )
 if (!exists("SPLIT_SAMPLE")) SPLIT_SAMPLE <- "full"
 if (!SPLIT_SAMPLE %in% names(SPLIT_SAMPLES)) {
@@ -106,6 +109,9 @@ if (!exists("SPLIT_OTHER_CUTOFF_MAX")) {
 # carries the same floor (LR_GAP_MIN in 12), and the output lands in that
 # spec's folder.
 if (!exists("SPLIT_LR_GAP_MIN")) SPLIT_LR_GAP_MIN <- DEFAULT_LR_GAP_MIN
+if (!exists("SPLIT_LR_STRADDLE")) {
+  SPLIT_LR_STRADDLE <- SPLIT_SAMPLES[[SPLIT_SAMPLE]]$lr_straddle %||% DEFAULT_LR_STRADDLE
+}
 
 split_load_build <- function(n) {
   load_build(
@@ -176,14 +182,16 @@ RESTRICTIONS <- list(
 # would be one more place for the pair condition to drift out of agreement
 # with the main spec -- the mistake already caught once in 17's run_level().
 apply_restrictions <- function(d) {
+  if (!"lr_straddle" %in% names(d)) d <- add_lr_gap(d)
   for (r in RESTRICTIONS) d <- apply_threshold(d, r$var, r$thr, r$name, op = r$op)
-  d
+  apply_lr_straddle(d, SPLIT_LR_STRADDLE)
 }
 
 restriction_label <- restriction_sentence(
   SPLIT_SCORE_GAP_MIN, SPLIT_ILLIBERAL_CUTOFF, SPLIT_OTHER_CUTOFF_MAX,
   none = "no restriction beyond the split",
-  lr_gap_min = SPLIT_LR_GAP_MIN
+  lr_gap_min = SPLIT_LR_GAP_MIN,
+  lr_straddle = SPLIT_LR_STRADDLE
 )
 
 # The split is taken within ONE spec, so its output lives in that spec's folder,
@@ -194,6 +202,7 @@ spec_cfg <- list(
   illiberal_cutoff = SPLIT_ILLIBERAL_CUTOFF,
   other_cutoff_max = SPLIT_OTHER_CUTOFF_MAX,
   lr_gap_min = SPLIT_LR_GAP_MIN,
+  lr_straddle = SPLIT_LR_STRADDLE,
   incl_election_year = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
   placebo = PLACEBO_PRE_WINDOW
 )
@@ -350,6 +359,7 @@ write_sweep_config(
     illiberal_cutoff = SPLIT_ILLIBERAL_CUTOFF,
     other_cutoff_max = SPLIT_OTHER_CUTOFF_MAX,
     lr_gap_min = SPLIT_LR_GAP_MIN,
+    lr_straddle = SPLIT_LR_STRADDLE,
     sample = restriction_label
   ),
   swept = list(

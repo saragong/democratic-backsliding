@@ -55,6 +55,7 @@ if (!exists("SWEEP_OTHER_CUTOFF_MAX")) {
 # local-projection covariate adjustment. All default to no-ops.
 if (!exists("SWEEP_LR_GAP_MIN")) SWEEP_LR_GAP_MIN <- DEFAULT_LR_GAP_MIN
 if (!exists("SWEEP_LR_GAP_MAX")) SWEEP_LR_GAP_MAX <- DEFAULT_LR_GAP_MAX
+if (!exists("SWEEP_LR_STRADDLE")) SWEEP_LR_STRADDLE <- DEFAULT_LR_STRADDLE
 if (!exists("SWEEP_EXCLUDE_FUNKE")) SWEEP_EXCLUDE_FUNKE <- DEFAULT_EXCLUDE_FUNKE
 if (!exists("SWEEP_RD_COVARIATES")) SWEEP_RD_COVARIATES <- DEFAULT_RD_COVARIATES
 # Passed explicitly into every child script below. run_script_with() builds a
@@ -116,6 +117,7 @@ cat(sprintf(
     SWEEP_SCORE_GAP_MIN, SWEEP_ILLIBERAL_CUTOFF, SWEEP_OTHER_CUTOFF_MAX,
     threshold_scale = SWEEP_THRESHOLD_SCALE,
     lr_gap_min = SWEEP_LR_GAP_MIN, lr_gap_max = SWEEP_LR_GAP_MAX,
+    lr_straddle = SWEEP_LR_STRADDLE,
     exclude_funke = SWEEP_EXCLUDE_FUNKE
   )
 ))
@@ -170,6 +172,7 @@ for (n in if (SWEEP_REESTIMATE) WINDOWS else integer(0)) {
         THRESHOLD_SCALE = SWEEP_THRESHOLD_SCALE,
         LR_GAP_MIN = SWEEP_LR_GAP_MIN,
         LR_GAP_MAX = SWEEP_LR_GAP_MAX,
+        LR_STRADDLE = SWEEP_LR_STRADDLE,
         EXCLUDE_FUNKE = SWEEP_EXCLUDE_FUNKE,
         RD_COVARIATES = SWEEP_RD_COVARIATES,
         # Only the main treatment definition gets the full figure set; the other
@@ -196,6 +199,7 @@ spec_cfg <- list(
   threshold_scale = SWEEP_THRESHOLD_SCALE,
   lr_gap_min = SWEEP_LR_GAP_MIN,
   lr_gap_max = SWEEP_LR_GAP_MAX,
+  lr_straddle = SWEEP_LR_STRADDLE,
   exclude_funke = SWEEP_EXCLUDE_FUNKE,
   rd_covariates = SWEEP_RD_COVARIATES,
   incl_election_year = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
@@ -254,6 +258,7 @@ restriction_label <- restriction_sentence(
   SWEEP_SCORE_GAP_MIN, SWEEP_ILLIBERAL_CUTOFF, SWEEP_OTHER_CUTOFF_MAX,
   threshold_scale = SWEEP_THRESHOLD_SCALE,
   lr_gap_min = SWEEP_LR_GAP_MIN, lr_gap_max = SWEEP_LR_GAP_MAX,
+  lr_straddle = SWEEP_LR_STRADDLE,
   exclude_funke = SWEEP_EXCLUDE_FUNKE
 )
 if (SWEEP_RD_COVARIATES == "lp") {
