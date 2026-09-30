@@ -86,7 +86,7 @@ split_rows <- function(cfg, label) {
     transmute(
       group = "Left/right split (anti-pluralist is the more ... of the two)",
       label = sprintf("%s: %s", label, if_else(subset == "right", "more RIGHT-wing", "more LEFT-wing")),
-      spec = spec_slug(cfg), n = n_outcome, n_treated = NA_integer_,
+      spec = spec_slug(cfg), n = n_outcome, n_treated = n_outcome_treated,
       fs = first_stage_coef, fs_se = first_stage_se, fs_p = first_stage_pval,
       rf = rd_estimate, rf_se = rd_se, rf_p = rd_pval,
       late = late_estimate, late_se = late_se, late_p = late_pval,

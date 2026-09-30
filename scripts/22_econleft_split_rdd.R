@@ -332,6 +332,9 @@ for (n in SPLIT_WINDOWS) {
         first_stage_coef = fs$coef, first_stage_se = fs$se,
         first_stage_pval = fs$pval, n_first_stage = fs$N,
         n_outcome = rf$N,
+        # Treated among the elections this outcome's fit used -- the same
+        # mask and definition as n_outcome_treated in 12_rdd_analysis.R.
+        n_outcome_treated = rd_n_treated(dd[[v]], dd$running_var, dd[[SPLIT_TREATMENT]]),
         rd_estimate = rf$coef, rd_se = rf$se, rd_pval = rf$pval,
         rd_ci_lo = rf$ci_lo, rd_ci_hi = rf$ci_hi, bandwidth = rf$bw,
         late_estimate = late$coef, late_se = late$se, late_pval = late$pval,
