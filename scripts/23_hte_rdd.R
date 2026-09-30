@@ -178,6 +178,47 @@ center_at_cutoff <- function(v, x, h) {
   (v - st[["mean"]]) / st[["sd"]]
 }
 
+# The same fit at HALF the data-driven bandwidth, as a standing check that a
+# heterogeneity term comes from close elections: at h ~ 20 vote-margin points
+# the fits still use races decided by 15-20 points, and a pattern that lives
+# there (the polyarchy pre-trend: +0.10 at h = 20.7, ~0 at h = 10) is not
+# heterogeneity in the close-election effect. Returned as *_half columns keyed
+# by term.
+#
+# HC1 (CR1 with clustering) rather than rdhte's default HC3: rdhte 0.2.0's HC3
+# path mis-sizes its leverage correction when h is supplied (it warns "longer
+# object length is not a multiple of shorter object length"). HC1 gives the
+# same estimates and SEs within a few percent where both run.
+half_bw_rows <- function(y, x, covs, ce, cl, binary, h_main) {
+  h_half <- h_main / 2
+  f <- tryCatch(
+    rdhte(y, x, covs.hte = covs, covs.eff = ce, cluster = cl, h = h_half,
+          vce = if (is.null(cl)) "hc1" else "cr1", bw.joint = binary),
+    error = function(e) NULL
+  )
+  if (is.null(f)) {
+    return(NULL)
+  }
+  out <- tibble(
+    term = if (binary) paste0("effect at W = ", f$W.lev) else c("effect at cutoff-mean W", "slope per SD of W"),
+    estimate_bc_half = unname(f$Estimate.bc), se_rb_half = unname(f$se.rb),
+    ci_lo_half = f$ci.rb[, 1], ci_hi_half = f$ci.rb[, 2], pval_half = unname(f$pv.rb),
+    h_half = h_half, n_h_half = rowSums(f$Nh)
+  )
+  if (binary && nrow(out) == 2) {
+    v <- f$vcov
+    dlt <- out$estimate_bc_half[2] - out$estimate_bc_half[1]
+    se <- sqrt(v[1, 1] + v[2, 2] - 2 * v[1, 2])
+    z <- qnorm(0.975)
+    out <- bind_rows(out, tibble(
+      term = "change from W = 0 to 1", estimate_bc_half = dlt, se_rb_half = se,
+      ci_lo_half = dlt - z * se, ci_hi_half = dlt + z * se,
+      pval_half = 2 * pnorm(-abs(dlt / se)), h_half = h_half, n_h_half = sum(f$Nh)
+    ))
+  }
+  out
+}
+
 fit_one_w <- function(dd, w, covs_eff, cluster, h_pooled) {
   wv <- dd[[w]]
   ok <- !is.na(wv) & !is.na(dd[[HTE_OUTCOME]]) &
@@ -282,6 +323,12 @@ fit_one_w <- function(dd, w, covs_eff, cluster, h_pooled) {
       pval = 2 * pnorm(-abs(diff / se)), note = NA_character_
     ))
   }
+  # Half-bandwidth check. Not for decade: its levels each have their own
+  # bandwidth, and at half width most fall below HTE_MIN_GROUP_H.
+  if (!is_factor) {
+    half <- half_bw_rows(y, x, covs, ce, cl, binary, fit$h[1, 1])
+    if (!is.null(half)) base <- left_join(base, half, by = "term")
+  }
   if (is_factor && nrow(base) > 2) {
     # Heterogeneity across more than two groups: a Wald test that every group
     # effect is equal, contrasting each with the first, on rdhte's own
@@ -371,6 +418,16 @@ for (samp_name in names(HTE_SAMPLES)) {
     # is true of the joint rows too.
     if (HTE_COVS_EFF) list(covs.eff = as.name(z_eff))
   ))
+  jfit_half <- tryCatch(do.call(rdhte, c(
+    list(
+      y = as.name(HTE_OUTCOME), x = as.name("running_var"),
+      covs.hte = paste("~", paste(joint_vars, collapse = " + ")),
+      data = jd, h = jfit$h[1, 1] / 2,
+      vce = if (HTE_CLUSTER) "cr1" else "hc1"
+    ),
+    if (HTE_CLUSTER) list(cluster = as.name("country_text_id")),
+    if (HTE_COVS_EFF) list(covs.eff = as.name(z_eff))
+  )), error = function(e) NULL)
   joint <- tibble(
     w = c("(joint) intercept", paste0("(joint) ", joint_vars)), binary = FALSE, n = nrow(jd),
     term = c("effect at cutoff-mean W", rep("slope per SD of W", length(joint_vars))),
@@ -381,6 +438,14 @@ for (samp_name in names(HTE_SAMPLES)) {
     w_sd_close = c(NA, vapply(joint_st, `[[`, numeric(1), "sd")),
     note = NA_character_
   )
+  if (!is.null(jfit_half)) {
+    joint <- joint |> mutate(
+      estimate_bc_half = unname(jfit_half$Estimate.bc), se_rb_half = unname(jfit_half$se.rb),
+      ci_lo_half = jfit_half$ci.rb[, 1], ci_hi_half = jfit_half$ci.rb[, 2],
+      pval_half = unname(jfit_half$pv.rb), h_half = jfit$h[1, 1] / 2,
+      n_h_half = sum(jfit_half$Nh[1, ])
+    )
+  }
 
   res <- bind_rows(res, joint) |>
     mutate(
@@ -459,7 +524,8 @@ for (samp_name in names(HTE_SAMPLES)) {
       "binary W as 0/1, the change in the effect from W = 0 to W = 1 (one bandwidth). Pooled effect %.3f (robust SE %.3f).",
       "That is rdhte's estimate, which sets the bias-correction bandwidth equal to h; the headline rdrobust estimate on this",
       "sample, which estimates that bandwidth separately, is %.3f (%.3f). Rows are comparable with the rdhte number.",
-      "Bias-corrected estimates, robust 95%% CIs; orange = p < 0.05, not adjusted for testing many W.%s"
+      "Bias-corrected estimates, robust 95%% CIs; orange = p < 0.05, not adjusted for testing many W. Hollow points: the same fit at half",
+      "the data-driven bandwidth (HC1 variance), i.e. closer races only -- a pattern that vanishes there is not about close elections.%s"
     ),
     prep$label, HTE_WINDOW, pooled$Estimate.bc, pooled$se.rb,
     headline$coef, headline$se,
@@ -477,11 +543,27 @@ for (samp_name in names(HTE_SAMPLES)) {
   unlink(file.path(out_dir, paste0(stem, "_forest.png")))
   for (fam in intersect(levels(plot_dat$family), unique(as.character(plot_dat$family)))) {
     fd <- plot_dat |> filter(family == fam) |> mutate(label = fct_drop(label))
-    p <- ggplot(fd, aes(x = estimate_bc, y = label, colour = sig)) +
+    # Two estimates per row: the data-driven bandwidth (filled) and half of
+    # it (hollow, just below), so a pattern that disappears in the closest
+    # races is visible on the figure itself. Decade has no half-bandwidth fit.
+    levs <- levels(fd$label)
+    has_half <- "estimate_bc_half" %in% names(fd)
+    both <- bind_rows(
+      fd |> transmute(y = as.numeric(label), est = estimate_bc, lo = ci_lo, hi = ci_hi,
+                      sig = sig, bw = "data-driven h"),
+      if (has_half) {
+        fd |> transmute(y = as.numeric(label) - 0.3, est = estimate_bc_half, lo = ci_lo_half,
+                        hi = ci_hi_half, sig = pval_half < 0.05, bw = "h / 2")
+      }
+    ) |> filter(!is.na(est))
+    p <- ggplot(both, aes(x = est, y = y, colour = sig)) +
       geom_vline(xintercept = 0, colour = "grey50", linewidth = 0.4) +
-      geom_errorbarh(aes(xmin = ci_lo, xmax = ci_hi), height = 0, linewidth = 0.7) +
-      geom_point(size = 2.2) +
-      scale_colour_manual(values = c(`TRUE` = "#D55E00", `FALSE` = "grey35"), guide = "none") +
+      geom_errorbarh(aes(xmin = lo, xmax = hi, linetype = bw), height = 0, linewidth = 0.7) +
+      geom_point(aes(shape = bw), size = 2.2, fill = "white") +
+      scale_shape_manual(values = c("data-driven h" = 16, "h / 2" = 21), name = NULL) +
+      scale_linetype_manual(values = c("data-driven h" = "solid", "h / 2" = "22"), name = NULL) +
+      scale_y_continuous(breaks = seq_along(levs), labels = levs, expand = expansion(add = 0.6)) +
+      scale_colour_manual(values = c(`TRUE` = "#D55E00", `FALSE` = "grey35"), guide = "none", na.value = "grey35") +
       labs(
         title = sprintf(
           "%s. Heterogeneity in the effect of a narrow anti-pluralist win on %s",
@@ -504,7 +586,8 @@ for (samp_name in names(HTE_SAMPLES)) {
         axis.text.y = element_text(size = 10.5),
         # Anchored to the whole figure, not the panel: the y labels are long,
         # and a panel-anchored title runs off the right edge.
-        plot.title.position = "plot"
+        plot.title.position = "plot",
+        legend.position = "top", legend.justification = "left"
       )
     ggsave(
       file.path(out_dir, sprintf("%s_forest_%s.png", stem, FAMILY_FILES[[fam]])), p,
