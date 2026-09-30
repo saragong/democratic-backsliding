@@ -42,6 +42,18 @@
 # named in the CSV's note. A small joint
 # model puts the party-score gaps and the growth pre-trend in together.
 #
+# ESTIMATOR. rdhte's bias correction differs from rdrobust's, so its pooled
+# effect is NOT the headline number from 12_rdd_analysis.R. rdhte fixes the
+# bias-correction bandwidth b equal to the main bandwidth h and uses an HC3
+# variance; rdrobust (the headline) estimates b separately -- about twice h here
+# -- with a nearest-neighbour variance. The conventional estimates agree (full
+# sample, w5: -0.047 vs -0.046); the bias-corrected ones do not (-0.078 vs
+# -0.053), and rdhte's SE is larger (0.035 vs 0.027). Both are valid robust
+# bias-corrected estimates. Every row here uses rdhte, so rows are comparable
+# with rdhte's pooled effect, not with the headline; both pooled numbers are
+# written to the CSV and the figure. (rdrobust at b = h with vce = "hc3"
+# reproduces rdhte's pooled estimate exactly.)
+#
 # The sample is any spec 12_rdd_analysis.R can run -- prepare_rdd_sample() cuts
 # it identically -- and the output lands in that spec's folder.
 #
@@ -269,9 +281,16 @@ for (samp_name in names(HTE_SAMPLES)) {
     covs.eff = if (is.null(covs_eff)) NULL else covs_eff[ok],
     cluster = if (HTE_CLUSTER) dd$country_text_id[ok] else NULL
   )
+  # The headline estimator on the same sample, for reference only: see
+  # ESTIMATOR in the header for why the two pooled numbers differ.
+  headline <- extract_rd(safe_rdrobust(
+    dd[[HTE_OUTCOME]], dd$running_var,
+    covs = if (is.null(covs_eff)) NULL else covs_eff
+  ))
   cat(sprintf(
-    "Pooled sharp RD on %s: %.4f (bc %.4f, robust SE %.4f), h = %.2f, N = %d\n",
-    HTE_OUTCOME, pooled$Estimate, pooled$Estimate.bc, pooled$se.rb, pooled$h[1, 1], sum(ok)
+    "Pooled sharp RD on %s: %.4f (bc %.4f, robust SE %.4f), h = %.2f, N = %d\n  (rdrobust, the headline estimator, on the same sample: bc %.4f, robust SE %.4f -- rdhte's bias-correction bandwidth is h, rdrobust's is estimated)\n",
+    HTE_OUTCOME, pooled$Estimate, pooled$Estimate.bc, pooled$se.rb, pooled$h[1, 1], sum(ok),
+    headline$coef, headline$se
   ))
 
   res <- map_dfr(w_vars, function(w) fit_one_w(dd, w, covs_eff, HTE_CLUSTER, pooled$h[1, 1]))
@@ -320,6 +339,13 @@ for (samp_name in names(HTE_SAMPLES)) {
       outcome = HTE_OUTCOME,
       pooled_estimate = pooled$Estimate, pooled_estimate_bc = pooled$Estimate.bc,
       pooled_se_rb = pooled$se.rb,
+      pooled_rdrobust_estimate_bc = headline$coef,
+      pooled_rdrobust_se_rb = headline$se,
+      estimator_note = paste(
+        "All rows use rdhte, whose bias-correction bandwidth equals h (vce HC3);",
+        "the headline rdrobust estimate (pooled_rdrobust_*) estimates it separately (vce NN),",
+        "so its bias-corrected effect differs. Compare rows with pooled_estimate_bc."
+      ),
       covs_eff = if (HTE_COVS_EFF) paste0("Z_", HTE_OUTCOME) else "none",
       cluster = if (HTE_CLUSTER) "country" else "none",
       .before = 1
@@ -369,9 +395,12 @@ for (samp_name in names(HTE_SAMPLES)) {
           "Continuous W is centred at its mean among close elections (kernel-weighted at the pooled bandwidth) and scaled by its SD,",
           "so each row is the change in the effect per SD of W, starting from the pooled effect at the typical close election's W;",
           "binary W as 0/1, the change in the effect from W = 0 to W = 1 (one bandwidth). Pooled effect %.3f (robust SE %.3f).",
+          "That is rdhte's estimate, which sets the bias-correction bandwidth equal to h; the headline rdrobust estimate on this",
+          "sample, which estimates that bandwidth separately, is %.3f (%.3f). Rows are comparable with the rdhte number.",
           "Bias-corrected estimates, robust 95%% CIs; orange = p < 0.05, not adjusted for testing many W.%s"
         ),
         prep$label, HTE_WINDOW, pooled$Estimate.bc, pooled$se.rb,
+        headline$coef, headline$se,
         if (HTE_CLUSTER) " SEs clustered by country." else ""
       ), 130), collapse = "\n"),
       x = "Heterogeneity in the RD effect (log points)", y = NULL
