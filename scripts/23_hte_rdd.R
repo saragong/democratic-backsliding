@@ -27,7 +27,11 @@
 #   design  OECD, decade, presidential, prior backsliding
 # Continuous W is standardised within the estimation sample, so tau is the
 # effect at the sample mean and d is per standard deviation. Binary W is a
-# factor, giving one effect per group and their difference. A small joint
+# factor, giving one effect per group and their difference. Decade is a
+# factor too: one effect per decade (dated t-1, like every W), plus a Wald test
+# that they are all equal. A decade with fewer than HTE_MIN_GROUP elections, or
+# fewer than HTE_MIN_GROUP_H inside its bandwidth, is left out of that fit and
+# named in the CSV's note. A small joint
 # model puts the party-score gaps and the growth pre-trend in together.
 #
 # The sample is any spec 12_rdd_analysis.R can run -- prepare_rdd_sample() cuts
@@ -63,6 +67,18 @@ if (!exists("HTE_CLUSTER")) HTE_CLUSTER <- FALSE
 # A W with fewer usable elections than this, or a group smaller than this
 # within the bandwidth, is reported but not estimated.
 if (!exists("HTE_MIN_N")) HTE_MIN_N <- 100
+# Categorical W estimated as one effect per level rather than as a slope.
+FACTOR_W <- c("W_decade")
+# A level of a categorical W with fewer elections than this is dropped from
+# its fit: the 1960s decade, for instance, is only the 17 elections held in
+# 1970 (t-1 = 1969), 7 of them within 20 points of the cutoff.
+if (!exists("HTE_MIN_GROUP")) HTE_MIN_GROUP <- 30
+# ... and a level with fewer elections than this INSIDE its own bandwidth is
+# dropped and the fit redone once. Each level gets its own bandwidth, so a
+# level can clear HTE_MIN_GROUP overall and still be nearly empty near the
+# cutoff (the 1970s in the PopuList sample: 38 elections, 4 in-bandwidth), and
+# one degenerate level leaves the whole fit without standard errors.
+if (!exists("HTE_MIN_GROUP_H")) HTE_MIN_GROUP_H <- 20
 
 W_FAMILY <- function(w) {
   case_when(
@@ -108,23 +124,65 @@ fit_one_w <- function(dd, w, covs_eff, cluster) {
   x <- dd$running_var[ok]
   ce <- if (is.null(covs_eff)) NULL else covs_eff[ok]
   cl <- if (cluster) dd$country_text_id[ok] else NULL
+  is_factor <- w %in% FACTOR_W
+  dropped_note <- NA_character_
+  if (is_factor) {
+    counts <- table(wv[ok])
+    small <- names(counts)[counts < HTE_MIN_GROUP]
+    if (length(small) > 0) {
+      dropped_note <- sprintf(
+        "dropped levels with < %d elections: %s",
+        HTE_MIN_GROUP, paste(sprintf("%s (%d)", small, counts[small]), collapse = ", ")
+      )
+      keep <- !(as.character(wv[ok]) %in% small)
+      ok[which(ok)[!keep]] <- FALSE
+      y <- dd[[HTE_OUTCOME]][ok]
+      x <- dd$running_var[ok]
+      ce <- if (is.null(covs_eff)) NULL else covs_eff[ok]
+      cl <- if (cluster) dd$country_text_id[ok] else NULL
+    }
+  }
   binary <- is_binary(wv[ok])
-  covs <- if (binary) factor(wv[ok]) else as.numeric(scale(wv[ok]))
+  covs <- if (binary || is_factor) factor(wv[ok]) else as.numeric(scale(wv[ok]))
   fit <- tryCatch(
     rdhte(y, x, covs.hte = covs, covs.eff = ce, cluster = cl),
     error = function(e) e
   )
+  if (is_factor && !inherits(fit, "error")) {
+    thin <- fit$W.lev[rowSums(fit$Nh) < HTE_MIN_GROUP_H]
+    if (length(thin) > 0) {
+      dropped_note <- paste(na.omit(c(
+        dropped_note,
+        sprintf(
+          "dropped levels with < %d elections in their bandwidth: %s",
+          HTE_MIN_GROUP_H,
+          paste(sprintf("%s (%d)", thin, rowSums(fit$Nh)[fit$W.lev %in% thin]), collapse = ", ")
+        )
+      )), collapse = "; ")
+      keep <- !(as.character(covs) %in% thin)
+      y <- y[keep]; x <- x[keep]
+      ce <- if (is.null(ce)) NULL else ce[keep]
+      cl <- if (is.null(cl)) NULL else cl[keep]
+      covs <- droplevels(covs[keep])
+      ok[which(ok)[!keep]] <- FALSE
+      fit <- tryCatch(
+        rdhte(y, x, covs.hte = covs, covs.eff = ce, cluster = cl),
+        error = function(e) e
+      )
+    }
+  }
   if (inherits(fit, "error")) {
     return(tibble(w = w, term = NA_character_, note = conditionMessage(fit)))
   }
+  grouped <- binary || is_factor
   base <- tibble(
     w = w, binary = binary, n = sum(ok),
-    term = if (binary) paste0("group ", fit$W.lev) else c("effect at mean W", "slope per SD of W"),
+    term = if (grouped) paste0("group ", fit$W.lev) else c("effect at mean W", "slope per SD of W"),
     estimate = unname(fit$Estimate), estimate_bc = unname(fit$Estimate.bc),
     se_rb = unname(fit$se.rb), ci_lo = fit$ci.rb[, 1], ci_hi = fit$ci.rb[, 2],
     pval = unname(fit$pv.rb),
     h = fit$h[, 1], n_h = rowSums(fit$Nh),
-    note = NA_character_
+    note = dropped_note
   )
   if (binary && nrow(base) == 2) {
     # The heterogeneity for a binary W is the difference between the two
@@ -138,6 +196,22 @@ fit_one_w <- function(dd, w, covs_eff, cluster) {
       estimate = base$estimate[2] - base$estimate[1], estimate_bc = diff,
       se_rb = se, ci_lo = diff - z * se, ci_hi = diff + z * se,
       pval = 2 * pnorm(-abs(diff / se)), note = NA_character_
+    ))
+  }
+  if (is_factor && nrow(base) > 2) {
+    # Heterogeneity across more than two groups: a Wald test that every group
+    # effect is equal, contrasting each with the first, on rdhte's own
+    # group-level covariance matrix of the bias-corrected estimates.
+    b <- base$estimate_bc
+    k <- length(b)
+    C <- cbind(-1, diag(k - 1))
+    cb <- C %*% b
+    stat <- drop(t(cb) %*% solve(C %*% fit$vcov %*% t(C)) %*% cb)
+    base <- bind_rows(base, tibble(
+      w = w, binary = FALSE, n = sum(ok),
+      term = sprintf("equality across %d groups (chi2, %d df)", k, k - 1),
+      estimate = stat, pval = pchisq(stat, df = k - 1, lower.tail = FALSE),
+      note = dropped_note
     ))
   }
   base
@@ -162,7 +236,7 @@ for (samp_name in names(HTE_SAMPLES)) {
   covs_eff <- if (HTE_COVS_EFF) dd[[paste0("Z_", HTE_OUTCOME)]] else NULL
   if (HTE_COVS_EFF) stopifnot(!is.null(covs_eff))
 
-  w_vars <- setdiff(grep("^W_", names(cv), value = TRUE), "W_decade")
+  w_vars <- grep("^W_", names(cv), value = TRUE)
   # Covariates that are constant in this sample (e.g. a restriction fixes
   # them) carry no heterogeneity to estimate.
   w_vars <- w_vars[vapply(w_vars, function(w) length(unique(na.omit(dd[[w]]))) > 1, logical(1))]
@@ -240,9 +314,24 @@ for (samp_name in names(HTE_SAMPLES)) {
 
   # ---- forest plot: the heterogeneity terms only ----------------------------
   plot_dat <- res |>
-    filter(term %in% c("slope per SD of W", "difference (1 - 0)"), !is.na(estimate_bc)) |>
+    filter(
+      term %in% c("slope per SD of W", "difference (1 - 0)") |
+        (w %in% FACTOR_W & str_starts(term, "group ")),
+      !is.na(estimate_bc)
+    ) |>
     mutate(
-      family = factor(family, levels = c("Party scores", "Country history (pre-election)", "Design", "Joint model")),
+      # A categorical W is shown as its per-level EFFECTS, in its own panel,
+      # since there is no single heterogeneity term to plot.
+      family = if_else(w %in% FACTOR_W, "Decade: effect in each", family),
+      label = if_else(
+        w %in% FACTOR_W,
+        paste0(str_remove(term, "^group "), "s"),
+        label
+      ),
+      family = factor(family, levels = c(
+        "Party scores", "Country history (pre-election)", "Design",
+        "Decade: effect in each", "Joint model"
+      )),
       sig = pval < 0.05,
       label = fct_reorder(label, estimate_bc)
     )
