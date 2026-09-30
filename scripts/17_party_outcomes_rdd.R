@@ -250,7 +250,8 @@ estimate_cell <- function(data, var) {
 # country with too few party-years to compute its own SD.
 run_level <- function(axis_var, spec) {
   thr <- resolve_threshold(
-    parse_threshold(spec, axis_var), d_full[[axis_var]], axis_var
+    parse_threshold(spec, axis_var), d_full[[axis_var]], axis_var,
+    instrument = ILLIBERALISM_VAR
   )
   cat(sprintf("\n[%s = %s]\n", axis_var, thr$spec))
   dd <- apply_threshold(d_full, axis_var, thr, axis_var, op = ">=")

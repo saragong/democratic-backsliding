@@ -739,6 +739,9 @@ out <- list(
     pull(percentile_cut) |>
     first(default = NA_real_),
   auc_ctry = fit_ctry$auc,
+  # The within-country fit's own N: smaller than `n` whenever country_pct()
+  # returned NA (a country with fewer than COUNTRY_PCT_MIN_N party-years).
+  n_ctry = fit_ctry$n,
   cutpoints_ctry = thresholds_ctry |>
     filter(!degenerate) |>
     select(method, percentile_cut, sensitivity, specificity, accuracy, youden_j),

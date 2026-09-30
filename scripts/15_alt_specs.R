@@ -134,7 +134,7 @@ for (samp in ALT_SAMPLES) {
     resolve_restrictions(
       alt_load_build(instr),
       score_gap_min = -Inf, illiberal_cutoff = cutoff_spec,
-      other_cutoff_max = Inf
+      other_cutoff_max = Inf, instrument = instr
     )$illiberal_cutoff
   }
   cutoffs <- setNames(vapply(ALT_INSTRUMENTS, resolved_cutoff, numeric(1)), ALT_INSTRUMENTS)

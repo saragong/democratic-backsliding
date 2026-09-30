@@ -150,7 +150,8 @@ local({
   resolved <- resolve_restrictions(
     split_load_build(5L),
     SPLIT_SCORE_GAP_MIN, SPLIT_ILLIBERAL_CUTOFF, SPLIT_OTHER_CUTOFF_MAX,
-    prefix = "SPLIT_", lr_gap_min = SPLIT_LR_GAP_MIN
+    prefix = "SPLIT_", lr_gap_min = SPLIT_LR_GAP_MIN,
+    instrument = SPLIT_INSTRUMENT
   )
   if (resolved$threshold_scale != "raw") {
     stop("22 splits on raw-score samples only.", call. = FALSE)

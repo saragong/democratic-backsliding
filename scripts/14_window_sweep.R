@@ -100,7 +100,8 @@ local({
   resolved <- resolve_restrictions(
     ref, SWEEP_SCORE_GAP_MIN, SWEEP_ILLIBERAL_CUTOFF, SWEEP_OTHER_CUTOFF_MAX,
     prefix = "SWEEP_",
-    lr_gap_min = SWEEP_LR_GAP_MIN, lr_gap_max = SWEEP_LR_GAP_MAX
+    lr_gap_min = SWEEP_LR_GAP_MIN, lr_gap_max = SWEEP_LR_GAP_MAX,
+    instrument = SWEEP_INSTRUMENT
   )
   SWEEP_SCORE_GAP_MIN <<- resolved$score_gap_min
   SWEEP_ILLIBERAL_CUTOFF <<- resolved$illiberal_cutoff

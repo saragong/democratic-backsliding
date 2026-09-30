@@ -116,11 +116,11 @@ apply_sample <- function(d, spec) {
   )
   ill <- resolve_threshold(
     parse_threshold(spec$illiberal_cutoff, "illiberal_cutoff"),
-    d$illiberal_score, "illiberal_cutoff"
+    d$illiberal_score, "illiberal_cutoff", instrument = CELL_INSTRUMENT
   )
   oth <- resolve_threshold(
     parse_threshold(spec$other_cutoff_max, "other_cutoff_max", none_value = Inf),
-    d$other_score, "other_cutoff_max"
+    d$other_score, "other_cutoff_max", instrument = CELL_INSTRUMENT
   )
   d <- apply_threshold(d, "score_gap_z", gap, "score_gap_min", op = ">=")
   d <- apply_threshold(d, "illiberal_score", ill, "illiberal_cutoff", op = ">")

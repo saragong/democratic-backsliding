@@ -84,7 +84,7 @@ pairs <- parties |>
     .groups = "drop"
   )
 
-popucut <- resolve_threshold_abs("popucut", "popucut", NULL)
+popucut <- resolve_threshold_abs("popucut", "popucut", NULL, instrument = EXAMPLES_INSTRUMENT)
 
 ex <- d |>
   select(

@@ -484,7 +484,8 @@ resolve_restrictions <- function(build,
                                  prefix = "",
                                  lr_gap_min = DEFAULT_LR_GAP_MIN,
                                  lr_gap_max = DEFAULT_LR_GAP_MAX,
-                                 threshold_scale = NA_character_) {
+                                 threshold_scale = NA_character_,
+                                 instrument = NULL) {
   if (!"lr_gap" %in% names(build)) build <- add_lr_gap(build)
   ill <- parse_threshold(illiberal_cutoff, paste0(prefix, "ILLIBERAL_CUTOFF"))
   oth <- parse_threshold(
@@ -496,10 +497,12 @@ resolve_restrictions <- function(build,
       score_gap_min, paste0(prefix, "SCORE_GAP_MIN"), build$score_gap_z
     ),
     illiberal_cutoff = resolve_threshold(
-      ill, build[[threshold_var("illiberal", scale)]], paste0(prefix, "ILLIBERAL_CUTOFF")
+      ill, build[[threshold_var("illiberal", scale)]], paste0(prefix, "ILLIBERAL_CUTOFF"),
+      instrument = instrument
     )$absolute,
     other_cutoff_max = resolve_threshold(
-      oth, build[[threshold_var("other", scale)]], paste0(prefix, "OTHER_CUTOFF_MAX")
+      oth, build[[threshold_var("other", scale)]], paste0(prefix, "OTHER_CUTOFF_MAX"),
+      instrument = instrument
     )$absolute,
     lr_gap_min = resolve_threshold_abs(
       lr_gap_min, paste0(prefix, "LR_GAP_MIN"), build$lr_gap
@@ -788,6 +791,7 @@ EXTERNAL_THRESHOLDS <- list(
     file = file.path("data", "populist_threshold.rds"),
     field = "threshold_abs",
     source_script = "01g_populist_threshold.R",
+    apply_score = "v2xpa_antiplural",
     describe = function(x) sprintf(
       "PopuList-calibrated illiberality cut (%s criterion, absolute transfer; fitted on %d party-years, AUC %.3f)",
       x$method, x$n, x$auc
@@ -797,6 +801,7 @@ EXTERNAL_THRESHOLDS <- list(
     file = file.path("data", "populist_threshold.rds"),
     field = "threshold_pct",
     source_script = "01g_populist_threshold.R",
+    apply_score = "v2xpa_antiplural",
     describe = function(x) sprintf(
       "PopuList-calibrated illiberality cut (%s criterion, %.1fth-percentile transfer; fitted on %d party-years, AUC %.3f)",
       x$method, x$percentile, x$n, x$auc
@@ -812,20 +817,22 @@ EXTERNAL_THRESHOLDS <- list(
     file = file.path("data", "populist_threshold.rds"),
     field = "threshold_pct_ctry",
     source_script = "01g_populist_threshold.R",
+    apply_score = "v2xpa_antiplural",
     scale = "ctry_pct",
     describe = function(x) sprintf(
       "PopuList-calibrated within-country percentile cut (%s criterion; fitted on %d party-years, AUC %.3f)",
-      x$method, x$n, x$auc_ctry %||% NA_real_
+      x$method, x$n_ctry, x$auc_ctry
     )
   ),
   popucut_ctry_youden = list(
     file = file.path("data", "populist_threshold.rds"),
     field = "threshold_pct_ctry_youden",
     source_script = "01g_populist_threshold.R",
+    apply_score = "v2xpa_antiplural",
     scale = "ctry_pct",
     describe = function(x) sprintf(
       "PopuList-calibrated within-country percentile cut (youden criterion; fitted on %d party-years, AUC %.3f)",
-      x$n, x$auc_ctry %||% NA_real_
+      x$n_ctry, x$auc_ctry
     )
   )
 )
@@ -996,7 +1003,52 @@ parse_threshold <- function(spec, name = "threshold", none_value = -Inf) {
 # restrictions interact -- changing SCORE_GAP_MIN would silently move an
 # ILLIBERAL_CUTOFF of "q50" as well -- so the axes must be resolved up front to
 # stay independent.
-resolve_threshold <- function(parsed, values, name = "threshold") {
+#
+# `instrument` is required for an external spec (see check_external_instrument).
+# Every external cut was
+# calibrated on ONE score (its apply_score) and means nothing on another: on
+# ep_galtan, which runs 4.5-9.4, the 0.65 PopuList cut keeps every row while
+# the label still says "PopuList-calibrated". So the spec, the file it reads
+# and the run's instrument must all name the same score, or this stops.
+check_external_instrument <- function(parsed, instrument, name = "threshold",
+                                      x = NULL) {
+  if (!identical(parsed$kind, "external")) {
+    return(invisible(TRUE))
+  }
+  ext <- EXTERNAL_THRESHOLDS[[parsed$external]]
+  if (is.null(instrument)) {
+    stop(
+      name, ' = "', parsed$spec, '" is calibrated on ', ext$apply_score,
+      " only, so the caller must pass `instrument` to resolve_threshold() ",
+      "for it to be checked.",
+      call. = FALSE
+    )
+  }
+  if (!identical(instrument, ext$apply_score)) {
+    stop(
+      name, ' = "', parsed$spec, '" is calibrated on ', ext$apply_score,
+      ", but this run's instrument is ", instrument, ". The cut would be ",
+      "applied to a score it was never fitted to -- on a different scale it ",
+      "can keep every row while the label still says PopuList-calibrated.",
+      call. = FALSE
+    )
+  }
+  # The calibration file must also say it was fitted for that score, so a
+  # re-run of 01g with a different APPLY_SCORE cannot slip through under an
+  # old registry entry.
+  if (!is.null(x) && !identical(x$apply_score, ext$apply_score)) {
+    stop(
+      name, ' = "', parsed$spec, '": ', ext$file, " was calibrated for ",
+      x$apply_score %||% "an unrecorded score", ", but this spec is registered for ",
+      ext$apply_score, ". Re-run scripts/", ext$source_script,
+      " or fix EXTERNAL_THRESHOLDS.",
+      call. = FALSE
+    )
+  }
+  invisible(TRUE)
+}
+
+resolve_threshold <- function(parsed, values, name = "threshold", instrument = NULL) {
   if (parsed$kind == "none") {
     parsed$absolute <- parsed$none_value %||% -Inf
     parsed$label <- "no restriction"
@@ -1014,6 +1066,7 @@ resolve_threshold <- function(parsed, values, name = "threshold") {
       )
     }
     x <- readRDS(path)
+    check_external_instrument(parsed, instrument, name, x)
     if (is.null(x[[ext$field]]) || !is.finite(x[[ext$field]])) {
       stop(
         name, ' = "', parsed$spec, '": ', ext$file, " has no usable '",
@@ -1112,9 +1165,11 @@ apply_threshold <- function(data, var, parsed, name,
 # same order, and getting the order wrong (resolving after a filter has bitten)
 # is the mistake resolve_threshold() warns about. One entry point so there is
 # one place to get it right.
-resolve_threshold_abs <- function(spec, name, values, none_value = -Inf) {
+resolve_threshold_abs <- function(spec, name, values, none_value = -Inf,
+                                  instrument = NULL) {
   resolve_threshold(
-    parse_threshold(spec, name, none_value = none_value), values, name
+    parse_threshold(spec, name, none_value = none_value), values, name,
+    instrument = instrument
   )$absolute
 }
 
@@ -1351,6 +1406,10 @@ prepare_rdd_sample <- function(opts) {
       d$lr_gap, "LR_GAP_MAX"
     )
   )
+  # Before the column check below, so a mis-applied PopuList spec stops with
+  # the reason that matters rather than with "missing columns".
+  check_external_instrument(thr$illiberal, opts$instrument, "ILLIBERAL_CUTOFF")
+  check_external_instrument(thr$other, opts$instrument, "OTHER_CUTOFF_MAX")
   scale <- combine_scales(thr$illiberal, thr$other, opts$threshold_scale)
   ill_var <- threshold_var("illiberal", scale)
   oth_var <- threshold_var("other", scale)
@@ -1361,8 +1420,12 @@ prepare_rdd_sample <- function(opts) {
       call. = FALSE
     )
   }
-  thr$illiberal <- resolve_threshold(thr$illiberal, d[[ill_var]], "ILLIBERAL_CUTOFF")
-  thr$other <- resolve_threshold(thr$other, d[[oth_var]], "OTHER_CUTOFF_MAX")
+  thr$illiberal <- resolve_threshold(
+    thr$illiberal, d[[ill_var]], "ILLIBERAL_CUTOFF", instrument = opts$instrument
+  )
+  thr$other <- resolve_threshold(
+    thr$other, d[[oth_var]], "OTHER_CUTOFF_MAX", instrument = opts$instrument
+  )
 
   cfg <- list(
     instrument = opts$instrument,

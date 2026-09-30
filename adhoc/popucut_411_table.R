@@ -92,7 +92,7 @@ SCORE_SHORT <- sub(" \\(.*$", "", PARTY_SCORE_DISPLAY[[T411_INSTRUMENT]])
 
 # ---- the sample --------------------------------------------------------------
 
-cut_abs <- resolve_threshold_abs("popucut", "popucut", NULL)
+cut_abs <- resolve_threshold_abs("popucut", "popucut", NULL, instrument = T411_INSTRUMENT)
 
 d <- t411_load_build(T411_SAMPLE_WINDOW)
 sample_ids <- d |>
@@ -701,8 +701,9 @@ for (i in seq_along(outcomes)) {
     bwselect = "mserd",
     vce = "nn",
     nnmatch = 3,
-    masspoints = "adjust",
-    all = TRUE
+    masspoints = "adjust"
+    # all = TRUE was dropped: rdrobust 4.0 removed the argument and always
+    # returns the conventional, bias-corrected and robust rows.
   )
 
   models[[i]] <- fit
