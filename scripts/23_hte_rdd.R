@@ -147,9 +147,20 @@ for (samp_name in names(HTE_SAMPLES)) {
   opts <- do.call(sample_opts, c(list(window = HTE_WINDOW), HTE_SAMPLES[[samp_name]]))
   cat(sprintf("\n==== sample '%s' ====\n", samp_name))
   prep <- prepare_rdd_sample(opts)
+  # Only what this script uses: the W covariates, and the outcome's Z when it
+  # is the efficiency covariate. Joining all of cv would collide with the Z
+  # columns prepare_rdd_sample() has already joined under rd_covariates = "lp".
   cv <- load_covars(opts$instrument, opts$window, opts$incl, opts$placebo)
+  cv <- cv[, c("election_id", grep("^W_", names(cv), value = TRUE),
+               if (HTE_COVS_EFF) paste0("Z_", HTE_OUTCOME))]
+  missing_ids <- setdiff(prep$d$election_id, cv$election_id)
+  if (length(missing_ids) > 0) {
+    stop(length(missing_ids), " sample elections have no covariates; re-run 11b_build_covariates.R.",
+         call. = FALSE)
+  }
   dd <- left_join(prep$d, cv, by = "election_id", relationship = "one-to-one")
   covs_eff <- if (HTE_COVS_EFF) dd[[paste0("Z_", HTE_OUTCOME)]] else NULL
+  if (HTE_COVS_EFF) stopifnot(!is.null(covs_eff))
 
   w_vars <- setdiff(grep("^W_", names(cv), value = TRUE), "W_decade")
   # Covariates that are constant in this sample (e.g. a restriction fixes
@@ -177,7 +188,8 @@ for (samp_name in names(HTE_SAMPLES)) {
     c("W_gap_v2xpa_antiplural", "W_gap_v2xpa_popul", "W_gap_v2pariglef_neg", "W_pre5_Y_gdp_growth"),
     w_vars
   )
-  jd <- as.data.frame(dd[complete.cases(dd[, c(HTE_OUTCOME, joint_vars)]), ])
+  z_eff <- if (HTE_COVS_EFF) paste0("Z_", HTE_OUTCOME)
+  jd <- as.data.frame(dd[complete.cases(dd[, c(HTE_OUTCOME, joint_vars, z_eff)]), ])
   jd[joint_vars] <- lapply(jd[joint_vars], function(v) as.numeric(scale(v)))
   # rdhte takes several continuous W only as a one-sided formula STRING looked
   # up in `data`, with y, x (and cluster) then given as column names too; a
@@ -188,7 +200,10 @@ for (samp_name in names(HTE_SAMPLES)) {
       covs.hte = paste("~", paste(joint_vars, collapse = " + ")),
       data = jd
     ),
-    if (HTE_CLUSTER) list(cluster = as.name("country_text_id"))
+    if (HTE_CLUSTER) list(cluster = as.name("country_text_id")),
+    # The same efficiency covariate as every other fit, so the covs_eff column
+    # is true of the joint rows too.
+    if (HTE_COVS_EFF) list(covs.eff = as.name(z_eff))
   ))
   joint <- tibble(
     w = c("(joint) intercept", paste0("(joint) ", joint_vars)), binary = FALSE, n = nrow(jd),

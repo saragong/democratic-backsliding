@@ -1824,31 +1824,66 @@ OUTCOME_SOURCES <- c(
 OUTCOME_COMPOUNDED <- c("Y_inflation")
 stopifnot(setequal(names(OUTCOME_SOURCES), ALL_OUTCOME_VARS))
 
-# The per-election covariate files 11b_build_covariates.R writes, one per build:
-# Z_<outcome> (the leave-country-out local projection of that outcome, for
-# covariate adjustment) and W_* (pre-election heterogeneity covariates).
-covars_path <- function(instr, window,
-                        incl = DEFAULT_INCL_ELECTION_YEAR,
-                        placebo = DEFAULT_PLACEBO) {
+# The per-election covariate file 11b_build_covariates.R writes, ONE per
+# instrument and window convention: W_* (pre-election heterogeneity covariates,
+# the same for every window) and Z_w<N>_<outcome> (the leave-country-out local
+# projection of that outcome over window N, for covariate adjustment).
+covars_path <- function(instr, incl = DEFAULT_INCL_ELECTION_YEAR) {
   file.path(
     BUILD_ROOT,
-    sprintf("covars_%s_w%d%s.rds", instr, as.integer(window), build_suffix(incl, placebo))
+    sprintf("covars_%s%s.rds", instr, build_suffix(incl, FALSE))
   )
 }
 
+# election_id, every W_*, and window N's Z columns renamed to Z_<outcome>, so
+# callers see the same names whatever window they asked for.
+#
+# A placebo run gets W only: W is dated before the election and valid for any
+# window, but Z projects the POST-election change and means nothing for the
+# pre-election placebo outcome (prepare_rdd_sample() already refuses lp with a
+# placebo build). Rows are not filtered; callers join on election_id.
+#
+# Stops if the build window N's Z was checked against has been rewritten since
+# the covariates were built -- Z would then describe a different build.
 load_covars <- function(instr, window,
                         incl = DEFAULT_INCL_ELECTION_YEAR,
                         placebo = DEFAULT_PLACEBO) {
-  path <- covars_path(instr, window, incl, placebo)
+  path <- covars_path(instr, incl)
   if (!file.exists(path)) {
     stop(
       "No covariate file at ", path, ". Run 11b_build_covariates.R with ",
-      "ILLIBERALISM_VAR = '", instr, "' and BACKSLIDING_WINDOW_YEARS = ", window,
-      " first.",
+      "ILLIBERALISM_VAR = '", instr, "' first.",
       call. = FALSE
     )
   }
-  readRDS(path)
+  cv <- readRDS(path)
+  stored <- attr(cv, "build_mtime")[as.character(window)]
+  current <- as.numeric(file.info(build_path(instr, window, incl, FALSE))$mtime)
+  if (is.na(stored)) {
+    stop(
+      "Window ", window, " was not built into ", basename(path),
+      " (it has w", paste(attr(cv, "windows"), collapse = ", w"),
+      "). Re-run 11b_build_covariates.R.",
+      call. = FALSE
+    )
+  }
+  if (current > stored) {
+    stop(
+      "The w", window, " build is newer than ", basename(path),
+      ": it was rewritten after the covariates were built, so they may not ",
+      "describe it. Re-run 11b_build_covariates.R.",
+      call. = FALSE
+    )
+  }
+  keep <- c("election_id", grep("^W_", names(cv), value = TRUE))
+  if (!placebo) {
+    zcols <- grep(sprintf("^Z_w%d_", as.integer(window)), names(cv), value = TRUE)
+    stopifnot(length(zcols) > 0)
+    keep <- c(keep, zcols)
+  }
+  out <- cv[, keep]
+  names(out) <- sub("^Z_w[0-9]+_", "Z_", names(out))
+  out
 }
 
 # A self-describing label for one outcome. Inside a multi-series panel the

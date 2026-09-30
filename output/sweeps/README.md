@@ -23,9 +23,11 @@ convention, plus `_pre` for the pre-election placebo.
 
 `output/builds/<instrument>_w<N><suffix>/` holds each build's diagnostics: the
 ERT-episode match accounting from `11_build_rdd_data.R` (which episodes the
-election spine can and cannot reach, and why), and `lp_fit.csv` from
-`11b_build_covariates.R` (the out-of-sample fit of each outcome's local
-projection).
+election spine can and cannot reach, and why). `output/builds/<instrument><suffix>/lp_fit.csv`
+(no window in the folder name) is from `11b_build_covariates.R`: the
+out-of-sample fit of each outcome's local projection, one row per window and
+outcome. The covariates themselves are one file per instrument,
+`data/rdd_build/covars_<instrument><suffix>.rds`, with W once and Z per window.
 
 Heterogeneous-effects output (`23_hte_rdd.R`) is tied to one spec, so it lives
 in `output/runs/<spec>/hte/`, not here.

@@ -40,8 +40,9 @@
 # Computed by downdating one X'X and X'y, not by refitting.
 #
 # Data:   data/combined_panel.rds, data/rdd_build/rdd_<instr>_w<N><sfx>.rds
-# Output: data/rdd_build/covars_<instr>_w<N><sfx>.rds   (election_id, Z_*, W_*)
-#         output/builds/<instr>_w<N><sfx>/lp_fit.csv    out-of-sample fit of each Z
+# Output: data/rdd_build/covars_<instr><sfx>.rds   one row per election: W_*
+#                                                  once, Z_w<N>_<outcome> per window
+#         output/builds/<instr><sfx>/lp_fit.csv    out-of-sample fit of each Z
 # ==============================================================================
 
 library(tidyverse)
@@ -52,6 +53,16 @@ source(here::here("scripts", "vparty_helpers.R"))
 
 if (!exists("ILLIBERALISM_VAR")) ILLIBERALISM_VAR <- DEFAULT_INSTRUMENT
 if (!exists("COVAR_WINDOWS")) COVAR_WINDOWS <- DEFAULT_WINDOWS
+# One file holds every window, so building a subset would silently drop the
+# rest. The simple rule: always build all of them.
+if (!identical(as.integer(COVAR_WINDOWS), as.integer(DEFAULT_WINDOWS))) {
+  stop(
+    "COVAR_WINDOWS must be DEFAULT_WINDOWS (", paste(DEFAULT_WINDOWS, collapse = ","),
+    "): the covariates file holds every window, and building a subset would ",
+    "overwrite it without the others.",
+    call. = FALSE
+  )
+}
 if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
   TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- DEFAULT_INCL_ELECTION_YEAR
 }
@@ -180,10 +191,62 @@ lco_predict <- function(X, y, fit_rows, pred_rows, country) {
 }
 
 # ------------------------------------------------------------------------------
-# Heterogeneity covariates (window-independent country history, plus the
-# party scores from the build)
+# The builds, one per window, and the elections they cover
+#
+# W depends only on the election and the country's history before it, so it
+# must come out the same whichever build it is read from. Checked here rather
+# than assumed: every column W is built from must agree across builds for any
+# election that appears in more than one.
 # ------------------------------------------------------------------------------
 
+builds <- lapply(COVAR_WINDOWS, function(N) {
+  illiberal_side_scores(load_build(
+    ILLIBERALISM_VAR, N, TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, FALSE
+  ))
+})
+names(builds) <- COVAR_WINDOWS
+
+w_inputs <- c(
+  "country_text_id", "election_year", "election_type", "running_var",
+  grep("^(ill|oth)_", names(builds[[1]]), value = TRUE)
+)
+ref <- bind_rows(lapply(builds, function(b) b[, c("election_id", w_inputs)])) |>
+  distinct(election_id, .keep_all = TRUE)
+for (N in names(builds)) {
+  b <- builds[[N]]
+  m <- match(b$election_id, ref$election_id)
+  for (cc in w_inputs) {
+    bad <- which(!mapply(identical, b[[cc]], ref[[cc]][m]))
+    if (length(bad) > 0) {
+      stop(
+        "Builds disagree on ", cc, " for election ", b$election_id[bad[1]],
+        " (w", N, " vs an earlier window). W would depend on which build it ",
+        "was read from; rebuild with 11_build_rdd_data.R before continuing.",
+        call. = FALSE
+      )
+    }
+  }
+}
+elections <- ref
+cat(sprintf(
+  "%d builds (w%s) agree on every W input; %d elections in their union\n",
+  length(builds), paste(range(COVAR_WINDOWS), collapse = "-w"), nrow(elections)
+))
+
+row_of <- match(
+  paste(elections$country_text_id, elections$election_year),
+  paste(panel$country_text_id, panel$year)
+)
+if (anyNA(row_of)) {
+  stop(sum(is.na(row_of)), " elections have no country-year in the panel.", call. = FALSE)
+}
+pred_rows <- seq_len(nrow(panel)) %in% row_of
+
+# ------------------------------------------------------------------------------
+# W: computed once, one row per election
+# ------------------------------------------------------------------------------
+
+# Country history: levels at t-1 and 5-year pre-trends of every outcome series.
 w_country <- list()
 for (oc in names(OUTCOME_SOURCES)) {
   s <- series_for(oc)
@@ -194,40 +257,64 @@ for (oc in names(OUTCOME_SOURCES)) {
     lag_k(s, 1) - lag_k(s, 6)
   }
 }
-w_country <- bind_cols(
-  panel |> select(country_text_id, year),
-  as_tibble(w_country)
-)
-# Several outcomes share a source series (the V-Dem indices each have their
-# own, but the three GDP series and the executive-power pairs do not), so drop
-# exact duplicate columns.
+w_country <- as_tibble(w_country)[row_of, ]
+# Several outcomes share a source series (the three GDP series each have
+# their own, but the executive-power pairs do not), so drop exact duplicate
+# columns.
 w_country <- w_country[, !duplicated(as.list(w_country))]
 
+w_party <- list()
+for (sc in PARTY_SCORE_VARS) {
+  if (!paste0("ill_", sc) %in% names(elections)) next
+  w_party[[paste0("W_ill_", sc)]] <- elections[[paste0("ill_", sc)]]
+  w_party[[paste0("W_oth_", sc)]] <- elections[[paste0("oth_", sc)]]
+  w_party[[paste0("W_gap_", sc)]] <- elections[[paste0("ill_", sc)]] - elections[[paste0("oth_", sc)]]
+}
+
+# An ERT autocratization episode starting in t-5..t-1: the same five-year span
+# as the W_pre5_* history, and the same episode start the build's treatment
+# uses (ERT's ep_start; 11_build_rdd_data.R's START_YEAR_SOURCE defaults to it).
+# It replaces the build's prior_backsliding, which is not usable as W: its span
+# is the N years before the TREATMENT window, [ey + 1 - N, ey], so it changes
+# with the window (31 elections at w1, 192 at w10) and includes the election
+# year itself, when an episode can begin after the vote.
+episodes <- readRDS(here::here("data", "episodes_bermeo.rds"))
+prior_ert <- vapply(seq_len(nrow(elections)), function(i) {
+  st <- episodes$ep_start[episodes$country_text_id == elections$country_text_id[i]]
+  ey <- elections$election_year[i]
+  any(st >= ey - 5 & st <= ey - 1)
+}, logical(1))
+
+covars <- bind_cols(
+  tibble(election_id = elections$election_id),
+  as_tibble(w_party),
+  tibble(
+    W_prior_backsliding = as.numeric(prior_ert),
+    W_oecd = as.numeric(oecd_group(elections$country_text_id) == "OECD"),
+    # Dated t-1 like every other W, so the decade never reflects the election
+    # year itself.
+    W_decade = ((elections$election_year - 1) %/% 10) * 10,
+    W_presidential = as.numeric(elections$election_type == "presidential")
+  ),
+  w_country
+)
+
 # ------------------------------------------------------------------------------
-# Per window
+# Z: one local projection per outcome and window
 # ------------------------------------------------------------------------------
 
 fit_rows <- panel$year >= LP_YEAR_MIN
+fit_stats <- list()
 
 for (N in COVAR_WINDOWS) {
-  d <- load_build(ILLIBERALISM_VAR, N, TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, FALSE)
-  cat(sprintf("[w=%d] %d elections\n", N, nrow(d)))
-  row_of <- match(
-    paste(d$country_text_id, d$election_year),
-    paste(panel$country_text_id, panel$year)
-  )
-  if (anyNA(row_of)) {
-    stop(sum(is.na(row_of)), " elections have no country-year in the panel.", call. = FALSE)
-  }
-  pred_rows <- seq_len(nrow(panel)) %in% row_of
-
-  Z <- list()
-  fit_stats <- list()
+  d <- builds[[as.character(N)]]
+  e_of <- match(d$election_id, elections$election_id)
   for (oc in names(OUTCOME_SOURCES)) {
     y <- lp_lhs(oc, N)
-    # The registry has to reproduce the build's own outcome at every election,
-    # or Z is projecting a different variable from the one the RD estimates.
-    y_e <- y[row_of]
+    # The registry has to reproduce this window's build outcome at every one
+    # of its elections, or Z is projecting a different variable from the one
+    # the RD estimates.
+    y_e <- y[row_of[e_of]]
     ok <- isTRUE(all.equal(y_e, d[[oc]], tolerance = 1e-8, check.attributes = FALSE))
     if (!ok) {
       stop(
@@ -239,55 +326,50 @@ for (N in COVAR_WINDOWS) {
     }
     X <- design(oc, N)
     z <- lco_predict(X, y, fit_rows, pred_rows, panel$country_text_id)[row_of]
-    Z[[paste0("Z_", oc)]] <- z
+    covars[[sprintf("Z_w%d_%s", N, oc)]] <- z
+    zz <- z[e_of]
     yy <- d[[oc]]
-    has <- !is.na(yy) & !is.na(z)
-    fit_stats[[oc]] <- tibble(
+    has <- !is.na(yy) & !is.na(zz)
+    fit_stats[[length(fit_stats) + 1]] <- tibble(
       window = N, outcome = oc, n_fit = sum(fit_rows & !is.na(y)),
       n_elections = sum(has),
-      oos_r2 = 1 - sum((yy[has] - z[has])^2) / sum((yy[has] - mean(yy[has]))^2),
-      cor = cor(yy[has], z[has])
+      oos_r2 = 1 - sum((yy[has] - zz[has])^2) / sum((yy[has] - mean(yy[has]))^2),
+      cor = cor(yy[has], zz[has])
     )
   }
-  fit_stats <- bind_rows(fit_stats)
-
-  sides <- illiberal_side_scores(d)
-  w_party <- list()
-  for (sc in PARTY_SCORE_VARS) {
-    if (!paste0("ill_", sc) %in% names(sides)) next
-    w_party[[paste0("W_ill_", sc)]] <- sides[[paste0("ill_", sc)]]
-    w_party[[paste0("W_oth_", sc)]] <- sides[[paste0("oth_", sc)]]
-    w_party[[paste0("W_gap_", sc)]] <- sides[[paste0("ill_", sc)]] - sides[[paste0("oth_", sc)]]
-  }
-
-  covars <- bind_cols(
-    tibble(election_id = d$election_id),
-    as_tibble(Z),
-    as_tibble(w_party),
-    tibble(
-      W_prior_backsliding = as.numeric(d$prior_backsliding),
-      W_oecd = as.numeric(oecd_group(d$country_text_id) == "OECD"),
-      W_decade = (d$election_year %/% 10) * 10,
-      W_presidential = as.numeric(d$election_type == "presidential")
-    ),
-    w_country[row_of, setdiff(names(w_country), c("country_text_id", "year"))]
-  )
-  attr(covars, "lp_fit") <- fit_stats
-  path <- covars_path(ILLIBERALISM_VAR, N, TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, FALSE)
-  saveRDS(covars, path)
-
-  diag_dir <- file.path(
-    BUILDS_OUT_ROOT,
-    sprintf("%s_w%d%s", ILLIBERALISM_VAR, N, build_suffix(TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, FALSE))
-  )
-  dir.create(diag_dir, recursive = TRUE, showWarnings = FALSE)
-  write_csv(fit_stats, file.path(diag_dir, "lp_fit.csv"))
+  fs <- bind_rows(fit_stats) |> filter(window == N)
   cat(sprintf(
-    "[w=%d] saved %s (%d Z, %d W). Out-of-sample R^2 of Z: GDP (PWT) %.3f, inflation %.3f, polyarchy %.3f; median over outcomes %.3f\n",
-    N, basename(path), length(Z), ncol(covars) - 1 - length(Z),
-    fit_stats$oos_r2[fit_stats$outcome == "Y_gdp_growth"],
-    fit_stats$oos_r2[fit_stats$outcome == "Y_inflation"],
-    fit_stats$oos_r2[fit_stats$outcome == "Y_polyarchy"],
-    median(fit_stats$oos_r2, na.rm = TRUE)
+    "[w=%d] Z out-of-sample R^2: GDP (PWT) %.3f, inflation %.3f, polyarchy %.3f; median %.3f\n",
+    N, fs$oos_r2[fs$outcome == "Y_gdp_growth"], fs$oos_r2[fs$outcome == "Y_inflation"],
+    fs$oos_r2[fs$outcome == "Y_polyarchy"], median(fs$oos_r2, na.rm = TRUE)
   ))
 }
+fit_stats <- bind_rows(fit_stats)
+
+# ------------------------------------------------------------------------------
+# One file per instrument and window convention
+# ------------------------------------------------------------------------------
+
+sfx <- build_suffix(TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, FALSE)
+attr(covars, "windows") <- COVAR_WINDOWS
+attr(covars, "n_elections") <- nrow(covars)
+attr(covars, "built_at") <- Sys.time()
+# The build each window's Z was checked against, and when that build was
+# written: load_covars() stops if a build has changed since.
+attr(covars, "build_mtime") <- setNames(
+  vapply(COVAR_WINDOWS, function(N) {
+    as.numeric(file.info(build_path(ILLIBERALISM_VAR, N, TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, FALSE))$mtime)
+  }, numeric(1)),
+  COVAR_WINDOWS
+)
+path <- covars_path(ILLIBERALISM_VAR, TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR)
+saveRDS(covars, path)
+
+diag_dir <- file.path(BUILDS_OUT_ROOT, paste0(ILLIBERALISM_VAR, sfx))
+dir.create(diag_dir, recursive = TRUE, showWarnings = FALSE)
+write_csv(fit_stats, file.path(diag_dir, "lp_fit.csv"))
+cat(sprintf(
+  "Saved %s: %d elections, %d W, %d Z (%d windows x %d outcomes)\n",
+  basename(path), nrow(covars), sum(startsWith(names(covars), "W_")),
+  sum(startsWith(names(covars), "Z_")), length(COVAR_WINDOWS), length(OUTCOME_SOURCES)
+))
