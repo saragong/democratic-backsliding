@@ -25,8 +25,13 @@
 #           rights) and their gaps
 #   country levels at t-1 and 5-year pre-trends of every outcome series
 #   design  OECD, decade, presidential, prior backsliding
-# Continuous W is standardised within the estimation sample, so tau is the
-# effect at the sample mean and d is per standard deviation. Binary W stays
+# Continuous W is centred at its mean among the CLOSE elections -- weighted by
+# the triangular kernel at the pooled fit's bandwidth -- and scaled by its
+# sample SD. So tau is the effect at the W of the typical close election, which
+# is what the pooled RD estimates, and lines up with it; d is per standard
+# deviation. (Centred at the full-sample mean instead, tau would be the effect
+# at a W the close elections do not have on average, and would not match the
+# pooled effect whenever d is non-zero.) Binary W stays
 # 0/1: d is the change in the effect from W = 0 to W = 1. rdhte treats any 0/1
 # covariate as two groups, so it is fitted that way with bw.joint = TRUE -- one
 # bandwidth for both groups, which makes the group difference exactly eq. 2.5's
@@ -116,7 +121,13 @@ w_label <- function(w) {
 
 is_binary <- function(x) all(x[!is.na(x)] %in% c(0, 1)) && length(unique(x[!is.na(x)])) == 2
 
-fit_one_w <- function(dd, w, covs_eff, cluster) {
+# Centre at the kernel-weighted mean near the cutoff, scale by the SD.
+center_at_cutoff <- function(v, x, h) {
+  k <- pmax(0, 1 - abs(x) / h)
+  (v - stats::weighted.mean(v, k)) / stats::sd(v)
+}
+
+fit_one_w <- function(dd, w, covs_eff, cluster, h_pooled) {
   wv <- dd[[w]]
   ok <- !is.na(wv) & !is.na(dd[[HTE_OUTCOME]]) &
     (if (is.null(covs_eff)) TRUE else !is.na(covs_eff))
@@ -146,7 +157,7 @@ fit_one_w <- function(dd, w, covs_eff, cluster) {
     }
   }
   binary <- is_binary(wv[ok])
-  covs <- if (binary || is_factor) factor(wv[ok]) else as.numeric(scale(wv[ok]))
+  covs <- if (binary || is_factor) factor(wv[ok]) else center_at_cutoff(wv[ok], x, h_pooled)
   fit <- tryCatch(
     rdhte(y, x, covs.hte = covs, covs.eff = ce, cluster = cl, bw.joint = binary),
     error = function(e) e
@@ -184,7 +195,7 @@ fit_one_w <- function(dd, w, covs_eff, cluster) {
     } else if (binary) {
       paste0("effect at W = ", fit$W.lev)
     } else {
-      c("effect at mean W", "slope per SD of W")
+      c("effect at cutoff-mean W", "slope per SD of W")
     },
     estimate = unname(fit$Estimate), estimate_bc = unname(fit$Estimate.bc),
     se_rb = unname(fit$se.rb), ci_lo = fit$ci.rb[, 1], ci_hi = fit$ci.rb[, 2],
@@ -263,7 +274,7 @@ for (samp_name in names(HTE_SAMPLES)) {
     HTE_OUTCOME, pooled$Estimate, pooled$Estimate.bc, pooled$se.rb, pooled$h[1, 1], sum(ok)
   ))
 
-  res <- map_dfr(w_vars, function(w) fit_one_w(dd, w, covs_eff, HTE_CLUSTER))
+  res <- map_dfr(w_vars, function(w) fit_one_w(dd, w, covs_eff, HTE_CLUSTER, pooled$h[1, 1]))
 
   # A joint model: the three party-score gaps that the "bundled
   # characteristics" question is about, plus the growth pre-trend.
@@ -273,7 +284,7 @@ for (samp_name in names(HTE_SAMPLES)) {
   )
   z_eff <- if (HTE_COVS_EFF) paste0("Z_", HTE_OUTCOME)
   jd <- as.data.frame(dd[complete.cases(dd[, c(HTE_OUTCOME, joint_vars, z_eff)]), ])
-  jd[joint_vars] <- lapply(jd[joint_vars], function(v) as.numeric(scale(v)))
+  jd[joint_vars] <- lapply(jd[joint_vars], center_at_cutoff, x = jd$running_var, h = pooled$h[1, 1])
   # rdhte takes several continuous W only as a one-sided formula STRING looked
   # up in `data`, with y, x (and cluster) then given as column names too; a
   # matrix or data frame of W errors inside the package.
@@ -290,7 +301,7 @@ for (samp_name in names(HTE_SAMPLES)) {
   ))
   joint <- tibble(
     w = c("(joint) intercept", paste0("(joint) ", joint_vars)), binary = FALSE, n = nrow(jd),
-    term = c("effect at mean W", rep("slope per SD of W", length(joint_vars))),
+    term = c("effect at cutoff-mean W", rep("slope per SD of W", length(joint_vars))),
     estimate = unname(jfit$Estimate), estimate_bc = unname(jfit$Estimate.bc),
     se_rb = unname(jfit$se.rb), ci_lo = jfit$ci.rb[, 1], ci_hi = jfit$ci.rb[, 2],
     pval = unname(jfit$pv.rb), h = jfit$h[1, 1], n_h = sum(jfit$Nh[1, ]),
@@ -354,10 +365,11 @@ for (samp_name in names(HTE_SAMPLES)) {
       title = sprintf("Heterogeneity in the effect of a narrow anti-pluralist win on %s", outcome_full_label(HTE_OUTCOME)),
       subtitle = paste(strwrap(sprintf(
         paste(
-          "Sample: %s. w%d. Each row is its own rdhte fit (Calonico et al. 2025, eq. 2.5):",
-          "continuous W standardised, so the estimate is the change in the RD effect per SD of W;",
+          "Sample: %s. w%d. Each row is its own rdhte fit (Calonico et al. 2025, eq. 2.5), with the effect at the cutoff linear in W.",
+          "Continuous W is centred at its mean among close elections (kernel-weighted at the pooled bandwidth) and scaled by its SD,",
+          "so each row is the change in the effect per SD of W, starting from the pooled effect at the typical close election's W;",
           "binary W as 0/1, the change in the effect from W = 0 to W = 1 (one bandwidth). Pooled effect %.3f (robust SE %.3f).",
-          "Bias-corrected estimates, robust 95%% CIs; orange = p < 0.05.%s"
+          "Bias-corrected estimates, robust 95%% CIs; orange = p < 0.05, not adjusted for testing many W.%s"
         ),
         prep$label, HTE_WINDOW, pooled$Estimate.bc, pooled$se.rb,
         if (HTE_CLUSTER) " SEs clustered by country." else ""
