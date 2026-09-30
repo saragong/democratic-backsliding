@@ -26,8 +26,9 @@
 #   country levels at t-1 and 5-year pre-trends of every outcome series
 #   design  OECD, decade, presidential, prior backsliding
 # Continuous W is centred at its mean among the CLOSE elections -- weighted by
-# the triangular kernel at the pooled fit's bandwidth -- and scaled by its
-# sample SD. So tau is the effect at the W of the typical close election, which
+# the triangular kernel at the pooled fit's bandwidth -- and scaled by its SD
+# among those same elections (both written to the CSV as w_mean_close /
+# w_sd_close). So tau is the effect at the W of the typical close election, which
 # is what the pooled RD estimates, and lines up with it; d is per standard
 # deviation. (Centred at the full-sample mean instead, tau would be the effect
 # at a W the close elections do not have on average, and would not match the
@@ -117,14 +118,32 @@ W_FAMILY <- function(w) {
   )
 }
 
+# The party scores in words, with their direction wherever it is not "higher =
+# more of the thing named". "More-illiberal" is the top-2 party with the higher
+# anti-pluralism score, whose narrow win is the treatment; the gap is always
+# that party's score MINUS the less-illiberal party's, so it is signed.
+SCORE_WORDS <- c(
+  v2xpa_antiplural = "anti-pluralism",
+  v2xpa_popul = "populism",
+  v2pariglef_neg = "economic-left position (higher = further left)",
+  v2paanteli = "anti-elitism",
+  ep_galtan = "GAL-TAN (higher = more TAN)",
+  v2paminor = "minority-rights support (higher = more supportive)"
+)
+
 w_label <- function(w) {
-  score_lab <- function(s) unname(PARTY_SCORE_LABELS[s] %||% s)
   out <- w
   m <- str_match(w, "^W_(ill|oth|gap)_(.+)$")
   i <- !is.na(m[, 1])
-  out[i] <- paste0(
-    c(ill = "More-illiberal party: ", oth = "Less-illiberal party: ", gap = "Gap (more - less): ")[m[i, 2]],
-    vapply(m[i, 3], score_lab, character(1))
+  words <- unname(SCORE_WORDS[m[i, 3]])
+  first_word <- sub(" \\(.*$", "", words)
+  out[i] <- case_when(
+    m[i, 2] == "ill" ~ paste0("More-illiberal party's ", words),
+    m[i, 2] == "oth" ~ paste0("Less-illiberal party's ", words),
+    TRUE ~ paste0(
+      str_to_sentence(first_word), " gap: more- minus less-illiberal party",
+      if_else(grepl("(", words, fixed = TRUE), sub("^[^(]*", " ", words), "")
+    )
   )
   m <- str_match(w, "^W_(lev|pre5)_(Y_.+)$")
   i <- !is.na(m[, 1])
@@ -142,10 +161,18 @@ w_label <- function(w) {
 
 is_binary <- function(x) all(x[!is.na(x)] %in% c(0, 1)) && length(unique(x[!is.na(x)])) == 2
 
-# Centre at the kernel-weighted mean near the cutoff, scale by the SD.
-center_at_cutoff <- function(v, x, h) {
+# The mean and SD of W among close elections: weighted by the triangular
+# kernel at the pooled bandwidth, i.e. over the elections the RD effect is
+# about. W is centred and scaled by these, so a row reads "at the typical close
+# election's W (mean), one SD more (sd) changes the effect by d".
+close_stats <- function(v, x, h) {
   k <- pmax(0, 1 - abs(x) / h)
-  (v - stats::weighted.mean(v, k)) / stats::sd(v)
+  m <- stats::weighted.mean(v, k)
+  c(mean = m, sd = sqrt(sum(k * (v - m)^2) / sum(k)))
+}
+center_at_cutoff <- function(v, x, h) {
+  st <- close_stats(v, x, h)
+  (v - st[["mean"]]) / st[["sd"]]
 }
 
 fit_one_w <- function(dd, w, covs_eff, cluster, h_pooled) {
@@ -187,7 +214,8 @@ fit_one_w <- function(dd, w, covs_eff, cluster, h_pooled) {
       )))
     }
   }
-  covs <- if (binary || is_factor) factor(wv[ok]) else center_at_cutoff(wv[ok], x, h_pooled)
+  st <- if (binary || is_factor) c(mean = NA_real_, sd = NA_real_) else close_stats(wv[ok], x, h_pooled)
+  covs <- if (binary || is_factor) factor(wv[ok]) else (wv[ok] - st[["mean"]]) / st[["sd"]]
   fit <- tryCatch(
     rdhte(y, x, covs.hte = covs, covs.eff = ce, cluster = cl, bw.joint = binary),
     error = function(e) e
@@ -231,6 +259,9 @@ fit_one_w <- function(dd, w, covs_eff, cluster, h_pooled) {
     se_rb = unname(fit$se.rb), ci_lo = fit$ci.rb[, 1], ci_hi = fit$ci.rb[, 2],
     pval = unname(fit$pv.rb),
     h = fit$h[, 1], n_h = rowSums(fit$Nh),
+    # For continuous W: its mean and SD among close elections, in W's own
+    # units -- the point tau is evaluated at, and the size of "one SD" in d.
+    w_mean_close = st[["mean"]], w_sd_close = st[["sd"]],
     note = dropped_note
   )
   if (binary && nrow(base) == 2) {
@@ -321,6 +352,7 @@ for (samp_name in names(HTE_SAMPLES)) {
   )
   z_eff <- if (HTE_COVS_EFF) paste0("Z_", HTE_OUTCOME)
   jd <- as.data.frame(dd[complete.cases(dd[, c(HTE_OUTCOME, joint_vars, z_eff)]), ])
+  joint_st <- lapply(jd[joint_vars], close_stats, x = jd$running_var, h = pooled$h[1, 1])
   jd[joint_vars] <- lapply(jd[joint_vars], center_at_cutoff, x = jd$running_var, h = pooled$h[1, 1])
   # rdhte takes several continuous W only as a one-sided formula STRING looked
   # up in `data`, with y, x (and cluster) then given as column names too; a
@@ -342,6 +374,8 @@ for (samp_name in names(HTE_SAMPLES)) {
     estimate = unname(jfit$Estimate), estimate_bc = unname(jfit$Estimate.bc),
     se_rb = unname(jfit$se.rb), ci_lo = jfit$ci.rb[, 1], ci_hi = jfit$ci.rb[, 2],
     pval = unname(jfit$pv.rb), h = jfit$h[1, 1], n_h = sum(jfit$Nh[1, ]),
+    w_mean_close = c(NA, vapply(joint_st, `[[`, numeric(1), "mean")),
+    w_sd_close = c(NA, vapply(joint_st, `[[`, numeric(1), "sd")),
     note = NA_character_
   )
 
@@ -387,10 +421,14 @@ for (samp_name in names(HTE_SAMPLES)) {
       # A categorical W is shown as its per-level EFFECTS, in its own panel,
       # since there is no single heterogeneity term to plot.
       family = if_else(w %in% FACTOR_W, "Decade: effect in each", family),
-      label = if_else(
-        w %in% FACTOR_W,
-        paste0(str_remove(term, "^group "), "s"),
-        label
+      label = case_when(
+        w %in% FACTOR_W ~ paste0(str_remove(term, "^group "), "s"),
+        !is.na(w_sd_close) ~ sprintf(
+          "%s  [close: mean %s, SD %s]", label,
+          formatC(signif(w_mean_close, 2), format = "fg", digits = 2),
+          formatC(signif(w_sd_close, 2), format = "fg", digits = 2)
+        ),
+        TRUE ~ label
       ),
       family = factor(family, levels = c(
         "Party scores", "Country history (pre-election)", "Design",
@@ -410,8 +448,8 @@ for (samp_name in names(HTE_SAMPLES)) {
       subtitle = paste(strwrap(sprintf(
         paste(
           "Sample: %s. w%d. Each row is its own rdhte fit (Calonico et al. 2025, eq. 2.5), with the effect at the cutoff linear in W.",
-          "Continuous W is centred at its mean among close elections (kernel-weighted at the pooled bandwidth) and scaled by its SD,",
-          "so each row is the change in the effect per SD of W, starting from the pooled effect at the typical close election's W;",
+          "Continuous W is centred and scaled by its mean and SD among close elections (kernel-weighted at the pooled bandwidth; shown",
+          "in brackets, in W's units), so a row reads: at the typical close election's W, one SD more changes the effect by the estimate;",
           "binary W as 0/1, the change in the effect from W = 0 to W = 1 (one bandwidth). Pooled effect %.3f (robust SE %.3f).",
           "That is rdhte's estimate, which sets the bias-correction bandwidth equal to h; the headline rdrobust estimate on this",
           "sample, which estimates that bandwidth separately, is %.3f (%.3f). Rows are comparable with the rdhte number.",
@@ -420,14 +458,17 @@ for (samp_name in names(HTE_SAMPLES)) {
         prep$label, HTE_WINDOW, pooled$Estimate.bc, pooled$se.rb,
         headline$coef, headline$se,
         if (HTE_CLUSTER) " SEs clustered by country." else ""
-      ), 130), collapse = "\n"),
+      ), 190), collapse = "\n"),
       x = "Heterogeneity in the RD effect (log points)", y = NULL
     ) +
     theme_bw(base_size = 8) +
     theme(
       strip.text.y = element_text(angle = 0, size = 7),
       panel.grid.minor = element_blank(),
-      plot.subtitle = element_text(size = 7)
+      plot.subtitle = element_text(size = 7),
+      # Anchored to the whole figure, not the panel: the y labels are long, and
+      # a panel-anchored title runs off the right edge.
+      plot.title.position = "plot"
     )
   ggsave(
     file.path(out_dir, paste0(stem, "_forest.png")), p,
