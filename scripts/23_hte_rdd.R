@@ -60,7 +60,8 @@
 #
 # Output: output/runs/<spec>/hte/
 #           hte_w<NN>_<outcome>.csv        one row per W (and per group / slope)
-#           hte_w<NN>_<outcome>_forest.png heterogeneity slopes and group gaps
+#           hte_w<NN>_<outcome>_forest_<family>.png  one figure per family:
+#             party_scores, country_history, design, decade, joint
 # ==============================================================================
 
 library(tidyverse)
@@ -154,7 +155,7 @@ w_label <- function(w) {
   out <- recode(
     out,
     W_oecd = "OECD member", W_presidential = "Presidential election",
-    W_prior_backsliding = "ERT episode in the prior window", W_decade = "Decade"
+    W_prior_backsliding = "ERT episode starting in t-5..t-1", W_decade = "Decade"
   )
   out
 }
@@ -437,43 +438,65 @@ for (samp_name in names(HTE_SAMPLES)) {
       sig = pval < 0.05,
       label = fct_reorder(label, estimate_bc)
     )
-  p <- ggplot(plot_dat, aes(x = estimate_bc, y = label, colour = sig)) +
-    geom_vline(xintercept = 0, colour = "grey50", linewidth = 0.4) +
-    geom_errorbarh(aes(xmin = ci_lo, xmax = ci_hi), height = 0, linewidth = 0.5) +
-    geom_point(size = 1.4) +
-    facet_grid(family ~ ., scales = "free_y", space = "free_y") +
-    scale_colour_manual(values = c(`TRUE` = "#D55E00", `FALSE` = "grey35"), guide = "none") +
-    labs(
-      title = sprintf("Heterogeneity in the effect of a narrow anti-pluralist win on %s", outcome_full_label(HTE_OUTCOME)),
-      subtitle = paste(strwrap(sprintf(
-        paste(
-          "Sample: %s. w%d. Each row is its own rdhte fit (Calonico et al. 2025, eq. 2.5), with the effect at the cutoff linear in W.",
-          "Continuous W is centred and scaled by its mean and SD among close elections (kernel-weighted at the pooled bandwidth; shown",
-          "in brackets, in W's units), so a row reads: at the typical close election's W, one SD more changes the effect by the estimate;",
-          "binary W as 0/1, the change in the effect from W = 0 to W = 1 (one bandwidth). Pooled effect %.3f (robust SE %.3f).",
-          "That is rdhte's estimate, which sets the bias-correction bandwidth equal to h; the headline rdrobust estimate on this",
-          "sample, which estimates that bandwidth separately, is %.3f (%.3f). Rows are comparable with the rdhte number.",
-          "Bias-corrected estimates, robust 95%% CIs; orange = p < 0.05, not adjusted for testing many W.%s"
-        ),
-        prep$label, HTE_WINDOW, pooled$Estimate.bc, pooled$se.rb,
-        headline$coef, headline$se,
-        if (HTE_CLUSTER) " SEs clustered by country." else ""
-      ), 190), collapse = "\n"),
-      x = "Heterogeneity in the RD effect (log points)", y = NULL
-    ) +
-    theme_bw(base_size = 8) +
-    theme(
-      strip.text.y = element_text(angle = 0, size = 7),
-      panel.grid.minor = element_blank(),
-      plot.subtitle = element_text(size = 7),
-      # Anchored to the whole figure, not the panel: the y labels are long, and
-      # a panel-anchored title runs off the right edge.
-      plot.title.position = "plot"
-    )
-  ggsave(
-    file.path(out_dir, paste0(stem, "_forest.png")), p,
-    width = 10, height = 2 + 0.13 * nrow(plot_dat), dpi = 150, limitsize = FALSE
+  # One figure per family: a single sheet of ~100 rows was unreadable. Each is
+  # sized to its own rows and shares the subtitle, so any one can stand alone.
+  subtitle <- paste(strwrap(sprintf(
+    paste(
+      "Sample: %s. w%d. Each row is its own rdhte fit (Calonico et al. 2025, eq. 2.5), with the effect at the cutoff linear in W.",
+      "Continuous W is centred and scaled by its mean and SD among close elections (kernel-weighted at the pooled bandwidth; shown",
+      "in brackets, in W's units), so a row reads: at the typical close election's W, one SD more changes the effect by the estimate;",
+      "binary W as 0/1, the change in the effect from W = 0 to W = 1 (one bandwidth). Pooled effect %.3f (robust SE %.3f).",
+      "That is rdhte's estimate, which sets the bias-correction bandwidth equal to h; the headline rdrobust estimate on this",
+      "sample, which estimates that bandwidth separately, is %.3f (%.3f). Rows are comparable with the rdhte number.",
+      "Bias-corrected estimates, robust 95%% CIs; orange = p < 0.05, not adjusted for testing many W.%s"
+    ),
+    prep$label, HTE_WINDOW, pooled$Estimate.bc, pooled$se.rb,
+    headline$coef, headline$se,
+    if (HTE_CLUSTER) " SEs clustered by country." else ""
+  ), 150), collapse = "\n")
+  FAMILY_FILES <- c(
+    "Party scores" = "party_scores",
+    "Country history (pre-election)" = "country_history",
+    "Design" = "design",
+    "Decade: effect in each" = "decade",
+    "Joint model" = "joint"
   )
+  # The per-family figures replace the single combined one.
+  unlink(file.path(out_dir, paste0(stem, "_forest.png")))
+  for (fam in intersect(levels(plot_dat$family), unique(as.character(plot_dat$family)))) {
+    fd <- plot_dat |> filter(family == fam) |> mutate(label = fct_drop(label))
+    p <- ggplot(fd, aes(x = estimate_bc, y = label, colour = sig)) +
+      geom_vline(xintercept = 0, colour = "grey50", linewidth = 0.4) +
+      geom_errorbarh(aes(xmin = ci_lo, xmax = ci_hi), height = 0, linewidth = 0.5) +
+      geom_point(size = 1.6) +
+      scale_colour_manual(values = c(`TRUE` = "#D55E00", `FALSE` = "grey35"), guide = "none") +
+      labs(
+        title = sprintf(
+          "%s: heterogeneity in the effect of a narrow anti-pluralist win on %s",
+          fam, outcome_full_label(HTE_OUTCOME)
+        ),
+        subtitle = subtitle,
+        # The decade panel shows each decade's own effect, not a change in it.
+        x = if (fam == "Decade: effect in each") {
+          "RD effect in each decade (log points)"
+        } else {
+          "Change in the RD effect (log points)"
+        },
+        y = NULL
+      ) +
+      theme_bw(base_size = 9) +
+      theme(
+        panel.grid.minor = element_blank(),
+        plot.subtitle = element_text(size = 7),
+        # Anchored to the whole figure, not the panel: the y labels are long,
+        # and a panel-anchored title runs off the right edge.
+        plot.title.position = "plot"
+      )
+    ggsave(
+      file.path(out_dir, sprintf("%s_forest_%s.png", stem, FAMILY_FILES[[fam]])), p,
+      width = 10, height = 2.2 + 0.19 * nrow(fd), dpi = 150, limitsize = FALSE
+    )
+  }
   cat(sprintf("Saved %s (%d W)\n", file.path(out_dir, paste0(stem, ".csv")), length(w_vars)))
   print(
     plot_dat |>
