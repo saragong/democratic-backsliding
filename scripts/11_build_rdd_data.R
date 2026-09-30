@@ -1339,7 +1339,7 @@ gt_ert_miss_table <- ert_miss_table |>
 
 # Written into the per-build folder rather than a flat output/ file, so
 # different instrument/window builds don't overwrite each other's accounting.
-miss_dir <- file.path(out_dir, "runs", "_builds", sprintf(
+miss_dir <- file.path(BUILDS_OUT_ROOT, sprintf(
   "%s_w%d%s",
   ILLIBERALISM_VAR,
   BACKSLIDING_WINDOW_YEARS,

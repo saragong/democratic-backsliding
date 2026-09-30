@@ -65,7 +65,7 @@
 #
 #   Rscript --no-init-file scripts/19_vparty_ideology_quadrants.R
 #
-# Output: output/runs/_sweeps/vparty_ideology_quadrants/
+# Output: output/sweeps/vparty_ideology_quadrants/
 #           quadrants_<vocab>.png     one per tag vocabulary
 #           tag_means.csv             every tag x panel cell
 #           tag_coverage.csv          how much of V-Party each vocabulary reaches
@@ -77,6 +77,8 @@ library(ggrepel)
 library(gt)
 library(here)
 
+# sweep_dir().
+source(here::here("scripts", "rdd_helpers.R"))
 source(here::here("scripts", "vparty_helpers.R"))
 
 # ---- toggles -----------------------------------------------------------------
@@ -146,8 +148,7 @@ TAG_COLORS <- c(
   "#7F3B08", "#B2182B", "#009E73", "#7570B3", "#984EA3", "#01665E"
 )
 
-out_dir <- here::here("output", "runs", "_sweeps", "vparty_ideology_quadrants")
-dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+out_dir <- sweep_dir("vparty_ideology_quadrants")
 
 # ---- data --------------------------------------------------------------------
 

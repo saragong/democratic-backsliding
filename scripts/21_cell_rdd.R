@@ -25,7 +25,7 @@
 #
 #   Rscript --no-init-file scripts/21_cell_rdd.R
 #
-# Output: output/runs/_sweeps/cell_rdd_<instr><suffix>/
+# Output: output/sweeps/cell_rdd_<instr><suffix>/
 #           cell_rdd_results.csv   sample x window x group x decade x outcome
 #           cell_counts.csv        cell sizes and treated counts per window
 #           grid_cells_w5_<family>.html   a first look at w5

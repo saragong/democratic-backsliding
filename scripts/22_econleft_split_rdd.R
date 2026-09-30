@@ -35,7 +35,7 @@
 #   Rscript --no-init-file scripts/22_econleft_split_rdd.R
 #   SPLIT_SAMPLE=popucut Rscript --no-init-file scripts/22_econleft_split_rdd.R
 #
-# Output: output/runs/_sweeps/econleft_split_rdd_<instr><restriction><suffix>/
+# Output: output/runs/<spec>/econleft_split/
 #           econleft_split_results.csv   subset x window x outcome
 #           subset_counts.csv            sample accounting per subset x window
 #           comparison_w5.html           the headline numbers side by side
@@ -93,8 +93,6 @@ if (!exists("SPLIT_OTHER_CUTOFF_MAX")) {
   SPLIT_OTHER_CUTOFF_MAX <- SPLIT_SAMPLES[[SPLIT_SAMPLE]]$other_cutoff_max
 }
 
-build_sfx <- build_suffix(TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW)
-
 split_load_build <- function(n) {
   load_build(
     SPLIT_INSTRUMENT, n,
@@ -124,8 +122,8 @@ if (length(missing_builds) > 0) {
 # Resolve the three specs to NUMBERS once, against the w5 build, BEFORE any
 # filter bites -- the same discipline, and the same arbitrary-but-fixed
 # reference build, as 14_window_sweep.R. Two things downstream need a number
-# rather than a spec: this sweep's folder name via fmt_slug_num(), and the cfg
-# whose run_slug() names the pooled run the comparison table reads against.
+# rather than a spec: the spec folder this writes into, via spec_slug(), and the
+# cfg whose run_path() locates the pooled run the comparison table reads against.
 # Resolving per window instead would let a quantile spec mean a different
 # sample in each panel of one figure.
 local({
@@ -169,23 +167,17 @@ restriction_label <- restriction_sentence(
   none = "no restriction beyond the split"
 )
 
-# Each active axis contributes a slug part, and only an active one: at the
-# no-op values this reproduces the unrestricted run's folder name exactly, so
-# the run already on disk is not orphaned by adding the restriction axis. Same
-# rule, and the same spelling, as run_slug().
-# `else ""` is load-bearing: a bare `if` with no else yields NULL, and
-# paste0() of three NULLs is character(0), not "" -- sprintf() would then
-# return character(0) and the folder name would vanish on the full sample.
-restriction_slug <- paste0(
-  if (is.finite(SPLIT_SCORE_GAP_MIN)) paste0("_gap", fmt_slug_num(SPLIT_SCORE_GAP_MIN)) else "",
-  if (is.finite(SPLIT_ILLIBERAL_CUTOFF)) paste0("_illib", fmt_slug_num(SPLIT_ILLIBERAL_CUTOFF)) else "",
-  if (is.finite(SPLIT_OTHER_CUTOFF_MAX)) paste0("_opp", fmt_slug_num(SPLIT_OTHER_CUTOFF_MAX)) else ""
+# The split is taken within ONE spec, so its output lives in that spec's folder,
+# output/runs/<spec>/econleft_split/, beside the pooled run it is compared with.
+spec_cfg <- list(
+  instrument = SPLIT_INSTRUMENT,
+  score_gap_min = SPLIT_SCORE_GAP_MIN,
+  illiberal_cutoff = SPLIT_ILLIBERAL_CUTOFF,
+  other_cutoff_max = SPLIT_OTHER_CUTOFF_MAX,
+  incl_election_year = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
+  placebo = PLACEBO_PRE_WINDOW
 )
-
-out_dir <- sweep_dir(sprintf(
-  "econleft_split_rdd_%s%s%s",
-  INSTRUMENT_LABELS[[SPLIT_INSTRUMENT]], restriction_slug, build_sfx
-))
+out_dir <- spec_subdir(spec_cfg, "econleft_split")
 cat("Sample within which the split is taken: ", restriction_label, "\n", sep = "")
 
 # ---- the split ---------------------------------------------------------------
@@ -357,21 +349,13 @@ print(
 # ---- headline table ----------------------------------------------------------
 
 # The pooled column must be the SAME sample, unsplit -- not the unrestricted
-# main run. Naming it with run_slug() off the resolved numbers rather than
-# writing the slug out by hand is what guarantees that: a restriction that
+# main run. Locating it with run_path() off the resolved numbers rather than
+# writing the path out by hand is what guarantees that: a restriction that
 # changes the folder here changes the folder read there too, so the comparison
 # cannot silently become apples-to-oranges. Missing folder = no pooled column,
 # which is why this is a file.exists() check and not a stop().
 POOLED_RUN <- file.path(
-  RUNS_ROOT,
-  run_slug(list(
-    instrument = SPLIT_INSTRUMENT, window = 5L, treatment = SPLIT_TREATMENT,
-    score_gap_min = SPLIT_SCORE_GAP_MIN,
-    illiberal_cutoff = SPLIT_ILLIBERAL_CUTOFF,
-    other_cutoff_max = SPLIT_OTHER_CUTOFF_MAX,
-    incl_election_year = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
-    placebo = PLACEBO_PRE_WINDOW
-  )),
+  run_path(c(spec_cfg, list(window = 5L, treatment = SPLIT_TREATMENT))),
   "rdd_results.csv"
 )
 if (!file.exists(POOLED_RUN)) {

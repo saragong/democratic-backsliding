@@ -29,7 +29,7 @@
 #   - the MSE-optimal bandwidth rdrobust picks for the main first stage, i.e.
 #     exactly the elections the headline estimate is computed from
 #
-# Output: output/runs/_sweeps/instrument_overlap/
+# Output: output/sweeps/instrument_overlap<suffix>/
 # ==============================================================================
 
 library(tidyverse)

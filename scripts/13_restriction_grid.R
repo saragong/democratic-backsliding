@@ -24,7 +24,7 @@
 # actual winner would condition on treatment status and leave one side of the
 # cutoff empty.
 #
-# Output: output/runs/_sweeps/restriction_grid_<instr>_w<N>_trt-<treatment>/
+# Output: output/sweeps/restriction_grid_<instr>_w<N>_trt-<treatment>/
 #           sweep_config.csv     what was held fixed, what was swept
 #           marginal_all.{csv,html}
 #             ONE table, one section per axis: N, N treated, first stage,
@@ -34,7 +34,7 @@
 #             cell colour-coded by coefficient magnitude
 #           grid_all_pairs.csv   every pair-grid cell in long form
 #
-#         output/runs/_sweeps/sample_composition_<instr>_w<N>/
+#         output/sweeps/sample_composition_<instr>_w<N>/
 #           composition_all.{csv,html}, composition_narrow<PP>.{csv,html}
 #             For each restriction level: N surviving, and how it splits between
 #             the illiberal side winning and losing -- i.e. the two sides of the
@@ -58,7 +58,7 @@ source(here::here("scripts", "rdd_helpers.R"))
 # that wrote a run_config.csv asserting a single threshold for a grid that
 # varies it, and parked the output inside a folder 12_rdd_analysis.R
 # legitimately owns for that configuration. This is a sweep, so it writes to
-# _sweeps/ and records its fixed/swept axes in sweep_config.csv.
+# output/sweeps/ and records its fixed/swept axes in sweep_config.csv.
 if (!exists("ILLIBERALISM_VAR")) ILLIBERALISM_VAR <- DEFAULT_INSTRUMENT
 if (!exists("BACKSLIDING_WINDOW_YEARS")) BACKSLIDING_WINDOW_YEARS <- DEFAULT_WINDOW
 if (!exists("TREATMENT_VAR")) TREATMENT_VAR <- DEFAULT_TREATMENT

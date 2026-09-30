@@ -458,21 +458,18 @@ cat(sprintf(
 
 # Step 2: the RDD itself, on log1p of the displayed percentage change, which
 # is the log change the analysis uses.
-canon_path <- function(h) {
-  file.path(
-    RUNS_ROOT,
-    run_slug(list(
-      instrument = T411_INSTRUMENT,
-      window = h,
-      treatment = "backsliding_Nyr",
-      score_gap_min = -Inf,
-      illiberal_cutoff = cut_abs,
-      other_cutoff_max = cut_abs,
-      incl_election_year = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR
-    )),
-    "rdd_results.csv"
+canon_cfg <- function(h) {
+  list(
+    instrument = T411_INSTRUMENT,
+    window = h,
+    treatment = "backsliding_Nyr",
+    score_gap_min = -Inf,
+    illiberal_cutoff = cut_abs,
+    other_cutoff_max = cut_abs,
+    incl_election_year = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR
   )
 }
+canon_path <- function(h) file.path(run_path(canon_cfg(h)), "rdd_results.csv")
 
 # The treatment is the one input the table does not display; it is pulled from
 # the build purely so the fuzzy arm can be reproduced too. It must come from
@@ -529,7 +526,7 @@ check <- map_dfr(T411_HORIZONS, function(h) {
     se_run = canon$rd_se,
     bw_run = canon$bandwidth,
     late_run = canon$late_estimate,
-    source = basename(dirname(cp))
+    source = run_slug(canon_cfg(h))
   )
 })
 

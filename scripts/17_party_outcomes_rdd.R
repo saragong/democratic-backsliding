@@ -62,7 +62,7 @@
 #
 #   Rscript --no-init-file scripts/17_party_outcomes_rdd.R
 #
-# Output: output/runs/_sweeps/party_outcome_rdd_<instr>_w<N><suffix>/
+# Output: output/sweeps/party_outcome_rdd_<instr>_w<N><suffix>/
 #           party_outcome_results.csv    one row per score x form x restriction
 #           party_outcome_cells.csv      one row per score x form x decade x OECD
 #           party_outcomes_table.html    the unrestricted sample, flat

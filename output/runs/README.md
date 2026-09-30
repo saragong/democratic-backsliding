@@ -1,27 +1,53 @@
 # Analysis runs
 
-One folder per *version* of the fuzzy-RDD analysis. A version is fully
-identified by the choices the folder name encodes:
+One folder per **spec**: a fixed set of choices that every run inside it
+shares. Inside it, one folder per (treatment definition × post-election
+window) run of `12_rdd_analysis.R`, and the window sweep that pools them.
 
 ```
-instr-<instrument>_w<window>_trt-<treatment>_gap<score_gap_min>_illib<illiberal_cutoff>[_opp<other_cutoff_max>][_exclyr][_pre]
+output/runs/
+  manifest.csv                       one row per run, with its path
+  <spec>/
+    spec_config.csv                  the fixed fields, one row each
+    pooled/                          14_window_sweep.R: every window x treatment, pooled
+    by_post_election_window/
+      ert/        w01/ ... w10/      one run each: 12_rdd_analysis.R's output
+      ertOrDdcg/  w01/ ... w10/
+      polyarchy/  w01/ ... w10/
+    econleft_split/                  22_econleft_split_rdd.R, taken within this spec
 ```
 
-The last three parts are optional. `_opp` and `_pre` appear only when not at
-their default. `_exclyr` appears whenever `TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR
-= FALSE`, which is the project convention, so in practice every current run
-carries it.
+The spec folder name is
+
+```
+<instrument>_gap<score_gap_min>_illib<illiberal_cutoff>[_opp<other_cutoff_max>][_exclyr][_pre]
+```
+
+`_opp` and `_pre` appear only when not at their default. `_exclyr` appears
+whenever `TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR = FALSE`, which is the project
+convention, so in practice every current spec carries it.
 
 | Part | Meaning |
 |---|---|
-| `instr-` | which V-Party score decides who the "illiberal" side of the top 2 is: `antiplural`, `popul`, `econleft` (negated `v2pariglef`, so economic LEFT is the high end), `anteli`, `galtan` |
-| `w` | post-election window N, in years. Treatment *and* every outcome are measured over `(election_year - 1, election_year + N]` |
-| `trt-` | `ert` (ERT autocratization episode), `ertOrDdcg` (that OR an Acemoglu et al. reversal), `polyarchy` (continuous decline in V-Dem polyarchy) |
+| `<instrument>` | which V-Party score decides who the "illiberal" side of the top 2 is: `antiplural`, `popul`, `econleft` (negated `v2pariglef`, so economic LEFT is the high end), `anteli`, `galtan` |
 | `gap` | minimum `score_gap_z`; `any` = no restriction |
 | `illib` | minimum `illiberal_score` (the MORE illiberal of the top 2); `any` = no restriction |
 | `_opp` | maximum `other_score` (the LESS illiberal of the top 2). Omitted entirely at its default of `Inf`. Paired with `illib` at the same number, this is the "one side illiberal, the other not" restriction |
 | `_exclyr` | present only when `TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR = FALSE` (see below) |
 | `_pre` | present only when `PLACEBO_PRE_WINDOW = TRUE`: the pre-election placebo, outcomes and treatment measured over the window BEFORE the election (see below) |
+
+Inside a spec, the two things that vary:
+
+| Level | Meaning |
+|---|---|
+| `<trt>` | `ert` (ERT autocratization episode), `ertOrDdcg` (that OR an Acemoglu et al. reversal), `polyarchy` (continuous decline in V-Dem polyarchy), `polyarchyBin` (any decline) |
+| `wNN` | post-election window N, in years, zero-padded. Treatment *and* every outcome are measured over `(election_year - 1, election_year + N]` |
+
+A run is still identified by a single string, its **slug**
+(`instr-antiplural_w5_trt-ert_gapany_illibany_exclyr`): the manifest key and the
+label in every table subtitle. `run_slug()`, `spec_slug()` and `run_path()` in
+`scripts/rdd_helpers.R` build all three names from the same fields, so a reader
+and `12_rdd_analysis.R` cannot disagree about where a run lives.
 
 ## Sample-restriction thresholds
 
@@ -167,10 +193,11 @@ At w = 5, `_exclyr`, full sample, the placebo is clean: GDP growth is
 `-0.044 (0.314)` against the real `+0.663 (0.314)**`. Both pre-window estimates
 are insignificant and of the opposite sign.
 
-`manifest.csv` indexes every run with its configuration, sample size and
-first-stage result. Each folder also carries its own `run_config.csv`.
+`manifest.csv` indexes every run with its path, configuration, sample size
+and first-stage result. Each run folder also carries its own `run_config.csv`,
+and each spec folder a `spec_config.csv`.
 
-## Folder contents
+## Run folder contents
 
 ```
 rdd_results.csv              one row per outcome (reduced form + fuzzy LATE)
@@ -218,14 +245,19 @@ form *is* the first stage.
 
 ## Runs vs sweeps
 
-A **run** is one estimated specification: a single value for every one of the
-five fields above. It lives in `output/runs/<slug>/` and records itself in
-`run_config.csv`.
+A **run** is one estimated specification: a single value for every field. It
+lives in `output/runs/<spec>/by_post_election_window/<trt>/wNN/` and records
+itself in `run_config.csv`.
 
-A **sweep** varies one or more of those fields and pools the results. It lives
-in `output/runs/_sweeps/<name>/` and records itself in `sweep_config.csv`, which
-lists what was held *fixed* and what was *swept*, with every level of every
-swept axis.
+A **window sweep** pools one spec's runs across windows and treatments, so it
+lives in that spec's own folder, `output/runs/<spec>/pooled/`. Anything else
+tied to exactly one spec (today, `22_econleft_split_rdd.R`) gets a named
+subfolder of the spec the same way.
+
+Every other **sweep** compares across specs, or is not an RD run at all. Those
+live in `output/sweeps/<name>/` (see `output/sweeps/README.md`) and record
+themselves in `sweep_config.csv`, which lists what was held *fixed* and what
+was *swept*, with every level of every swept axis.
 
 The distinction matters because a `run_config.csv` asserts one value per field.
 A sweep writing one would be asserting a single threshold for a grid that varies
@@ -237,21 +269,28 @@ Figures are produced only for a run's primary configuration; driver scripts set
 `MAKE_PLOTS = FALSE` for the secondary cells they sweep over, so most folders
 hold numbers only.
 
-## Special folders
+### `pooled/` contents
 
-| Folder | What it holds |
-|---|---|
-| `_builds/<instrument>_w<N>/` | ERT-episode match accounting for one build (which episodes the election spine can and cannot reach, and why) |
-| `_sweeps/restriction_grid_<instr>_w<N>_trt-<treatment>/` | to-do 1: marginal tables and colour-coded pair grids over the five sample-restriction axes |
-| `_sweeps/window_sweep_<sample>/` | to-do 3: first stage / RD / fuzzy RD against window length, N = 1..10 |
-| `_sweeps/alt_specs_<sample>/` | to-dos 4-6: instrument x treatment-definition grids, plus what the DDCG extension actually adds |
-| `_sweeps/instrument_overlap/` | to-do 7: UpSet plots and Jaccard heatmaps measuring how much the instruments really differ |
-| `_sweeps/party_outcome_rdd_<instr>_w<N>/` | 1a: the same RD with the winner's OTHER party scores as the outcome — is a narrow anti-pluralist victory also a populist / left / minority-hostile one? |
-| `_sweeps/vparty_jaccard_panels/` | 1c: the anti-pluralism x populism Jaccard heatmap over the full V-Party dataset, as a 2 x 5 OECD-by-decade grid |
-| `_sweeps/vparty_ideology_quadrants/` | 1d: where the most common Wikipedia/Wikidata ideology tags sit on the illiberalism x populism plane, same 2 x 5 grid |
-| `_sweeps/populist_threshold/` | 2b: the PopuList-calibrated cutoff for "illiberal", and the ROC it comes from |
-| `_sweeps/cell_rdd_<instr>/` | reduced-form RD on the decade x OECD grid, every outcome, w1-10, full and PopuList-restricted samples |
-| `_sweeps/econleft_split_rdd_<instr><restriction>/` | the main RD run separately on elections where the anti-pluralist party is the more RIGHT-wing of the top 2 and where it is the more LEFT-wing -- the sign-discordant test of whether the growth result is really about the economic right. `<restriction>` carries the sample the split is taken within, spelled as in a run slug and omitted axis by axis at its no-op value: no suffix = all 1,347 scored elections (822 right / 517 left), `_illib0p6535_opp0p6535` = the 411 where one top-2 party is illiberal and the other is not (241 / 170) |
+`14_window_sweep.R` (to-do 3): first stage, reduced-form RD and fuzzy RD against
+window length, N = 1..10, for the three treatment definitions.
+
+```
+window_sweep_results.csv        one row per outcome x window x treatment
+window_sweep_first_stage.csv    one row per window x treatment
+window_first_stage.png/.html
+window_rdd_<family>.png         reduced form, one sheet per outcome family
+window_fuzzy_<family>.png       fuzzy LATE, one sheet per outcome family
+```
+
+### `econleft_split/` contents
+
+`22_econleft_split_rdd.R`: the main RD run separately on elections where the
+anti-pluralist party is the more RIGHT-wing of the top 2 and where it is the
+more LEFT-wing, the sign-discordant test of whether the growth result is really
+about the economic right. Taken within its spec's sample:
+`antiplural_gapany_illibany_exclyr` = all 1,347 scored elections (822 right /
+517 left); `antiplural_gapany_illib0p6535_opp0p6535_exclyr` = the 411 where one
+top-2 party is illiberal and the other is not (241 / 170).
 
 The pre-run-folder output that used to sit in `_legacy/` has been deleted. It is
 recoverable from the commit that preceded the cleanup, and the numbers in it
@@ -279,25 +318,31 @@ SPLIT_SAMPLE=popucut \
 
 ```
 
-Scripts 18 and 19 read raw V-Party and never touch a build, so they source
-`scripts/vparty_helpers.R` rather than `scripts/rdd_helpers.R`. Each plots a
+Scripts 18 and 19 read raw V-Party, so the analysis helpers they need are in
+`scripts/vparty_helpers.R`; they source `scripts/rdd_helpers.R` only for
+`sweep_dir()` (and 18 for `build_path()`). Each plots a
 LIST of score pairs and suffixes its outputs with a pair slug
 (`antiplural_vs_popul`, `econlr_vs_antiplural`); the axes, the Jaccard bin
 mode and whether `coord_fixed()` applies are all derived from `VPARTY_SCORES`
 in that helper. The left-right figures use the RAW right-positive
 `v2pariglef`, not the negated `v2pariglef_neg` the RDD carries, so the axis
 reads left-to-right conventionally -- the axis title says so.
-`01g_populist_threshold.R` is a calibration step and sources neither; it sits
-in the loader tier because `12_rdd_analysis.R` now consumes its output through
+`01g_populist_threshold.R` is a calibration step and sources `rdd_helpers.R`
+only for `sweep_dir()`; it sits in the loader tier because `12_rdd_analysis.R` now consumes its output through
 the `"popucut"` spec, so it has to run before the build.
 
 `--no-init-file` is required: this machine's `~/.Rprofile` calls
 `credentials::set_github_pat()`, which errors without a PAT. Do not use
 `--vanilla` -- it also drops the user library, hiding most installed packages.
 
-Every script guards its toggles with `if (!exists(...))`, so any of them can be
-driven with overrides:
+Every script guards its toggles with `if (!exists(...))`, falling back to the
+project-wide defaults in `scripts/config.R`, so any of them can be driven with
+overrides:
 
 ```r
-Rscript --no-init-file -e 'ILLIBERAL_CUTOFF <- 0.6; source("scripts/14_window_sweep.R")'
+Rscript --no-init-file -e 'ILLIBERAL_CUTOFF <- 0.6; source("scripts/12_rdd_analysis.R")'
+Rscript --no-init-file -e 'SWEEP_ILLIBERAL_CUTOFF <- "popucut"; SWEEP_OTHER_CUTOFF_MAX <- "popucut"; SWEEP_REESTIMATE <- TRUE; source("scripts/14_window_sweep.R")'
 ```
+
+`14_window_sweep.R` only re-pools runs already on disk unless
+`SWEEP_REESTIMATE <- TRUE`, and errors if any expected run is missing.

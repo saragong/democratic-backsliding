@@ -1,0 +1,7 @@
+spec,key,value
+popul_gapany_illibany_exclyr,instrument,v2xpa_popul
+popul_gapany_illibany_exclyr,score_gap_min,-Inf
+popul_gapany_illibany_exclyr,illiberal_cutoff,-Inf
+popul_gapany_illibany_exclyr,other_cutoff_max,Inf
+popul_gapany_illibany_exclyr,incl_election_year,FALSE
+popul_gapany_illibany_exclyr,placebo,FALSE

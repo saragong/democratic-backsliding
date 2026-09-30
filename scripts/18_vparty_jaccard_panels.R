@@ -29,7 +29,7 @@
 #
 #   Rscript --no-init-file scripts/18_vparty_jaccard_panels.R
 #
-# Output: output/runs/_sweeps/vparty_jaccard_panels/
+# Output: output/sweeps/vparty_jaccard_panels/
 #           jaccard_panels_<universe>.png
 #           jaccard_cells_<universe>.csv     every cell of every panel
 #           panel_summary.csv                N and diagonal mass per panel
@@ -73,8 +73,7 @@ MIN_CELL_N <- 100
 # so this just picks the one that exists.
 TOP2_BUILD <- build_path(DEFAULT_INSTRUMENT, DEFAULT_WINDOW, parties = TRUE)
 
-out_dir <- here::here("output", "runs", "_sweeps", "vparty_jaccard_panels")
-dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+out_dir <- sweep_dir("vparty_jaccard_panels")
 
 # ---- data --------------------------------------------------------------------
 

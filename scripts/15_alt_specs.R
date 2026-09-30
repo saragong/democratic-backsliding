@@ -22,7 +22,7 @@
 #          instruments on different scales, so the comparable restriction is a
 #          quantile of each instrument's own distribution.
 #
-# Output: output/runs/_sweeps/alt_specs_<sample>/
+# Output: output/sweeps/alt_specs_<sample><suffix>/
 #           alt_specs_results.csv, alt_specs_first_stage.csv
 #           grid_first_stage.html, grid_gdp_late.html, grid_gdp_rf.html
 #           ddcg_contribution.{csv,html}
@@ -149,7 +149,7 @@ for (samp in ALT_SAMPLES) {
           incl_election_year = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
           placebo = PLACEBO_PRE_WINDOW
         )
-        path <- file.path(RUNS_ROOT, run_slug(cfg), file_name)
+        path <- file.path(run_path(cfg), file_name)
         if (!file.exists(path)) {
           warning("Missing run output: ", path)
           return(NULL)

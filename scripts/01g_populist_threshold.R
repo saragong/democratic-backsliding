@@ -83,7 +83,7 @@
 #
 # Output: data/populist_4.0.csv          cached download
 #         data/populist_threshold.rds    the cutpoints, for 12_rdd_analysis.R
-#         output/runs/_sweeps/populist_threshold/
+#         output/sweeps/populist_threshold/
 #           thresholds.csv, roc.png, score_distributions.png, merge_audit.csv
 # ==============================================================================
 
@@ -108,9 +108,11 @@ library(ggplot2)
 library(pROC)
 library(here)
 
+# sweep_dir().
+source(here::here("scripts", "rdd_helpers.R"))
+
 data_dir <- here::here("data")
-out_dir <- here::here("output", "runs", "_sweeps", "populist_threshold")
-dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+out_dir <- sweep_dir("populist_threshold")
 
 POPULIST_URL <- "https://popu-list.github.io/Data/The%20PopuList%204.0.csv"
 POPULIST_CSV <- file.path(data_dir, "populist_4.0.csv")

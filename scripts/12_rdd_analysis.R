@@ -9,14 +9,15 @@
 #   - a plain reduced-form RD on Y (fuzzy = NULL) for comparison
 #
 # Everything this script writes goes into ONE run folder,
-# output/runs/<slug>/, where the slug encodes the instrument, window,
-# treatment definition, all three sample-restriction thresholds, the window
-# convention and whether this is the pre-election placebo. Different versions
-# of the analysis therefore never overwrite each other, and each folder is
-# self-describing via its run_config.csv.
+# output/runs/<spec>/by_post_election_window/<trt>/wNN/. The spec encodes the
+# instrument, all three sample-restriction thresholds, the window convention
+# and whether this is the pre-election placebo; the treatment definition and
+# the window pick the subfolder. Different versions of the analysis therefore
+# never overwrite each other, and each folder is self-describing via its
+# run_config.csv. See run_path() in rdd_helpers.R.
 #
 # Data:   data/rdd_build/rdd_<ILLIBERALISM_VAR>_w<N>[_exclyr][_pre].rds
-# Output: output/runs/<slug>/
+# Output: output/runs/<spec>/by_post_election_window/<trt>/wNN/
 #           run_config.csv
 #           rdd_results.csv, rdd_first_stage_results.csv
 #           first_stage_table.html, outcomes_table.html

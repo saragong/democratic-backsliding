@@ -2,11 +2,11 @@
 # Shared helpers for the fuzzy-RDD pipeline (scripts 11-17).
 #
 # Six groups of things live here:
-#   1. Run-folder machinery -- every analysis run (a combination of instrument,
-#      window, treatment definition and sample restrictions) gets its own
-#      output/runs/<slug>/ directory, so the many "versions" of the analysis
-#      stop colliding in a flat output/ distinguished only by filename suffix.
-#      Also the instrument / party-score / treatment registries.
+#   1. Run-folder machinery -- every fixed SPEC (instrument, sample
+#      restrictions, window convention, placebo) gets one output/runs/<spec>/
+#      folder, holding each (treatment x window) run of 12_rdd_analysis.R under
+#      by_post_election_window/ and the window sweep's pooled results under
+#      pooled/. Also the instrument / party-score / treatment registries.
 #   2. gt() table styling + econ-paper coefficient formatting, previously
 #      copy-pasted between 11_build_rdd_data.R and 12_rdd_analysis.R.
 #   3. Sample-restriction thresholds: one strict parser for all three accepted
@@ -33,13 +33,25 @@
 source(here::here("scripts", "vdem_indices.R"))
 source(here::here("scripts", "config.R"))
 
+# output/runs/ holds only spec folders (plus manifest.csv and README.md):
+#
+#   output/runs/<spec>/
+#     spec_config.csv
+#     pooled/                             14_window_sweep.R
+#     by_post_election_window/<trt>/wNN/  12_rdd_analysis.R, one per run
+#     <name>/                             other output tied to this one spec
+#
+# Anything that compares ACROSS specs, or is not an RD run at all, goes to
+# output/sweeps/<name>/ instead; 11's per-build diagnostics go to
+# output/builds/.
 RUNS_ROOT <- here::here("output", "runs")
+SWEEPS_ROOT <- here::here("output", "sweeps")
+BUILDS_OUT_ROOT <- here::here("output", "builds")
 
-# Where the one-off scripts in adhoc/ write. Kept out of output/runs/, which
-# belongs to the pipeline: a run folder is named by run_slug() and describes a
-# configuration of the analysis, and a _sweeps folder aggregates a set of
-# those. An adhoc script is neither -- it answers a single question once, and
-# filing its output under runs/ would imply a provenance it does not have.
+# Where the one-off scripts in adhoc/ write. Kept out of output/runs/ and
+# output/sweeps/, which belong to the pipeline: an adhoc script answers a single
+# question once, and filing its output there would imply a provenance it does
+# not have.
 ADHOC_ROOT <- here::here("output", "adhoc")
 
 # Short, filesystem-safe label for an instrument variable. Keeps slugs
@@ -128,31 +140,30 @@ fmt_slug_num <- function(x) {
   gsub("-", "neg", gsub("\\.", "p", format(x, trim = TRUE)))
 }
 
-# A run is fully identified by these five fields; the slug is a deterministic
-# function of them, so re-running the same configuration overwrites its own
-# folder rather than creating a near-duplicate.
-run_slug <- function(cfg) {
-  # cfg$incl_election_year is optional: absent means the project convention
-  # (FALSE). The suffix is keyed on the VALUE, not the default: FALSE writes
-  # "_exclyr" and TRUE writes nothing, so every existing folder keeps its name.
-  incl <- cfg$incl_election_year %||% FALSE
-  # Same pattern for the two axes added later. Both are absent from most cfgs
-  # and both are omitted at their no-op value, so every slug written before they
-  # existed is reproduced byte-identically and no run folder moves.
-  #   other_cutoff_max  a ceiling on the LESS-illiberal party's score. No-op is
-  #                     +Inf (nothing excluded), which fmt_slug_num renders
-  #                     "any" -- so the suffix is dropped rather than written as
-  #                     "_oppany", which would be noise on every existing run.
-  #   placebo           TRUE = the pre-election placebo window.
+# The fields that identify a SPEC -- everything a run holds fixed except the
+# window and the treatment definition, which vary inside the spec folder.
+SPEC_FIELDS <- c(
+  "instrument", "score_gap_min", "illiberal_cutoff", "other_cutoff_max",
+  "incl_election_year", "placebo"
+)
+
+# The slug for everything after the instrument: the three restriction
+# thresholds, then the two build conventions. Shared by run_slug() and
+# spec_slug() so the two can never spell a spec differently.
+#
+# Fields added after the first runs are optional in cfg and omitted at their
+# no-op value, so every slug written before they existed is reproduced
+# byte-identically:
+#   other_cutoff_max  a ceiling on the LESS-illiberal party's score. No-op is
+#                     +Inf (nothing excluded), rendered by omitting "_opp".
+#   incl_election_year  keyed on the VALUE: FALSE (the project convention)
+#                     writes "_exclyr", TRUE writes nothing.
+#   placebo           TRUE = the pre-election placebo window, "_pre".
+spec_tail_slug <- function(cfg) {
+  incl <- cfg$incl_election_year %||% DEFAULT_INCL_ELECTION_YEAR
   opp <- cfg$other_cutoff_max %||% Inf
   placebo <- cfg$placebo %||% FALSE
   paste0(
-    "instr-",
-    INSTRUMENT_LABELS[[cfg$instrument]],
-    "_w",
-    cfg$window,
-    "_trt-",
-    TREATMENT_LABELS[[cfg$treatment]],
     "_gap",
     fmt_slug_num(cfg$score_gap_min),
     "_illib",
@@ -163,23 +174,104 @@ run_slug <- function(cfg) {
   )
 }
 
-# Create output/runs/<slug>/ (plus plots/) and drop a run_config.csv inside so
-# a folder is self-describing without having to decode its own name.
+# A run's identity string, e.g. instr-antiplural_w5_trt-ert_gapany_illibany_exclyr.
+# No longer a folder name (see run_path()), but still the manifest key and the
+# label every table subtitle carries, so notes that quote a slug stay valid.
+run_slug <- function(cfg) {
+  paste0(
+    "instr-",
+    INSTRUMENT_LABELS[[cfg$instrument]],
+    "_w",
+    cfg$window,
+    "_trt-",
+    TREATMENT_LABELS[[cfg$treatment]],
+    spec_tail_slug(cfg)
+  )
+}
+
+# A spec's folder name, e.g. antiplural_gapany_illibany_exclyr.
+spec_slug <- function(cfg) {
+  paste0(INSTRUMENT_LABELS[[cfg$instrument]], spec_tail_slug(cfg))
+}
+
+# output/runs/<spec>/, without creating anything.
+spec_path <- function(cfg) {
+  file.path(RUNS_ROOT, spec_slug(cfg))
+}
+
+# Create output/runs/<spec>/ and write its spec_config.csv: the fixed fields
+# only, since the window and treatment vary inside it.
+spec_dir <- function(cfg) {
+  dir <- spec_path(cfg)
+  dir.create(dir, recursive = TRUE, showWarnings = FALSE)
+  vals <- list(
+    instrument = cfg$instrument,
+    score_gap_min = cfg$score_gap_min,
+    illiberal_cutoff = cfg$illiberal_cutoff,
+    other_cutoff_max = cfg$other_cutoff_max %||% Inf,
+    incl_election_year = cfg$incl_election_year %||% DEFAULT_INCL_ELECTION_YEAR,
+    placebo = cfg$placebo %||% FALSE
+  )
+  stopifnot(identical(names(vals), SPEC_FIELDS))
+  readr::write_csv(
+    tibble::tibble(
+      spec = spec_slug(cfg),
+      key = names(vals),
+      value = vapply(vals, function(v) format(v, trim = TRUE), character(1))
+    ),
+    file.path(dir, "spec_config.csv")
+  )
+  dir
+}
+
+# A run's folder relative to RUNS_ROOT:
+# <spec>/by_post_election_window/<trt>/wNN. Zero-padded so w10 sorts last.
+rel_run_path <- function(cfg) {
+  file.path(
+    spec_slug(cfg),
+    "by_post_election_window",
+    TREATMENT_LABELS[[cfg$treatment]],
+    sprintf("w%02d", as.integer(cfg$window))
+  )
+}
+
+# The absolute run folder, WITHOUT creating it. Every reader of a run's output
+# (the pooling steps in 14, 15 and 22, adhoc scripts) goes through this, so a
+# reader and 12_rdd_analysis.R cannot disagree about where a run lives.
+run_path <- function(cfg) {
+  file.path(RUNS_ROOT, rel_run_path(cfg))
+}
+
+# Create a run's folder (plus plots/) and drop a run_config.csv inside so the
+# folder is self-describing without having to decode its own path.
 run_dir <- function(cfg, subdirs = c("plots")) {
-  slug <- run_slug(cfg)
-  dir <- file.path(RUNS_ROOT, slug)
+  spec_dir(cfg)
+  dir <- run_path(cfg)
   dir.create(dir, recursive = TRUE, showWarnings = FALSE)
   for (sd in subdirs) {
     dir.create(file.path(dir, sd), recursive = TRUE, showWarnings = FALSE)
   }
   readr::write_csv(
     tibble::tibble(
-      slug = slug,
+      slug = run_slug(cfg),
       key = names(cfg),
       value = vapply(cfg, function(v) format(v, trim = TRUE), character(1))
     ),
     file.path(dir, "run_config.csv")
   )
+  dir
+}
+
+# The window sweep's pooled output for one spec: output/runs/<spec>/pooled/.
+pooled_dir <- function(cfg) {
+  spec_subdir(cfg, "pooled")
+}
+
+# Any other output tied to exactly one spec, e.g. 22's econleft split:
+# output/runs/<spec>/<name>/.
+spec_subdir <- function(cfg, name) {
+  dir <- file.path(spec_dir(cfg), name)
+  dir.create(dir, recursive = TRUE, showWarnings = FALSE)
   dir
 }
 
@@ -190,7 +282,7 @@ append_run_manifest <- function(cfg, extra = list()) {
   dir.create(RUNS_ROOT, recursive = TRUE, showWarnings = FALSE)
   slug <- run_slug(cfg)
   row <- tibble::as_tibble(c(
-    list(slug = slug),
+    list(slug = slug, path = rel_run_path(cfg)),
     lapply(cfg, function(v) format(v, trim = TRUE)),
     lapply(extra, function(v) format(v, trim = TRUE)),
     list(run_at = format(Sys.time(), "%Y-%m-%d %H:%M:%S"))
@@ -209,15 +301,16 @@ append_run_manifest <- function(cfg, extra = list()) {
   invisible(path)
 }
 
-# Where a sweep across many runs (window sweep, alt-spec grid, restriction grid,
-# instrument overlap) writes its aggregated comparison output.
+# Where output that compares ACROSS specs (restriction grid, alt-spec grid,
+# instrument overlap, party-outcome and cell RDs) or is not an RD run at all
+# (the PopuList calibration, raw V-Party descriptives) writes:
+# output/sweeps/<name>/.
 #
 # A sweep is NOT a run and must not borrow run_dir(): run_dir() writes a
 # run_config.csv asserting a single value for every field, which is a lie about
-# the axis a sweep is varying, and it would also collide with the folder that
-# 12_rdd_analysis.R legitimately owns for that configuration.
+# the axis a sweep is varying.
 sweep_dir <- function(name) {
-  dir <- file.path(RUNS_ROOT, "_sweeps", name)
+  dir <- file.path(SWEEPS_ROOT, name)
   dir.create(dir, recursive = TRUE, showWarnings = FALSE)
   dir
 }

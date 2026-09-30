@@ -10,9 +10,10 @@
 #
 # For each N it (a) builds data/rdd_build/rdd_<instr>_w<N>.rds if absent, then
 # (b) runs 12_rdd_analysis.R once per treatment definition, each into its own
-# run folder. Finally it pools every run's CSVs into one comparison set.
+# run folder, output/runs/<spec>/by_post_election_window/<trt>/wNN/. Finally it
+# pools every run's CSVs into one comparison set in the same spec folder.
 #
-# Output: output/runs/_sweeps/window_sweep/
+# Output: output/runs/<spec>/pooled/
 #           window_sweep_results.csv        one row per outcome x window x treatment
 #           window_sweep_first_stage.csv    one row per window x treatment
 #           window_first_stage.png/.html
@@ -63,7 +64,6 @@ if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
 # toggle only set in this script's scope would not reach 11 or 12 and the
 # "placebo" sweep would silently be a second copy of the real one.
 if (!exists("PLACEBO_PRE_WINDOW")) PLACEBO_PRE_WINDOW <- DEFAULT_PLACEBO
-build_sfx <- build_suffix(TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW)
 
 # ------------------------------------------------------------------------------
 # Resolve the restriction specs to NUMBERS, once, before anything uses them.
@@ -72,8 +72,8 @@ build_sfx <- build_suffix(TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_W
 # including "q50" and the file-backed "popucut". Two things downstream need a
 # number rather than a spec:
 #
-#   the sweep FOLDER NAME, via fmt_slug_num(), which errors on a character; and
-#   collect()'s cfg, which run_slug() turns into the folder names it reads.
+#   the spec FOLDER NAME, via spec_slug(), which errors on a character; and
+#   collect()'s cfg, which run_path() turns into the run folders it reads.
 #
 # The second is the dangerous one. The children resolve their own specs and
 # write to folders named for the RESOLVED value, so if the pooling step keyed
@@ -162,49 +162,33 @@ for (n in if (SWEEP_REESTIMATE) WINDOWS else integer(0)) {
 # Pool every run's results
 # ------------------------------------------------------------------------------
 
-# The folder name must carry every axis this sweep holds fixed: the instrument,
-# both sample-restriction thresholds, and the window convention. Omitting the
-# instrument (as an earlier version did, when there was only ever one) makes
-# consecutive sweeps over different instruments silently overwrite one another
-# -- three runs leave one folder holding only the last instrument's numbers.
-sweep_name <- paste0(
-  "window_sweep_",
-  INSTRUMENT_LABELS[[SWEEP_INSTRUMENT]],
-  "_gap",
-  fmt_slug_num(SWEEP_SCORE_GAP_MIN),
-  "_illib",
-  fmt_slug_num(SWEEP_ILLIBERAL_CUTOFF),
-  if (is.finite(SWEEP_OTHER_CUTOFF_MAX)) {
-    paste0("_opp", fmt_slug_num(SWEEP_OTHER_CUTOFF_MAX))
-  } else {
-    ""
-  },
-  build_sfx
+# Every axis this sweep holds fixed. The pooled output lands in this spec's
+# own folder, output/runs/<spec>/pooled/, next to the per-window runs it pools;
+# spec_slug() carries the instrument, all three thresholds and both build
+# conventions, so sweeps over different specs cannot overwrite one another.
+spec_cfg <- list(
+  instrument = SWEEP_INSTRUMENT,
+  score_gap_min = SWEEP_SCORE_GAP_MIN,
+  illiberal_cutoff = SWEEP_ILLIBERAL_CUTOFF,
+  other_cutoff_max = SWEEP_OTHER_CUTOFF_MAX,
+  incl_election_year = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
+  placebo = PLACEBO_PRE_WINDOW
 )
-out_dir <- sweep_dir(sweep_name)
+out_dir <- pooled_dir(spec_cfg)
 
 collect <- function(file_name) {
   missing <- character(0)
   out <- map_dfr(WINDOWS, function(n) {
     map_dfr(SWEEP_TREATMENTS, function(trt) {
-      # Every field run_slug() reads must appear here. Omitting one does not
-      # error -- run_slug() falls back to that field's default -- so the
+      # Every field run_path() reads must appear here. Omitting one does not
+      # error -- run_path() falls back to that field's default -- so the
       # pooling step quietly reads a DIFFERENT set of run folders than the
       # estimation step just wrote, and the sweep reports the wrong numbers
       # under the right name. That is exactly what happened when `placebo` was
       # missing: the placebo sweep pooled the non-placebo runs and came out
       # byte-identical to the real one.
-      cfg <- list(
-        instrument = SWEEP_INSTRUMENT,
-        window = n,
-        treatment = trt,
-        score_gap_min = SWEEP_SCORE_GAP_MIN,
-        illiberal_cutoff = SWEEP_ILLIBERAL_CUTOFF,
-        other_cutoff_max = SWEEP_OTHER_CUTOFF_MAX,
-        incl_election_year = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
-        placebo = PLACEBO_PRE_WINDOW
-      )
-      path <- file.path(RUNS_ROOT, run_slug(cfg), file_name)
+      cfg <- c(spec_cfg, list(window = n, treatment = trt))
+      path <- file.path(run_path(cfg), file_name)
       if (!file.exists(path)) {
         missing <<- c(missing, run_slug(cfg))
         return(NULL)
