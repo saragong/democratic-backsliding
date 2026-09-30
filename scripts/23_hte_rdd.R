@@ -61,7 +61,8 @@
 # Output: output/runs/<spec>/hte/
 #           hte_w<NN>_<outcome>.csv        one row per W (and per group / slope)
 #           hte_w<NN>_<outcome>_forest_<family>.png  one figure per family:
-#             party_scores, country_history, design, decade, joint
+#             party_scores, country_levels, country_pretrends, design,
+#             decade, joint
 # ==============================================================================
 
 library(tidyverse)
@@ -114,7 +115,8 @@ if (!exists("HTE_MIN_GROUP_H")) HTE_MIN_GROUP_H <- 20
 W_FAMILY <- function(w) {
   case_when(
     str_detect(w, "^W_(ill|oth|gap)_") ~ "Party scores",
-    str_detect(w, "^W_(lev|pre5)_") ~ "Country history (pre-election)",
+    str_detect(w, "^W_lev_") ~ "Country history: levels at t-1",
+    str_detect(w, "^W_pre5_") ~ "Country history: 5-year pre-trends",
     TRUE ~ "Design"
   )
 }
@@ -422,6 +424,12 @@ for (samp_name in names(HTE_SAMPLES)) {
       # A categorical W is shown as its per-level EFFECTS, in its own panel,
       # since there is no single heterogeneity term to plot.
       family = if_else(w %in% FACTOR_W, "Decade: effect in each", family),
+      # The figure title says levels or pre-trends, so the row need not.
+      label = if_else(
+        str_detect(w, "^W_(lev|pre5)_"),
+        str_remove(label, "^(Level at t-1|5-yr pre-trend): "),
+        label
+      ),
       label = case_when(
         w %in% FACTOR_W ~ paste0(str_remove(term, "^group "), "s"),
         # Name on the first line(s), close-election mean and SD beneath it, so
@@ -434,7 +442,8 @@ for (samp_name in names(HTE_SAMPLES)) {
         TRUE ~ str_wrap(label, 60)
       ),
       family = factor(family, levels = c(
-        "Party scores", "Country history (pre-election)", "Design",
+        "Party scores", "Country history: levels at t-1",
+        "Country history: 5-year pre-trends", "Design",
         "Decade: effect in each", "Joint model"
       )),
       sig = pval < 0.05,
@@ -458,7 +467,8 @@ for (samp_name in names(HTE_SAMPLES)) {
   ), 170), collapse = "\n")
   FAMILY_FILES <- c(
     "Party scores" = "party_scores",
-    "Country history (pre-election)" = "country_history",
+    "Country history: levels at t-1" = "country_levels",
+    "Country history: 5-year pre-trends" = "country_pretrends",
     "Design" = "design",
     "Decade: effect in each" = "decade",
     "Joint model" = "joint"
@@ -474,7 +484,7 @@ for (samp_name in names(HTE_SAMPLES)) {
       scale_colour_manual(values = c(`TRUE` = "#D55E00", `FALSE` = "grey35"), guide = "none") +
       labs(
         title = sprintf(
-          "%s: heterogeneity in the effect of a narrow anti-pluralist win on %s",
+          "%s. Heterogeneity in the effect of a narrow anti-pluralist win on %s",
           fam, outcome_full_label(HTE_OUTCOME)
         ),
         subtitle = subtitle,
