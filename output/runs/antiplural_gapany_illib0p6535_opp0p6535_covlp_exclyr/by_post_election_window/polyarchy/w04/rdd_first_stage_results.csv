@@ -1,0 +1,2 @@
+spec,treatment,n_first_stage,n_first_stage_treated,first_stage_coef,first_stage_se,first_stage_pval,first_stage_bandwidth,first_stage_covs,first_stage_coef_adj,first_stage_se_adj,first_stage_pval_adj,n_first_stage_adj
+instr-antiplural_w4_trt-polyarchy_gapany_illib0p6535_opp0p6535_covlp_exclyr,polyarchy_decline,405,158,-0.018540805308829456,0.04346758925560733,0.6697120647214614,26.16396128371454,Z_Y_gdp_growth,-0.007818574705648586,0.043784014578817164,0.8582742184643775,405

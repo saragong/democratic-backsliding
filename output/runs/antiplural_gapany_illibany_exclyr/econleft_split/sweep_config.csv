@@ -7,6 +7,7 @@ fixed,placebo,FALSE
 fixed,score_gap_min,-Inf
 fixed,illiberal_cutoff,-Inf
 fixed,other_cutoff_max,Inf
+fixed,lr_gap_min,-Inf
 fixed,sample,no restriction beyond the split
 swept,subset,"right, left "
 swept,window,"1, 2, 3, 4, 5, 6, 7, 8, 9, 10"

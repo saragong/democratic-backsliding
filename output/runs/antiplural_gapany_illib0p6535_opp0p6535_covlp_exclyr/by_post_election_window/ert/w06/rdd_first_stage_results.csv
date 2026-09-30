@@ -1,0 +1,2 @@
+spec,treatment,n_first_stage,n_first_stage_treated,first_stage_coef,first_stage_se,first_stage_pval,first_stage_bandwidth,first_stage_covs,first_stage_coef_adj,first_stage_se_adj,first_stage_pval_adj,n_first_stage_adj
+instr-antiplural_w6_trt-ert_gapany_illib0p6535_opp0p6535_covlp_exclyr,backsliding_Nyr,411,58,0.162184416072061,0.16955174382166313,0.3387953427983372,16.019867024219796,Z_Y_gdp_growth,0.16156281392094735,0.16335789485144878,0.32265758315304166,411

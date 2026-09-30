@@ -3,6 +3,7 @@ fixed,instrument,v2xpa_antiplural
 fixed,window,5
 fixed,treatment,backsliding_Nyr
 fixed,treatment_window_includes_election_year,FALSE
+fixed,placebo_pre_window,FALSE
 fixed,grid_outcome,Y_gdp_growth
 fixed,n_elections_unrestricted,1347
 swept,R1,score_gap: all | q20 (≥ 0.018) | q40 (≥ 0.09) | q60 (≥ 0.199) | q80 (≥ 0.437)

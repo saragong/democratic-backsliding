@@ -1,2 +1,2 @@
 spec,treatment,n_first_stage,n_first_stage_treated,first_stage_coef,first_stage_se,first_stage_pval,first_stage_bandwidth
-instr-antiplural_w6_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,1347,107,-0.0215201503555405,0.055079358579276795,0.696010342501675,16.82379558118494
+instr-antiplural_w6_trt-ert_gapany_illibany_exclyr_pre,backsliding_Nyr,1347,107,-0.02151109806556087,0.05509248783336336,0.6962006516073302,16.818972420661385

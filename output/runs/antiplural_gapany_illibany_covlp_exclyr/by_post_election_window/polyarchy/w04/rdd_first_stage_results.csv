@@ -1,0 +1,2 @@
+spec,treatment,n_first_stage,n_first_stage_treated,first_stage_coef,first_stage_se,first_stage_pval,first_stage_bandwidth,first_stage_covs,first_stage_coef_adj,first_stage_se_adj,first_stage_pval_adj,n_first_stage_adj
+instr-antiplural_w4_trt-polyarchy_gapany_illibany_covlp_exclyr,polyarchy_decline,1312,516,0.014284029618159319,0.01801305886075903,0.4277883690371255,20.43065371018156,Z_Y_gdp_growth,0.01918672663417983,0.016749748726481623,0.2520048274789605,1312

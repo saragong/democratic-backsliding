@@ -1,0 +1,21 @@
+subset,subset_label,window,n_elections,n_treated,mean_raw_leftright_antipluralist,mean_raw_leftright_other,n_tie_excluded,n_missing_excluded,n_below_lr_gap_excluded
+right,Anti-pluralist party is the more RIGHT-wing of the top 2,1,171,5,1.6268362573099415,-0.9174619883040935,0,0,109
+left,Anti-pluralist party is the more LEFT-wing of the top 2,1,123,6,-1.386731707317073,1.0152682926829268,0,0,109
+right,Anti-pluralist party is the more RIGHT-wing of the top 2,2,171,13,1.6268362573099415,-0.9174619883040935,0,0,109
+left,Anti-pluralist party is the more LEFT-wing of the top 2,2,123,10,-1.386731707317073,1.0152682926829268,0,0,109
+right,Anti-pluralist party is the more RIGHT-wing of the top 2,3,171,19,1.6268362573099415,-0.9174619883040935,0,0,109
+left,Anti-pluralist party is the more LEFT-wing of the top 2,3,123,16,-1.386731707317073,1.0152682926829268,0,0,109
+right,Anti-pluralist party is the more RIGHT-wing of the top 2,4,171,23,1.6268362573099415,-0.9174619883040935,0,0,109
+left,Anti-pluralist party is the more LEFT-wing of the top 2,4,123,19,-1.386731707317073,1.0152682926829268,0,0,109
+right,Anti-pluralist party is the more RIGHT-wing of the top 2,5,171,28,1.6268362573099415,-0.9174619883040935,0,0,109
+left,Anti-pluralist party is the more LEFT-wing of the top 2,5,123,25,-1.386731707317073,1.0152682926829268,0,0,109
+right,Anti-pluralist party is the more RIGHT-wing of the top 2,6,171,33,1.6268362573099415,-0.9174619883040935,0,0,109
+left,Anti-pluralist party is the more LEFT-wing of the top 2,6,123,27,-1.386731707317073,1.0152682926829268,0,0,109
+right,Anti-pluralist party is the more RIGHT-wing of the top 2,7,171,35,1.6268362573099415,-0.9174619883040935,0,0,109
+left,Anti-pluralist party is the more LEFT-wing of the top 2,7,123,28,-1.386731707317073,1.0152682926829268,0,0,109
+right,Anti-pluralist party is the more RIGHT-wing of the top 2,8,171,40,1.6268362573099415,-0.9174619883040935,0,0,109
+left,Anti-pluralist party is the more LEFT-wing of the top 2,8,123,31,-1.386731707317073,1.0152682926829268,0,0,109
+right,Anti-pluralist party is the more RIGHT-wing of the top 2,9,171,42,1.6268362573099415,-0.9174619883040935,0,0,109
+left,Anti-pluralist party is the more LEFT-wing of the top 2,9,123,32,-1.386731707317073,1.0152682926829268,0,0,109
+right,Anti-pluralist party is the more RIGHT-wing of the top 2,10,171,49,1.6268362573099415,-0.9174619883040935,0,0,109
+left,Anti-pluralist party is the more LEFT-wing of the top 2,10,123,36,-1.386731707317073,1.0152682926829268,0,0,109

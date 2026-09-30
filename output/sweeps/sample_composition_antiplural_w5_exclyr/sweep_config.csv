@@ -2,6 +2,7 @@ role,key,value
 fixed,instrument,v2xpa_antiplural
 fixed,window,5
 fixed,treatment_window_includes_election_year,FALSE
+fixed,placebo_pre_window,FALSE
 fixed,depends_on_treatment,FALSE
 fixed,depends_on_outcome,FALSE
 fixed,n_elections_unrestricted,1347
