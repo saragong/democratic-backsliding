@@ -220,7 +220,7 @@ vparty <- read_csv(
   ),
   show_col_types = FALSE
 ) |>
-  select(v2paid, country_name, year, all_of(c(FIT_SCORE, APPLY_SCORE))) |>
+  select(v2paid, country_name, country_text_id, year, all_of(c(FIT_SCORE, APPLY_SCORE))) |>
   filter(!is.na(.data[[FIT_SCORE]]))
 
 # PopuList's country names against V-Party's. Verified: all 31 match exactly
@@ -321,14 +321,14 @@ UNIVERSE_LABEL <- paste(
 # specifies, and its coefficient is worth reporting) but the cutpoint is read
 # off the SCORE directly -- which is what has to be transferred to
 # anti-pluralism, and what 12_rdd_analysis.R can actually apply.
-fit_one <- function(df, label) {
-  df <- df |> filter(!is.na(.data[[FIT_SCORE]]), !is.na(populist))
+fit_one <- function(df, label, score = FIT_SCORE) {
+  df <- df |> filter(!is.na(.data[[score]]), !is.na(populist))
   m <- glm(
-    as.formula(paste("populist ~", FIT_SCORE)),
+    as.formula(paste("populist ~", score)),
     data = df, family = binomial()
   )
   roc_obj <- roc(
-    response = df$populist, predictor = df[[FIT_SCORE]],
+    response = df$populist, predictor = df[[score]],
     quiet = TRUE, direction = "<"
   )
 
@@ -363,7 +363,7 @@ fit_one <- function(df, label) {
   }
 
   grab_accuracy <- function() {
-    x <- df[[FIT_SCORE]]
+    x <- df[[score]]
     y <- df$populist == 1
     # Midpoints between adjacent observed values, so every distinct split of
     # the data is considered exactly once.
@@ -385,7 +385,7 @@ fit_one <- function(df, label) {
   # Accuracy AT each chosen cutpoint, so the two can be compared on the same
   # footing rather than each on its own criterion.
   cuts$accuracy <- vapply(cuts$threshold, function(t) {
-    mean((df[[FIT_SCORE]] > t) == (df$populist == 1))
+    mean((df[[score]] > t) == (df$populist == 1))
   }, numeric(1))
   cuts$youden_j <- cuts$sensitivity + cuts$specificity - 1
 
@@ -417,7 +417,7 @@ fit_one <- function(df, label) {
     coef_se = sqrt(diag(vcov(m)))[2],
     roc = roc_obj,
     cuts = cuts,
-    fit_score = df[[FIT_SCORE]]
+    fit_score = df[[score]]
   )
 }
 
@@ -475,6 +475,53 @@ thresholds <- bind_rows(rows)
 write_csv(thresholds, file.path(out_dir, "thresholds.csv"))
 
 # ------------------------------------------------------------------------------
+# 4b. The within-country percentile calibration
+#
+# The same fit, with populism re-expressed as a percentile WITHIN the party's
+# own country: F_c(score) over every V-Party party-year in country c, all
+# years (country_pct() in rdd_helpers.R). The cut is then a percentile p*, and
+# 11_build_rdd_data.R ranks anti-pluralism within country the same way, so
+# "illiberal" means "in the top (1 - p*) of its own country's parties" --
+# which ports to every country V-Party covers, not only PopuList's 29. A raw
+# cut of 0.65 is strict in a country whose parties all sit low on the scale;
+# the percentile adapts to where each country's party system actually sits.
+# ------------------------------------------------------------------------------
+
+universe_imputed$popul_pct_ctry <- country_pct(
+  universe_imputed[[FIT_SCORE]], universe_imputed$country_text_id,
+  vparty[[FIT_SCORE]], vparty$country_text_id
+)
+fit_ctry <- fit_one(
+  universe_imputed,
+  paste(UNIVERSE_LABEL, "(populism as a within-country percentile)"),
+  score = "popul_pct_ctry"
+)
+cat(sprintf(
+  "\nWithin-country percentile calibration: N = %d (%d populist), AUC = %.3f\n",
+  fit_ctry$n, fit_ctry$n_pos, fit_ctry$auc
+))
+thresholds_ctry <- fit_ctry$cuts |>
+  transmute(
+    universe_label = fit_ctry$label,
+    n = fit_ctry$n, n_populist = fit_ctry$n_pos, auc = fit_ctry$auc,
+    method, percentile_cut = threshold,
+    sensitivity, specificity, accuracy, youden_j, degenerate
+  )
+for (i in seq_len(nrow(thresholds_ctry))) {
+  cat(sprintf(
+    "  %-9s cut at the %.1fth within-country percentile (sens %.2f spec %.2f J %.2f acc %.3f)\n",
+    thresholds_ctry$method[i], 100 * thresholds_ctry$percentile_cut[i],
+    thresholds_ctry$sensitivity[i], thresholds_ctry$specificity[i],
+    thresholds_ctry$youden_j[i], thresholds_ctry$accuracy[i]
+  ))
+}
+write_csv(thresholds_ctry, file.path(out_dir, "thresholds_ctry_pct.csv"))
+headline_ctry <- thresholds_ctry |>
+  filter(!degenerate, method == HEADLINE_METHOD) |>
+  slice(1)
+stopifnot(nrow(headline_ctry) == 1)
+
+# ------------------------------------------------------------------------------
 # 5. The headline numbers, for 12_rdd_analysis.R
 # ------------------------------------------------------------------------------
 
@@ -515,6 +562,20 @@ out <- list(
   # party-year distribution this percentile was computed on.
   threshold_pct = headline$threshold_percentile_value,
   percentile = headline$percentile,
+  # The within-country percentile cut (0-1), for the "popucut_ctry" spec. It is
+  # applied to illiberal_pct_ctry / other_pct_ctry, never to a raw score.
+  threshold_pct_ctry = headline_ctry$percentile_cut,
+  # The Youden cut on the same scale, carried because the accuracy criterion
+  # lands strictly (sensitivity ~0.5) and the question is precisely whether the
+  # PopuList cut is too conservative. "popucut_ctry_youden" reads it.
+  threshold_pct_ctry_youden = thresholds_ctry |>
+    filter(!degenerate, method == "youden") |>
+    pull(percentile_cut) |>
+    first(default = NA_real_),
+  auc_ctry = fit_ctry$auc,
+  cutpoints_ctry = thresholds_ctry |>
+    filter(!degenerate) |>
+    select(method, percentile_cut, sensitivity, specificity, accuracy, youden_j),
   coverage = sprintf(
     "PopuList 4.0, %d European countries, %d-%d",
     n_distinct(popu$country_name), COVERAGE_MIN, COVERAGE_MAX
@@ -533,6 +594,9 @@ print(
     as.data.frame(),
   row.names = FALSE
 )
+cat(sprintf(
+  "Within-country percentile (%s): %.4f\n", out$method, out$threshold_pct_ctry
+))
 cat("Saved data/populist_threshold.rds\n")
 
 # ------------------------------------------------------------------------------
@@ -873,5 +937,38 @@ ggsave(
   width = 9, height = 6.4, dpi = 150
 )
 cat("Saved score_distributions_full_sample.png\n")
+
+# The within-country calibration on its own scale: where PopuList's populists
+# and everyone else sit in their OWN country's populism distribution, and the
+# percentile cut the accuracy criterion picks.
+p_ctry <- universe_imputed |>
+  filter(!is.na(popul_pct_ctry)) |>
+  mutate(group = if_else(populist == 1, "PopuList populist", "Not listed")) |>
+  ggplot(aes(x = popul_pct_ctry, fill = group)) +
+  geom_histogram(binwidth = 0.025, boundary = 0, colour = "white", linewidth = 0.2) +
+  geom_vline(xintercept = out$threshold_pct_ctry, linewidth = 0.6) +
+  annotate(
+    "label", x = out$threshold_pct_ctry, y = Inf, vjust = 1.3, size = 2.8,
+    label = sprintf(
+      "%s cut: %.1fth pct\nsens %.2f, spec %.2f, AUC %.3f",
+      out$method, 100 * out$threshold_pct_ctry,
+      headline_ctry$sensitivity, headline_ctry$specificity, out$auc_ctry
+    )
+  ) +
+  scale_fill_manual(values = c("PopuList populist" = "#D55E00", "Not listed" = "#999999")) +
+  labs(
+    title = "Populism as a within-country percentile, PopuList calibration universe",
+    subtitle = paste(strwrap(paste(
+      "Each party-year's populism score ranked among every V-Party party-year in",
+      "its own country (all years). The cut is carried to anti-pluralism ranked",
+      "the same way, so it applies to countries PopuList does not cover."
+    ), 100), collapse = "\n"),
+    x = "Within-country percentile of v2xpa_popul", y = "Party-years", fill = NULL
+  ) +
+  theme_bw(base_size = 9) +
+  theme(legend.position = "bottom", panel.grid.minor = element_blank())
+ggsave(file.path(out_dir, "score_distribution_ctry_pct.png"), p_ctry,
+       width = 8, height = 4.6, dpi = 150)
+cat("Saved score_distribution_ctry_pct.png\n")
 
 message("\nPopuList threshold calibration written to ", out_dir)

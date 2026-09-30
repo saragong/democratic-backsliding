@@ -20,10 +20,11 @@ output/runs/
 The spec folder name is
 
 ```
-<instrument>_gap<score_gap_min>_illib<illiberal_cutoff>[_opp<other_cutoff_max>][_exclyr][_pre]
+<instrument>_gap<score_gap_min>_illib<illiberal_cutoff>[_opp<other_cutoff_max>][_ctrypct][_lrmin<x>][_lrmax<x>][_nofunke][_covlp][_exclyr][_pre]
 ```
 
-`_opp` and `_pre` appear only when not at their default. `_exclyr` appears
+Every optional part except `_exclyr` appears only when not at its default, so
+adding an axis never renames an existing folder. `_exclyr` appears
 whenever `TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR = FALSE`, which is the project
 convention, so in practice every current spec carries it.
 
@@ -33,6 +34,10 @@ convention, so in practice every current spec carries it.
 | `gap` | minimum `score_gap_z`; `any` = no restriction |
 | `illib` | minimum `illiberal_score` (the MORE illiberal of the top 2); `any` = no restriction |
 | `_opp` | maximum `other_score` (the LESS illiberal of the top 2). Omitted entirely at its default of `Inf`. Paired with `illib` at the same number, this is the "one side illiberal, the other not" restriction |
+| `_ctrypct` | `illib` / `opp` are **within-country percentiles** of anti-pluralism (0-1), not raw scores: the country-specific PopuList cut (`"popucut_ctry"`, `"popucut_ctry_youden"`). See below |
+| `_lrmin<x>` / `_lrmax<x>` | floor / ceiling on the top-2 **left-right gap**, \|difference in V-Party `v2pariglef`\| (`LR_GAP_MIN` / `LR_GAP_MAX`). The ceiling is the "no meaningful left-right difference" placebo |
+| `_nofunke` | elections whose `[election_year, election_year + N]` window overlaps a Funke et al. populist-leader spell dropped (`EXCLUDE_FUNKE`). Conditions on the post-election window; countries outside Funke's 60, and windows past 2020, are kept |
+| `_covlp` | covariate-adjusted (`RD_COVARIATES = "lp"`, Calonico, Cattaneo, Farrell & Titiunik 2019): every reduced-form and fuzzy fit adds that outcome's leave-country-out local projection on pre-election history (`11b_build_covariates.R`) linearly, not interacted with treatment |
 | `_exclyr` | present only when `TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR = FALSE` (see below) |
 | `_pre` | present only when `PLACEBO_PRE_WINDOW = TRUE`: the pre-election placebo, outcomes and treatment measured over the window BEFORE the election (see below) |
 
@@ -129,6 +134,19 @@ number share a folder instead of duplicating. The spec as written is recorded
 next to it in `run_config.csv` and `manifest.csv` as
 `illiberal_cutoff_spec` / `illiberal_cutoff_form`, and appears in every table
 subtitle — the folder name is never the only record.
+
+## The country-specific threshold
+
+`"popucut_ctry"` calibrates populism against PopuList as a percentile **within
+each party's own country** (its rank among every V-Party party-year in that
+country, all years), then applies the same percentile to anti-pluralism ranked
+the same way. The build carries `illiberal_pct_ctry` / `other_pct_ctry` for it
+(1,340 of 1,347 elections; the rest are in countries with under 10 V-Party
+party-years). The accuracy criterion cuts at the 90.3th percentile and the
+Youden criterion (`"popucut_ctry_youden"`) at the 71.6th; the implied raw cut
+differs by country (France 0.486 under accuracy, just at Front National's
+0.486). `scripts/11c_threshold_summary.R` puts every candidate cut side by side
+in `output/sweeps/populist_threshold/cutpoint_summary.html`.
 
 ## The treatment window convention
 
@@ -303,6 +321,8 @@ Rscript --no-init-file scripts/01f_load_extra_outcomes.R   # extra outcomes
 Rscript --no-init-file scripts/01g_populist_threshold.R   # PopuList cut (downloads)
 Rscript --no-init-file scripts/02a_build_panel.R           # country-year panel
 Rscript --no-init-file scripts/11_build_rdd_data.R         # default build
+Rscript --no-init-file scripts/11b_build_covariates.R      # local projections Z, heterogeneity W
+Rscript --no-init-file scripts/11c_threshold_summary.R     # every candidate "illiberal" cut side by side
 Rscript --no-init-file scripts/12_rdd_analysis.R           # default run
 Rscript --no-init-file scripts/13_restriction_grid.R       # to-do 1
 Rscript --no-init-file scripts/14_window_sweep.R           # to-do 3
@@ -313,8 +333,9 @@ Rscript --no-init-file scripts/18_vparty_jaccard_panels.R  # 1c
 Rscript --no-init-file scripts/19_vparty_ideology_quadrants.R  # 1d
 Rscript --no-init-file scripts/21_cell_rdd.R               # decade x OECD cells
 Rscript --no-init-file scripts/22_econleft_split_rdd.R     # econ L-R sign split
-SPLIT_SAMPLE=popucut \
-  Rscript --no-init-file scripts/22_econleft_split_rdd.R   # ... within the PopuList 411
+Rscript --no-init-file -e 'SPLIT_SAMPLE <- "popucut"; source("scripts/22_econleft_split_rdd.R")'   # ... within the PopuList 411
+Rscript --no-init-file -e 'SPLIT_SAMPLE <- "half"; SPLIT_LR_GAP_MIN <- 1; source("scripts/22_econleft_split_rdd.R")'
+Rscript --no-init-file scripts/23_hte_rdd.R                # heterogeneous effects (rdhte)
 
 ```
 

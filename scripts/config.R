@@ -44,3 +44,19 @@ DEFAULT_INCL_ELECTION_YEAR <- FALSE
 
 # The pre-election placebo window. Off except when a placebo is asked for.
 DEFAULT_PLACEBO <- FALSE
+
+# Left-right gap between the two top-2 parties, |v2pariglef| difference on
+# V-Party's expert scale. A floor (keep pairs at least this far apart, for the
+# left/right split) and a ceiling (keep pairs at most this far apart, the
+# "no meaningful left-right difference" placebo). The no-ops keep every pair.
+DEFAULT_LR_GAP_MIN <- -Inf
+DEFAULT_LR_GAP_MAX <- Inf
+
+# Drop elections whose [election_year, election_year + N] window overlaps a
+# Funke, Schularick & Trebesch populist-leader spell.
+DEFAULT_EXCLUDE_FUNKE <- FALSE
+
+# Covariate adjustment for the RD (Calonico, Cattaneo, Farrell & Titiunik
+# 2019): "none", or "lp" for the leave-country-out local projection of each
+# outcome built by 11b_build_covariates.R, entered linearly via covs=.
+DEFAULT_RD_COVARIATES <- "none"

@@ -144,8 +144,28 @@ fmt_slug_num <- function(x) {
 # window and the treatment definition, which vary inside the spec folder.
 SPEC_FIELDS <- c(
   "instrument", "score_gap_min", "illiberal_cutoff", "other_cutoff_max",
-  "incl_election_year", "placebo"
+  "threshold_scale", "lr_gap_min", "lr_gap_max", "exclude_funke",
+  "rd_covariates", "incl_election_year", "placebo"
 )
+
+# A cfg's value for each spec field, with the no-op default filled in for any
+# field the cfg predates. The single place those defaults are spelled out for
+# slugs and spec_config.csv.
+spec_values <- function(cfg) {
+  list(
+    instrument = cfg$instrument,
+    score_gap_min = cfg$score_gap_min,
+    illiberal_cutoff = cfg$illiberal_cutoff,
+    other_cutoff_max = cfg$other_cutoff_max %||% Inf,
+    threshold_scale = cfg$threshold_scale %||% "raw",
+    lr_gap_min = cfg$lr_gap_min %||% -Inf,
+    lr_gap_max = cfg$lr_gap_max %||% Inf,
+    exclude_funke = cfg$exclude_funke %||% FALSE,
+    rd_covariates = cfg$rd_covariates %||% "none",
+    incl_election_year = cfg$incl_election_year %||% DEFAULT_INCL_ELECTION_YEAR,
+    placebo = cfg$placebo %||% FALSE
+  )
+}
 
 # The slug for everything after the instrument: the three restriction
 # thresholds, then the two build conventions. Shared by run_slug() and
@@ -159,18 +179,31 @@ SPEC_FIELDS <- c(
 #   incl_election_year  keyed on the VALUE: FALSE (the project convention)
 #                     writes "_exclyr", TRUE writes nothing.
 #   placebo           TRUE = the pre-election placebo window, "_pre".
+#   threshold_scale   "ctry_pct" = illib/opp are within-country percentiles
+#                     of anti-pluralism rather than raw scores, "_ctrypct".
+#   lr_gap_min/max    floor/ceiling on the top-2 left-right gap, "_lrmin<x>"
+#                     / "_lrmax<x>".
+#   exclude_funke     TRUE = Funke populist spells dropped, "_nofunke".
+#   rd_covariates     "lp" = local-projection covariate adjustment, "_covlp".
 spec_tail_slug <- function(cfg) {
-  incl <- cfg$incl_election_year %||% DEFAULT_INCL_ELECTION_YEAR
-  opp <- cfg$other_cutoff_max %||% Inf
-  placebo <- cfg$placebo %||% FALSE
+  v <- spec_values(cfg)
+  stopifnot(
+    v$threshold_scale %in% c("raw", "ctry_pct"),
+    v$rd_covariates %in% c("none", "lp")
+  )
   paste0(
     "_gap",
-    fmt_slug_num(cfg$score_gap_min),
+    fmt_slug_num(v$score_gap_min),
     "_illib",
-    fmt_slug_num(cfg$illiberal_cutoff),
-    if (is.finite(opp)) paste0("_opp", fmt_slug_num(opp)) else "",
-    if (isTRUE(incl)) "" else "_exclyr",
-    if (isTRUE(placebo)) "_pre" else ""
+    fmt_slug_num(v$illiberal_cutoff),
+    if (is.finite(v$other_cutoff_max)) paste0("_opp", fmt_slug_num(v$other_cutoff_max)) else "",
+    if (v$threshold_scale == "ctry_pct") "_ctrypct" else "",
+    if (is.finite(v$lr_gap_min)) paste0("_lrmin", fmt_slug_num(v$lr_gap_min)) else "",
+    if (is.finite(v$lr_gap_max)) paste0("_lrmax", fmt_slug_num(v$lr_gap_max)) else "",
+    if (isTRUE(v$exclude_funke)) "_nofunke" else "",
+    if (v$rd_covariates == "lp") "_covlp" else "",
+    if (isTRUE(v$incl_election_year)) "" else "_exclyr",
+    if (isTRUE(v$placebo)) "_pre" else ""
   )
 }
 
@@ -204,14 +237,7 @@ spec_path <- function(cfg) {
 spec_dir <- function(cfg) {
   dir <- spec_path(cfg)
   dir.create(dir, recursive = TRUE, showWarnings = FALSE)
-  vals <- list(
-    instrument = cfg$instrument,
-    score_gap_min = cfg$score_gap_min,
-    illiberal_cutoff = cfg$illiberal_cutoff,
-    other_cutoff_max = cfg$other_cutoff_max %||% Inf,
-    incl_election_year = cfg$incl_election_year %||% DEFAULT_INCL_ELECTION_YEAR,
-    placebo = cfg$placebo %||% FALSE
-  )
+  vals <- spec_values(cfg)
   stopifnot(identical(names(vals), SPEC_FIELDS))
   readr::write_csv(
     tibble::tibble(
@@ -451,20 +477,35 @@ resolve_restrictions <- function(build,
                                  score_gap_min = DEFAULT_SCORE_GAP_MIN,
                                  illiberal_cutoff = DEFAULT_ILLIBERAL_CUTOFF,
                                  other_cutoff_max = DEFAULT_OTHER_CUTOFF_MAX,
-                                 prefix = "") {
+                                 prefix = "",
+                                 lr_gap_min = DEFAULT_LR_GAP_MIN,
+                                 lr_gap_max = DEFAULT_LR_GAP_MAX,
+                                 threshold_scale = NA_character_) {
+  if (!"lr_gap" %in% names(build)) build <- add_lr_gap(build)
+  ill <- parse_threshold(illiberal_cutoff, paste0(prefix, "ILLIBERAL_CUTOFF"))
+  oth <- parse_threshold(
+    other_cutoff_max, paste0(prefix, "OTHER_CUTOFF_MAX"), none_value = Inf
+  )
+  scale <- combine_scales(ill, oth, threshold_scale)
   out <- list(
     score_gap_min = resolve_threshold_abs(
       score_gap_min, paste0(prefix, "SCORE_GAP_MIN"), build$score_gap_z
     ),
-    illiberal_cutoff = resolve_threshold_abs(
-      illiberal_cutoff, paste0(prefix, "ILLIBERAL_CUTOFF"), build$illiberal_score
+    illiberal_cutoff = resolve_threshold(
+      ill, build[[threshold_var("illiberal", scale)]], paste0(prefix, "ILLIBERAL_CUTOFF")
+    )$absolute,
+    other_cutoff_max = resolve_threshold(
+      oth, build[[threshold_var("other", scale)]], paste0(prefix, "OTHER_CUTOFF_MAX")
+    )$absolute,
+    lr_gap_min = resolve_threshold_abs(
+      lr_gap_min, paste0(prefix, "LR_GAP_MIN"), build$lr_gap
     ),
-    other_cutoff_max = resolve_threshold_abs(
-      other_cutoff_max, paste0(prefix, "OTHER_CUTOFF_MAX"), build$other_score,
-      none_value = Inf
+    lr_gap_max = resolve_threshold_abs(
+      lr_gap_max, paste0(prefix, "LR_GAP_MAX"), build$lr_gap, none_value = Inf
     )
   )
   stopifnot(vapply(out, is.numeric, logical(1)))
+  out$threshold_scale <- scale
   out
 }
 
@@ -756,8 +797,100 @@ EXTERNAL_THRESHOLDS <- list(
       "PopuList-calibrated illiberality cut (%s criterion, %.1fth-percentile transfer; fitted on %d party-years, AUC %.3f)",
       x$method, x$percentile, x$n, x$auc
     )
+  ),
+  # A COUNTRY-SPECIFIC cut. Populism is calibrated against PopuList as a
+  # percentile within each country's own V-Party party-year distribution, and
+  # the resulting percentile (0-1) is applied to anti-pluralism, also ranked
+  # within country -- so the cut ports to countries PopuList never covers. It
+  # lives on a different scale from the raw score, so it restricts the
+  # illiberal_pct_ctry / other_pct_ctry columns instead (see threshold_var()).
+  popucut_ctry = list(
+    file = file.path("data", "populist_threshold.rds"),
+    field = "threshold_pct_ctry",
+    source_script = "01g_populist_threshold.R",
+    scale = "ctry_pct",
+    describe = function(x) sprintf(
+      "PopuList-calibrated within-country percentile cut (%s criterion; fitted on %d party-years, AUC %.3f)",
+      x$method, x$n, x$auc_ctry %||% NA_real_
+    )
+  ),
+  popucut_ctry_youden = list(
+    file = file.path("data", "populist_threshold.rds"),
+    field = "threshold_pct_ctry_youden",
+    source_script = "01g_populist_threshold.R",
+    scale = "ctry_pct",
+    describe = function(x) sprintf(
+      "PopuList-calibrated within-country percentile cut (youden criterion; fitted on %d party-years, AUC %.3f)",
+      x$n, x$auc_ctry %||% NA_real_
+    )
   )
 )
+
+# Within-country percentile of a party score, for the country-specific
+# threshold. F_c(x) = share of the REFERENCE party-years in country c whose
+# score is <= x -- the reference being every V-Party party-year in that country
+# (all years), the same universe on the calibration side (populism, in
+# 01g_populist_threshold.R) and the application side (anti-pluralism, in
+# 11_build_rdd_data.R). A country with fewer than COUNTRY_PCT_MIN_N reference
+# party-years gets NA: a percentile over a handful of observations is too
+# coarse to cut on.
+COUNTRY_PCT_MIN_N <- 10
+
+country_pct <- function(x, x_country, ref, ref_country, min_n = COUNTRY_PCT_MIN_N) {
+  ok <- !is.na(ref) & !is.na(ref_country)
+  ref_by <- split(ref[ok], ref_country[ok])
+  out <- rep(NA_real_, length(x))
+  for (ct in intersect(unique(x_country), names(ref_by))) {
+    r <- ref_by[[ct]]
+    if (length(r) < min_n) next
+    i <- which(x_country == ct & !is.na(x))
+    out[i] <- stats::ecdf(r)(x[i])
+  }
+  out
+}
+
+# The build column a threshold restricts, by axis and scale. Raw scores are the
+# default; a within-country-percentile spec restricts the percentile columns
+# 11_build_rdd_data.R computes.
+threshold_var <- function(axis = c("illiberal", "other"), scale = "raw") {
+  axis <- match.arg(axis)
+  stopifnot(scale %in% c("raw", "ctry_pct"))
+  if (scale == "raw") paste0(axis, "_score") else paste0(axis, "_pct_ctry")
+}
+
+# The scale a parsed threshold implies: an external spec declares its own
+# ("popucut_ctry" -> "ctry_pct", "popucut" -> "raw"); a number or quantile
+# implies none (NA) and takes whatever scale the caller declared.
+threshold_scale <- function(parsed) {
+  if (identical(parsed$kind, "external")) {
+    EXTERNAL_THRESHOLDS[[parsed$external]]$scale %||% "raw"
+  } else {
+    NA_character_
+  }
+}
+
+# The one scale the illiberal floor and the opponent ceiling share. `declared`
+# is the caller's explicit scale (NA = not declared) -- needed because a driver
+# resolves "popucut_ctry" to a plain number before handing it to 12, and a
+# number alone would otherwise read as a raw score. Mixing scales is an error:
+# a pair condition with one side a raw score and the other a within-country
+# percentile compares two different things, and one slug could not say so.
+combine_scales <- function(ill, oth, declared = NA_character_) {
+  sc <- unique(stats::na.omit(c(
+    if (ill$kind != "none") threshold_scale(ill),
+    if (oth$kind != "none") threshold_scale(oth),
+    declared
+  )))
+  if (length(sc) > 1) {
+    stop(
+      "ILLIBERAL_CUTOFF and OTHER_CUTOFF_MAX imply different scales (",
+      paste(sc, collapse = " vs "), "). Use the same kind of spec for both, ",
+      "and a THRESHOLD_SCALE that agrees with them.",
+      call. = FALSE
+    )
+  }
+  if (length(sc) == 0) "raw" else sc
+}
 
 # Classify a threshold spec WITHOUT looking at data. Returns a list with
 # $kind ("none" | "absolute" | "quantile"), $quantile, $absolute and $spec (the
@@ -999,7 +1132,13 @@ resolve_threshold_abs <- function(spec, name, values, none_value = -Inf) {
 restriction_sentence <- function(score_gap_min = -Inf,
                                  illiberal_cutoff = -Inf,
                                  other_cutoff_max = Inf,
-                                 none = "all elections") {
+                                 none = "all elections",
+                                 threshold_scale = "raw",
+                                 lr_gap_min = -Inf,
+                                 lr_gap_max = Inf,
+                                 exclude_funke = FALSE) {
+  ill_var <- threshold_var("illiberal", threshold_scale)
+  oth_var <- threshold_var("other", threshold_scale)
   # c() drops NULLs, so an inactive axis contributes nothing rather than an
   # empty string that paste() would render as a stray comma.
   parts <- c(
@@ -1009,21 +1148,251 @@ restriction_sentence <- function(score_gap_min = -Inf,
     if (is.finite(illiberal_cutoff) && is.finite(other_cutoff_max) &&
           isTRUE(all.equal(illiberal_cutoff, other_cutoff_max))) {
       sprintf(
-        "one top-2 party illiberal and the other not (illiberal_score > %s >= other_score)",
-        format(illiberal_cutoff, trim = TRUE)
+        "one top-2 party illiberal and the other not (%s > %s >= %s)",
+        ill_var, format(illiberal_cutoff, trim = TRUE), oth_var
       )
     } else {
       c(
         if (is.finite(illiberal_cutoff)) {
-          sprintf("illiberal_score > %s", format(illiberal_cutoff, trim = TRUE))
+          sprintf("%s > %s", ill_var, format(illiberal_cutoff, trim = TRUE))
         },
         if (is.finite(other_cutoff_max)) {
-          sprintf("other_score <= %s", format(other_cutoff_max, trim = TRUE))
+          sprintf("%s <= %s", oth_var, format(other_cutoff_max, trim = TRUE))
         }
       )
-    }
+    },
+    if (is.finite(lr_gap_min)) {
+      sprintf("left-right gap >= %s", format(lr_gap_min, trim = TRUE))
+    },
+    if (is.finite(lr_gap_max)) {
+      sprintf("left-right gap <= %s", format(lr_gap_max, trim = TRUE))
+    },
+    if (isTRUE(exclude_funke)) "excluding windows overlapping a Funke populist spell"
   )
   if (length(parts) == 0) none else paste(parts, collapse = ", ")
+}
+
+# ------------------------------------------------------------------------------
+# 3b. Design columns and the estimation sample
+# ------------------------------------------------------------------------------
+
+# The more- and less-illiberal parties' value of EVERY party score. The build
+# orders the <score>__winner / __loser columns by VOTE SHARE, not by
+# anti-pluralism, so the more-illiberal party is the winner exactly when
+# running_var > 0 (running_var = illiberal_share - other_share). Adds
+# ill_<score> and oth_<score> for each of PARTY_SCORE_VARS.
+illiberal_side_scores <- function(d) {
+  won <- d$running_var > 0
+  for (sc in PARTY_SCORE_VARS) {
+    w <- d[[paste0(sc, "__winner")]]
+    l <- d[[paste0(sc, "__loser")]]
+    if (is.null(w) || is.null(l)) next
+    d[[paste0("ill_", sc)]] <- ifelse(won, w, l)
+    d[[paste0("oth_", sc)]] <- ifelse(won, l, w)
+  }
+  d
+}
+
+# |left-right difference| between the two top-2 parties, on V-Party's
+# v2pariglef scale (the build carries it negated; the absolute gap is the same).
+add_lr_gap <- function(d) {
+  d$lr_gap <- abs(d$v2pariglef_neg__winner - d$v2pariglef_neg__loser)
+  d
+}
+
+FUNKE_SPELLS_PATH <- here::here("data", "funke_spells.rds")
+FUNKE_PANEL_PATH <- here::here("data", "funke_panel.rds")
+
+# TRUE when the election's [election_year, election_year + window] span
+# overlaps any Funke, Schularick & Trebesch populist-leader spell.
+#
+# This conditions on the post-election window, which is after treatment: an
+# election is dropped if a populist holds office at any point in it, including
+# because of the election itself. That is the sample the exclusion is meant to
+# remove, but it is not a pre-treatment restriction, and results should be read
+# that way.
+#
+# Coverage is 60 countries through 2020. Elections outside it are coded FALSE
+# (kept) because their populist status is unknown, not known to be absent;
+# funke_unknown marks them, so the exclusion can say how many it kept blind.
+add_funke_overlap <- function(d, window) {
+  spells <- readRDS(FUNKE_SPELLS_PATH)
+  covered <- unique(readRDS(FUNKE_PANEL_PATH)$country_text_id)
+  lo <- d$election_year
+  hi <- d$election_year + window
+  flag <- vapply(seq_len(nrow(d)), function(i) {
+    sp <- spells[spells$country_text_id == d$country_text_id[i], ]
+    any(sp$entry_year <= hi[i] & sp$exit_year >= lo[i])
+  }, logical(1))
+  d$funke_overlap <- flag
+  d$funke_unknown <- dplyr::case_when(
+    !d$country_text_id %in% covered ~ "country not covered",
+    hi > 2020 & !flag ~ "window past 2020",
+    TRUE ~ NA_character_
+  )
+  d
+}
+
+# Every column the sample restrictions and the heterogeneity covariates read
+# that is derived from the build at load time rather than stored in it.
+add_design_columns <- function(d, window) {
+  d <- illiberal_side_scores(d)
+  d <- add_lr_gap(d)
+  add_funke_overlap(d, window)
+}
+
+# The options that select an estimation sample, with config.R's defaults.
+# 12_rdd_analysis.R builds one of these from its toggles; other scripts that
+# need the identical sample (23_hte_rdd.R) build it the same way.
+sample_opts <- function(instrument = DEFAULT_INSTRUMENT,
+                        window = DEFAULT_WINDOW,
+                        treatment = DEFAULT_TREATMENT,
+                        incl = DEFAULT_INCL_ELECTION_YEAR,
+                        placebo = DEFAULT_PLACEBO,
+                        score_gap_min = DEFAULT_SCORE_GAP_MIN,
+                        illiberal_cutoff = DEFAULT_ILLIBERAL_CUTOFF,
+                        other_cutoff_max = DEFAULT_OTHER_CUTOFF_MAX,
+                        threshold_scale = NA_character_,
+                        lr_gap_min = DEFAULT_LR_GAP_MIN,
+                        lr_gap_max = DEFAULT_LR_GAP_MAX,
+                        exclude_funke = DEFAULT_EXCLUDE_FUNKE,
+                        rd_covariates = DEFAULT_RD_COVARIATES) {
+  stopifnot(
+    is.logical(exclude_funke), length(exclude_funke) == 1,
+    rd_covariates %in% c("none", "lp")
+  )
+  as.list(environment())
+}
+
+# Load a build and cut it to the sample `opts` describes. Returns list(d, cfg,
+# label, build_file).
+#
+# Every threshold is parsed and resolved against the FULL loaded build before
+# any filter is applied. That ordering is load-bearing: resolving a quantile
+# after another restriction had bitten would make the axes interact, so
+# changing SCORE_GAP_MIN would silently move an ILLIBERAL_CUTOFF of "q50" too.
+#
+# cfg carries the RESOLVED absolute values, so a "q50" run and a hand-written
+# run at the same resolved number share a folder; the specs as written ride
+# along as *_spec / *_form for the record.
+prepare_rdd_sample <- function(opts) {
+  build_file <- build_path(opts$instrument, opts$window, opts$incl, opts$placebo)
+  d <- load_build(opts$instrument, opts$window, opts$incl, opts$placebo)
+  if (!opts$treatment %in% names(d)) {
+    stop(
+      "Build at ", build_file, " has no column '", opts$treatment,
+      "'. It predates that treatment definition -- rebuild it with ",
+      "11_build_rdd_data.R.",
+      call. = FALSE
+    )
+  }
+  cat(sprintf("Loaded %s (%d elections)\n", basename(build_file), nrow(d)))
+  d <- add_design_columns(d, opts$window)
+  # The local-projection covariates. Joined before any restriction so every
+  # restriction sees the same rows it would without them; a row missing its Z
+  # drops out only of the fits that use it, inside safe_rdrobust().
+  if (opts$rd_covariates == "lp") {
+    if (opts$placebo) {
+      stop(
+        "RD_COVARIATES = \"lp\" is defined for the post-election window only; ",
+        "the placebo window's outcomes overlap the projection's regressors.",
+        call. = FALSE
+      )
+    }
+    z <- load_covars(opts$instrument, opts$window, opts$incl, opts$placebo) |>
+      dplyr::select(election_id, dplyr::starts_with("Z_"))
+    d <- dplyr::left_join(d, z, by = "election_id", relationship = "one-to-one")
+  }
+
+  thr <- list(
+    score_gap = resolve_threshold(
+      parse_threshold(opts$score_gap_min, "SCORE_GAP_MIN"),
+      d$score_gap_z, "SCORE_GAP_MIN"
+    ),
+    illiberal = parse_threshold(opts$illiberal_cutoff, "ILLIBERAL_CUTOFF"),
+    # none_value = Inf: a ceiling, so "no restriction" is +Inf. Resolved
+    # against the LESS-illiberal member, so a quantile spec means a percentile
+    # of the opponents' distribution.
+    other = parse_threshold(opts$other_cutoff_max, "OTHER_CUTOFF_MAX", none_value = Inf),
+    lr_min = resolve_threshold(
+      parse_threshold(opts$lr_gap_min, "LR_GAP_MIN"), d$lr_gap, "LR_GAP_MIN"
+    ),
+    lr_max = resolve_threshold(
+      parse_threshold(opts$lr_gap_max, "LR_GAP_MAX", none_value = Inf),
+      d$lr_gap, "LR_GAP_MAX"
+    )
+  )
+  scale <- combine_scales(thr$illiberal, thr$other, opts$threshold_scale)
+  ill_var <- threshold_var("illiberal", scale)
+  oth_var <- threshold_var("other", scale)
+  if (!all(c(ill_var, oth_var) %in% names(d))) {
+    stop(
+      "Build at ", build_file, " has no ", ill_var, "/", oth_var,
+      " columns -- rebuild it with 11_build_rdd_data.R.",
+      call. = FALSE
+    )
+  }
+  thr$illiberal <- resolve_threshold(thr$illiberal, d[[ill_var]], "ILLIBERAL_CUTOFF")
+  thr$other <- resolve_threshold(thr$other, d[[oth_var]], "OTHER_CUTOFF_MAX")
+
+  cfg <- list(
+    instrument = opts$instrument,
+    window = opts$window,
+    treatment = opts$treatment,
+    score_gap_min = thr$score_gap$absolute,
+    illiberal_cutoff = thr$illiberal$absolute,
+    other_cutoff_max = thr$other$absolute,
+    threshold_scale = scale,
+    lr_gap_min = thr$lr_min$absolute,
+    lr_gap_max = thr$lr_max$absolute,
+    exclude_funke = opts$exclude_funke,
+    rd_covariates = opts$rd_covariates,
+    incl_election_year = opts$incl,
+    placebo = opts$placebo,
+    score_gap_spec = thr$score_gap$spec,
+    score_gap_form = thr$score_gap$kind,
+    illiberal_cutoff_spec = thr$illiberal$spec,
+    illiberal_cutoff_form = thr$illiberal$kind,
+    other_cutoff_spec = thr$other$spec,
+    other_cutoff_form = thr$other$kind,
+    lr_gap_min_spec = thr$lr_min$spec,
+    lr_gap_max_spec = thr$lr_max$spec
+  )
+  # Fields added after the first runs are written only when active, so a
+  # default run's run_config.csv and manifest row keep their old shape.
+  if (scale == "raw") cfg$threshold_scale <- NULL
+  if (thr$lr_min$kind == "none") cfg$lr_gap_min <- cfg$lr_gap_min_spec <- NULL
+  if (thr$lr_max$kind == "none") cfg$lr_gap_max <- cfg$lr_gap_max_spec <- NULL
+  if (!opts$exclude_funke) cfg$exclude_funke <- NULL
+  if (opts$rd_covariates == "none") cfg$rd_covariates <- NULL
+
+  cat("\nSample restrictions:\n")
+  d <- apply_threshold(d, "score_gap_z", thr$score_gap, "SCORE_GAP_MIN", op = ">=")
+  d <- apply_threshold(d, ill_var, thr$illiberal, "ILLIBERAL_CUTOFF", op = ">")
+  d <- apply_threshold(d, oth_var, thr$other, "OTHER_CUTOFF_MAX", op = "<=")
+  d <- apply_threshold(d, "lr_gap", thr$lr_min, "LR_GAP_MIN", op = ">=")
+  d <- apply_threshold(d, "lr_gap", thr$lr_max, "LR_GAP_MAX", op = "<=")
+  if (opts$exclude_funke) {
+    n0 <- nrow(d)
+    d <- d[!d$funke_overlap, , drop = FALSE]
+    cat(sprintf(
+      "  %-16s drop windows overlapping a Funke populist spell:  %d -> %d rows (%d dropped; kept as unknown: %d outside Funke's countries, %d with windows past 2020)\n",
+      "EXCLUDE_FUNKE", n0, nrow(d), n0 - nrow(d),
+      sum(d$funke_unknown %in% "country not covered"),
+      sum(d$funke_unknown %in% "window past 2020")
+    ))
+  }
+  cat(sprintf("  %-16s %d elections\n\n", "FINAL SAMPLE", nrow(d)))
+
+  label <- restriction_sentence(
+    thr$score_gap$absolute, thr$illiberal$absolute, thr$other$absolute,
+    none = "all scored elections",
+    threshold_scale = scale,
+    lr_gap_min = thr$lr_min$absolute,
+    lr_gap_max = thr$lr_max$absolute,
+    exclude_funke = opts$exclude_funke
+  )
+  list(d = d, cfg = cfg, label = label, build_file = build_file)
 }
 
 
@@ -1332,6 +1701,60 @@ OUTCOME_FAMILY_TITLES <- c(
 # read in the same sequence as the figures.
 ALL_OUTCOME_VARS <- unlist(lapply(OUTCOME_PANELS, names), use.names = FALSE)
 
+# The combined_panel.rds column each outcome is the window change of, and
+# whether that change is compounded (a rate, summed as log(1 + r/100) over the
+# window) rather than differenced. MUST agree with build_outcomes() in
+# 11_build_rdd_data.R; 11b_build_covariates.R recomputes every outcome from
+# this registry at the election rows and stops if any disagrees with the build.
+OUTCOME_SOURCES <- c(
+  Y_gdp_growth = "ln_gdp_pc",
+  Y_gdp_growth_wb = "ln_gdp_pc_wb",
+  Y_gdp_growth_imf = "ln_gdp_pc_imf",
+  Y_inflation = "cpi_inflation",
+  Y_unemployment = "unemployment_rate",
+  Y_trade_pct_gdp = "trade_pct_gdp",
+  Y_top10_share = "top10_share",
+  Y_gini_disp = "gini_disp",
+  Y_gini_mkt = "gini_mkt",
+  Y_debt = "debt_pct_gdp",
+  Y_deficit = "deficit_pct_gdp",
+  Y_checks_balances = "checks_balances",
+  Y_hos_power = "hos_power_linear",
+  Y_hog_power = "hog_power_linear",
+  Y_hos_power_vdem = "hos_power_vdem",
+  Y_hog_power_vdem = "hog_power_vdem",
+  VDEM_INDEX_VARS
+)
+OUTCOME_COMPOUNDED <- c("Y_inflation")
+stopifnot(setequal(names(OUTCOME_SOURCES), ALL_OUTCOME_VARS))
+
+# The per-election covariate files 11b_build_covariates.R writes, one per build:
+# Z_<outcome> (the leave-country-out local projection of that outcome, for
+# covariate adjustment) and W_* (pre-election heterogeneity covariates).
+covars_path <- function(instr, window,
+                        incl = DEFAULT_INCL_ELECTION_YEAR,
+                        placebo = DEFAULT_PLACEBO) {
+  file.path(
+    BUILD_ROOT,
+    sprintf("covars_%s_w%d%s.rds", instr, as.integer(window), build_suffix(incl, placebo))
+  )
+}
+
+load_covars <- function(instr, window,
+                        incl = DEFAULT_INCL_ELECTION_YEAR,
+                        placebo = DEFAULT_PLACEBO) {
+  path <- covars_path(instr, window, incl, placebo)
+  if (!file.exists(path)) {
+    stop(
+      "No covariate file at ", path, ". Run 11b_build_covariates.R with ",
+      "ILLIBERALISM_VAR = '", instr, "' and BACKSLIDING_WINDOW_YEARS = ", window,
+      " first.",
+      call. = FALSE
+    )
+  }
+  readRDS(path)
+}
+
 # A self-describing label for one outcome. Inside a multi-series panel the
 # series label alone ("PWT", "Disposable") means nothing out of context, so
 # qualify it with the panel title; a lone series just takes the panel title.
@@ -1367,19 +1790,39 @@ RD_BWSELECT <- "mserd"
 # rdrobust either errors or returns something not worth reporting.
 RD_MIN_OBS <- 20
 
-safe_rdrobust <- function(y, x, fuzzy = NULL) {
+# The non-missing mask every RD fit uses, shared by safe_rdrobust() and
+# rd_n_treated() so a reported "N treated" is always a subset of the reported N.
+# `covs` is a vector or a matrix/data frame of covariates (Calonico, Cattaneo,
+# Farrell & Titiunik 2019); a row missing any covariate is dropped, which is
+# what rdrobust itself would do.
+rd_keep <- function(y, x, fuzzy = NULL, covs = NULL) {
+  # is.null(fuzzy) | !is.na(fuzzy) would silently collapse to logical(0)
+  # when fuzzy is NULL (!is.na(NULL) is zero-length), zeroing out `keep`
+  # via vectorized `&` -- branch explicitly instead.
+  fuzzy_ok <- if (is.null(fuzzy)) rep(TRUE, length(y)) else !is.na(fuzzy)
+  covs_ok <- if (is.null(covs)) {
+    rep(TRUE, length(y))
+  } else {
+    stats::complete.cases(as.data.frame(covs))
+  }
+  !is.na(y) & !is.na(x) & fuzzy_ok & covs_ok
+}
+
+# covs enter linearly and are NOT interacted with treatment -- the
+# covariate-adjusted estimator of Calonico et al. (2019), eq. 2 -- and the
+# MSE-optimal bandwidth is selected with them in the model.
+safe_rdrobust <- function(y, x, fuzzy = NULL, covs = NULL) {
   tryCatch(
     {
-      # is.null(fuzzy) | !is.na(fuzzy) would silently collapse to logical(0)
-      # when fuzzy is NULL (!is.na(NULL) is zero-length), zeroing out `keep`
-      # via vectorized `&` -- branch explicitly instead.
-      fuzzy_ok <- if (is.null(fuzzy)) rep(TRUE, length(y)) else !is.na(fuzzy)
-      keep <- !is.na(y) & !is.na(x) & fuzzy_ok
+      keep <- rd_keep(y, x, fuzzy, covs)
       if (sum(keep) < RD_MIN_OBS) {
         return(NULL)
       }
+      covs_kept <- if (is.null(covs)) NULL else as.matrix(as.data.frame(covs)[keep, , drop = FALSE])
       if (is.null(fuzzy)) {
-        rdrobust::rdrobust(y = y[keep], x = x[keep], bwselect = RD_BWSELECT)
+        rdrobust::rdrobust(
+          y = y[keep], x = x[keep], covs = covs_kept, bwselect = RD_BWSELECT
+        )
       } else {
         # A degenerate treatment (no variation, or none within the bandwidth)
         # makes the Wald denominator zero; rdrobust's own error is opaque, so
@@ -1391,6 +1834,7 @@ safe_rdrobust <- function(y, x, fuzzy = NULL) {
           y = y[keep],
           x = x[keep],
           fuzzy = fuzzy[keep],
+          covs = covs_kept,
           bwselect = RD_BWSELECT
         )
       }
@@ -1416,11 +1860,11 @@ safe_rdrobust <- function(y, x, fuzzy = NULL) {
 # strictly positive. Exact zeros are untreated -- no change is no backsliding.
 # Reporting NA here instead, as an earlier version did, threw away the one
 # number that says how much of the sample carries any backsliding signal at all.
-rd_n_treated <- function(y, x, treatment) {
+rd_n_treated <- function(y, x, treatment, covs = NULL) {
   if (is.null(treatment)) {
     return(NA_integer_)
   }
-  keep <- !is.na(y) & !is.na(x) & !is.na(treatment)
+  keep <- rd_keep(y, x, treatment, covs)
   vals <- treatment[keep]
   if (length(vals) == 0) {
     return(NA_integer_)

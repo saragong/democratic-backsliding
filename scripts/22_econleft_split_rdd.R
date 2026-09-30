@@ -33,7 +33,8 @@
 # party is illiberal and the other is not:
 #
 #   Rscript --no-init-file scripts/22_econleft_split_rdd.R
-#   SPLIT_SAMPLE=popucut Rscript --no-init-file scripts/22_econleft_split_rdd.R
+#   Rscript --no-init-file -e 'SPLIT_SAMPLE <- "popucut"; source("scripts/22_econleft_split_rdd.R")'
+#   Rscript --no-init-file -e 'SPLIT_SAMPLE <- "half"; SPLIT_LR_GAP_MIN <- 1; source("scripts/22_econleft_split_rdd.R")'
 #
 # Output: output/runs/<spec>/econleft_split/
 #           econleft_split_results.csv   subset x window x outcome
@@ -73,9 +74,13 @@ SPLIT_SAMPLES <- list(
   popucut = list(
     score_gap_min = -Inf,
     illiberal_cutoff = "popucut", other_cutoff_max = "popucut"
-  )
+  ),
+  # One top-2 party above 0.5 on anti-pluralism and the other at or below it:
+  # the looser "one side illiberal" sample for the bundled-characteristics
+  # split, where the PopuList 0.65 cut is too conservative.
+  half = list(score_gap_min = -Inf, illiberal_cutoff = 0.5, other_cutoff_max = 0.5)
 )
-if (!exists("SPLIT_SAMPLE")) SPLIT_SAMPLE <- Sys.getenv("SPLIT_SAMPLE", "full")
+if (!exists("SPLIT_SAMPLE")) SPLIT_SAMPLE <- "full"
 if (!SPLIT_SAMPLE %in% names(SPLIT_SAMPLES)) {
   stop(
     'SPLIT_SAMPLE = "', SPLIT_SAMPLE, '" is not one of: ',
@@ -92,6 +97,15 @@ if (!exists("SPLIT_ILLIBERAL_CUTOFF")) {
 if (!exists("SPLIT_OTHER_CUTOFF_MAX")) {
   SPLIT_OTHER_CUTOFF_MAX <- SPLIT_SAMPLES[[SPLIT_SAMPLE]]$other_cutoff_max
 }
+
+# Minimum |left-right difference| between the two parties, on V-Party's
+# v2pariglef scale. Pairs closer than this are neither "right" nor "left" in
+# any meaningful sense, so they are dropped from BOTH subsets -- after the
+# split, as their own accounting line -- rather than letting a near-tie decide
+# which side an election lands on. Part of the spec: the pooled comparison run
+# carries the same floor (LR_GAP_MIN in 12), and the output lands in that
+# spec's folder.
+if (!exists("SPLIT_LR_GAP_MIN")) SPLIT_LR_GAP_MIN <- DEFAULT_LR_GAP_MIN
 
 split_load_build <- function(n) {
   load_build(
@@ -130,11 +144,15 @@ local({
   resolved <- resolve_restrictions(
     split_load_build(5L),
     SPLIT_SCORE_GAP_MIN, SPLIT_ILLIBERAL_CUTOFF, SPLIT_OTHER_CUTOFF_MAX,
-    prefix = "SPLIT_"
+    prefix = "SPLIT_", lr_gap_min = SPLIT_LR_GAP_MIN
   )
+  if (resolved$threshold_scale != "raw") {
+    stop("22 splits on raw-score samples only.", call. = FALSE)
+  }
   SPLIT_SCORE_GAP_MIN <<- resolved$score_gap_min
   SPLIT_ILLIBERAL_CUTOFF <<- resolved$illiberal_cutoff
   SPLIT_OTHER_CUTOFF_MAX <<- resolved$other_cutoff_max
+  SPLIT_LR_GAP_MIN <<- resolved$lr_gap_min
 })
 
 # Now that the three are plain numbers, parsing them again yields only "none"
@@ -164,7 +182,8 @@ apply_restrictions <- function(d) {
 
 restriction_label <- restriction_sentence(
   SPLIT_SCORE_GAP_MIN, SPLIT_ILLIBERAL_CUTOFF, SPLIT_OTHER_CUTOFF_MAX,
-  none = "no restriction beyond the split"
+  none = "no restriction beyond the split",
+  lr_gap_min = SPLIT_LR_GAP_MIN
 )
 
 # The split is taken within ONE spec, so its output lives in that spec's folder,
@@ -174,6 +193,7 @@ spec_cfg <- list(
   score_gap_min = SPLIT_SCORE_GAP_MIN,
   illiberal_cutoff = SPLIT_ILLIBERAL_CUTOFF,
   other_cutoff_max = SPLIT_OTHER_CUTOFF_MAX,
+  lr_gap_min = SPLIT_LR_GAP_MIN,
   incl_election_year = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
   placebo = PLACEBO_PRE_WINDOW
 )
@@ -196,12 +216,9 @@ cat("Sample within which the split is taken: ", restriction_label, "\n", sep = "
 # asserted below against the raw right-positive direction rather than trusted
 # to this comment.
 add_split <- function(d) {
-  a <- ifelse(d$running_var > 0,
-              d[[paste0(SPLIT_SCORE, "__winner")]],
-              d[[paste0(SPLIT_SCORE, "__loser")]])
-  b <- ifelse(d$running_var > 0,
-              d[[paste0(SPLIT_SCORE, "__loser")]],
-              d[[paste0(SPLIT_SCORE, "__winner")]])
+  d <- illiberal_side_scores(d)
+  a <- d[[paste0("ill_", SPLIT_SCORE)]]
+  b <- d[[paste0("oth_", SPLIT_SCORE)]]
   d$ap_leftscore <- a       # more anti-pluralist party, higher = more left
   d$other_leftscore <- b
   d$split <- dplyr::case_when(
@@ -237,15 +254,20 @@ for (n in SPLIT_WINDOWS) {
       d$ap_leftscore == d$other_leftscore
   )
   n_miss <- sum(is.na(d$ap_leftscore) | is.na(d$other_leftscore))
+  # Pairs closer than SPLIT_LR_GAP_MIN on left-right leave both subsets.
+  below_gap <- d$split %in% c("right", "left") &
+    abs(d$ap_leftscore - d$other_leftscore) < SPLIT_LR_GAP_MIN
+  n_below <- sum(below_gap)
+  d$split[below_gap] <- NA_character_
   n_right <- sum(d$split == "right", na.rm = TRUE)
   n_left <- sum(d$split == "left", na.rm = TRUE)
 
   # The sample must account for itself exactly.
-  stopifnot(n_right + n_left + n_tie + n_miss == nrow(d))
+  stopifnot(n_right + n_left + n_tie + n_miss + n_below == nrow(d))
 
   cat(sprintf(
-    "[w=%d] %d elections = %d right + %d left + %d ties + %d missing\n",
-    n, nrow(d), n_right, n_left, n_tie, n_miss
+    "[w=%d] %d elections = %d right + %d left + %d ties + %d missing + %d below the left-right gap floor\n",
+    n, nrow(d), n_right, n_left, n_tie, n_miss, n_below
   ))
 
   for (sp in names(SPLIT_LABELS)) {
@@ -272,7 +294,8 @@ for (n in SPLIT_WINDOWS) {
       n_treated = sum(dd[[SPLIT_TREATMENT]], na.rm = TRUE),
       mean_raw_leftright_antipluralist = mean(raw_ap, na.rm = TRUE),
       mean_raw_leftright_other = mean(raw_other, na.rm = TRUE),
-      n_tie_excluded = n_tie, n_missing_excluded = n_miss
+      n_tie_excluded = n_tie, n_missing_excluded = n_miss,
+      n_below_lr_gap_excluded = n_below
     )
 
     if (nrow(dd) < RD_MIN_OBS) next
@@ -326,12 +349,17 @@ write_sweep_config(
     score_gap_min = SPLIT_SCORE_GAP_MIN,
     illiberal_cutoff = SPLIT_ILLIBERAL_CUTOFF,
     other_cutoff_max = SPLIT_OTHER_CUTOFF_MAX,
+    lr_gap_min = SPLIT_LR_GAP_MIN,
     sample = restriction_label
   ),
   swept = list(
     subset = names(SPLIT_LABELS), window = SPLIT_WINDOWS, outcome = outcome_vars
   )
 )
+
+# Exclusion counts are per window (the same for both subsets), so the notes
+# that say "at w5" read the w5 row rather than whichever row happens to be first.
+excl5 <- counts |> filter(window == 5) |> slice(1)
 
 cat("\nSample accounting:\n")
 print(
@@ -407,9 +435,10 @@ save_table_html(
     "economic right lowers growth' predict OPPOSITE signs there; in the RIGHT",
     "subset they predict the same sign and cannot be separated.",
     sprintf(
-      "%d elections are excluded from both subsets at w5 (%d exact ties, %d missing a score).",
-      counts$n_tie_excluded[1] + counts$n_missing_excluded[1],
-      counts$n_tie_excluded[1], counts$n_missing_excluded[1]
+      "%d elections are excluded from both subsets at w5 (%d exact ties, %d missing a score, %d closer than %s on left-right).",
+      excl5$n_tie_excluded + excl5$n_missing_excluded + excl5$n_below_lr_gap_excluded,
+      excl5$n_tie_excluded, excl5$n_missing_excluded,
+      excl5$n_below_lr_gap_excluded, format(SPLIT_LR_GAP_MIN)
     )
   )
 )
@@ -471,10 +500,12 @@ p <- ggplot(growth, aes(x = window, y = rd_estimate, colour = series)) +
         "told apart. Band = robust 95%% CI, shared y across both panels;",
         "%d ribbon bound(s) clipped to it, unclipped values in",
         "econleft_split_results.csv. %d elections excluded from both subsets",
-        "at w5 (%d exact ties, %d missing a left-right score)."
+        "at w5 (%d exact ties, %d missing a left-right score, %d below the",
+        "left-right gap floor)."
       ), INSTRUMENT_DISPLAY[[SPLIT_INSTRUMENT]], restriction_label, n_clipped,
-      counts$n_tie_excluded[1] + counts$n_missing_excluded[1],
-      counts$n_tie_excluded[1], counts$n_missing_excluded[1]), 118),
+      excl5$n_tie_excluded + excl5$n_missing_excluded + excl5$n_below_lr_gap_excluded,
+      excl5$n_tie_excluded, excl5$n_missing_excluded,
+      excl5$n_below_lr_gap_excluded), 118),
       collapse = "\n"
     ),
     x = "Window length N (years after the election)",

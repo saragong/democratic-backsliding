@@ -492,6 +492,9 @@ vparty_con <- unz(
 v_party <- read_csv(vparty_con, show_col_types = FALSE) |>
   select(
     v2paid,
+    # For the within-country percentile columns below; never a join key (the
+    # election spine's country_text_id is).
+    country_text_id,
     year,
     v2xpa_antiplural,
     v2xpa_popul,
@@ -707,6 +710,31 @@ elections_scored <- elections_scored |>
     )
   ) |>
   select(-n_party_years, -sd_country_score)
+
+# illiberal_pct_ctry / other_pct_ctry: each top-2 party's score as a percentile
+# of its OWN country's distribution -- every V-Party party-year in the country,
+# all years -- for the country-specific PopuList threshold ("popucut_ctry"),
+# which 01g_populist_threshold.R calibrates on populism ranked the same way.
+# Unlike score_gap_z's pool (top-2 members only), the reference here is the
+# full V-Party universe, because that is what the calibration used: the
+# percentile has to mean the same thing on both sides. NA where the country has
+# fewer than COUNTRY_PCT_MIN_N scored party-years.
+elections_scored <- elections_scored |>
+  mutate(
+    illiberal_pct_ctry = country_pct(
+      illiberal_score, country_text_id,
+      v_party[[ILLIBERALISM_VAR]], v_party$country_text_id
+    ),
+    other_pct_ctry = country_pct(
+      other_score, country_text_id,
+      v_party[[ILLIBERALISM_VAR]], v_party$country_text_id
+    )
+  )
+cat(sprintf(
+  "Within-country percentiles: %d of %d elections have both (the rest are in countries with < %d V-Party party-years or no V-Party country match)\n",
+  sum(!is.na(elections_scored$illiberal_pct_ctry) & !is.na(elections_scored$other_pct_ctry)),
+  nrow(elections_scored), COUNTRY_PCT_MIN_N
+))
 
 n_elections_scored <- nrow(elections_scored)
 cat(sprintf(

@@ -18,9 +18,14 @@ convention, plus `_pre` for the pre-election placebo.
 | `party_outcome_rdd_<instr>_w<N><suffix>/` | 17 | 1a: the same RD with the winner's OTHER party scores as the outcome — is a narrow anti-pluralist victory also a populist / left / minority-hostile one? |
 | `vparty_jaccard_panels/` | 18 | 1c: the anti-pluralism x populism Jaccard heatmap over the full V-Party dataset, as a 2 x 5 OECD-by-decade grid |
 | `vparty_ideology_quadrants/` | 19 | 1d: where the most common Wikipedia/Wikidata ideology tags sit on the illiberalism x populism plane, same 2 x 5 grid |
-| `populist_threshold/` | 01g | 2b: the PopuList-calibrated cutoff for "illiberal", and the ROC it comes from |
+| `populist_threshold/` | 01g, 11c | 2b: the PopuList-calibrated cutoff for "illiberal" (raw, global-percentile and within-country-percentile), the ROC it comes from, and `cutpoint_summary.html` / `implied_cut_by_country.html` comparing every candidate cut |
 | `cell_rdd_<instr><suffix>/` | 21 | reduced-form RD on the decade x OECD grid, every outcome, w1-10, full and PopuList-restricted samples |
 
-`output/builds/<instrument>_w<N><suffix>/` (written by `11_build_rdd_data.R`)
-holds each build's ERT-episode match accounting: which episodes the election
-spine can and cannot reach, and why.
+`output/builds/<instrument>_w<N><suffix>/` holds each build's diagnostics: the
+ERT-episode match accounting from `11_build_rdd_data.R` (which episodes the
+election spine can and cannot reach, and why), and `lp_fit.csv` from
+`11b_build_covariates.R` (the out-of-sample fit of each outcome's local
+projection).
+
+Heterogeneous-effects output (`23_hte_rdd.R`) is tied to one spec, so it lives
+in `output/runs/<spec>/hte/`, not here.

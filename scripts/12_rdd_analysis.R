@@ -143,6 +143,29 @@ if (!exists("ILLIBERAL_CUTOFF")) ILLIBERAL_CUTOFF <- DEFAULT_ILLIBERAL_CUTOFF
 # Compared with `<=` (a score exactly at the threshold is kept).
 if (!exists("OTHER_CUTOFF_MAX")) OTHER_CUTOFF_MAX <- DEFAULT_OTHER_CUTOFF_MAX
 
+# Which scale ILLIBERAL_CUTOFF / OTHER_CUTOFF_MAX are on: "raw" scores, or
+# "ctry_pct" within-country percentiles. NA = implied by the spec ("popucut_ctry"
+# is ctry_pct, everything else raw). A driver that resolves "popucut_ctry" to a
+# number before calling this script must pass "ctry_pct" explicitly.
+if (!exists("THRESHOLD_SCALE")) THRESHOLD_SCALE <- NA_character_
+
+# A floor and a ceiling on the top-2 left-right gap, |v2pariglef| difference
+# (same three forms as above). The ceiling is the bundled-characteristics
+# placebo: does the result hold when the two parties barely differ on left and
+# right? Compared with `>=` / `<=`.
+if (!exists("LR_GAP_MIN")) LR_GAP_MIN <- DEFAULT_LR_GAP_MIN
+if (!exists("LR_GAP_MAX")) LR_GAP_MAX <- DEFAULT_LR_GAP_MAX
+
+# Drop elections whose [election_year, election_year + N] window overlaps a
+# Funke et al. populist-leader spell. Conditions on the post-election window;
+# see add_funke_overlap() in rdd_helpers.R.
+if (!exists("EXCLUDE_FUNKE")) EXCLUDE_FUNKE <- DEFAULT_EXCLUDE_FUNKE
+
+# "none", or "lp": adjust every reduced-form and fuzzy fit for that outcome's
+# leave-country-out local projection (11b_build_covariates.R), entered
+# linearly per Calonico, Cattaneo, Farrell & Titiunik (2019).
+if (!exists("RD_COVARIATES")) RD_COVARIATES <- DEFAULT_RD_COVARIATES
+
 # Driver scripts that only need the numbers (14_window_sweep.R's secondary
 # treatment definitions, 15_alt_specs.R's grid) can set this FALSE to skip the
 # figures, which are the slow part of a run.
@@ -152,76 +175,29 @@ if (!exists("MAKE_PLOTS")) MAKE_PLOTS <- TRUE
 # Load + restrict
 # ------------------------------------------------------------------------------
 
-# load_build() refuses a build made under a different window convention or
-# placebo setting than the one asked for.
-build_file <- build_path(
-  ILLIBERALISM_VAR, BACKSLIDING_WINDOW_YEARS,
-  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW
-)
-d <- load_build(
-  ILLIBERALISM_VAR, BACKSLIDING_WINDOW_YEARS,
-  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW
-)
-if (!TREATMENT_VAR %in% names(d)) {
-  stop(
-    "Build at ", build_file, " has no column '", TREATMENT_VAR,
-    "'. It predates that treatment definition -- rebuild it with ",
-    "11_build_rdd_data.R."
-  )
-}
-cat(sprintf("Loaded %s (%d elections)\n", basename(build_file), nrow(d)))
-
-# Both specs are parsed and resolved against the FULL loaded build, before
-# either filter is applied. That ordering is load-bearing: resolving a quantile
-# after the other restriction had bitten would make the two axes interact, so
-# changing SCORE_GAP_MIN would silently move an ILLIBERAL_CUTOFF of "q50" too.
-score_gap_thr <- resolve_threshold(
-  parse_threshold(SCORE_GAP_MIN, "SCORE_GAP_MIN"),
-  d$score_gap_z, "SCORE_GAP_MIN"
-)
-illiberal_thr <- resolve_threshold(
-  parse_threshold(ILLIBERAL_CUTOFF, "ILLIBERAL_CUTOFF"),
-  d$illiberal_score, "ILLIBERAL_CUTOFF"
-)
-# none_value = Inf: this one is a ceiling, so "no restriction" is +Inf. It is
-# resolved against other_score, the LESS-illiberal member -- so a quantile spec
-# means a percentile of the opponents' distribution, not of the illiberal
-# parties'.
-other_thr <- resolve_threshold(
-  parse_threshold(OTHER_CUTOFF_MAX, "OTHER_CUTOFF_MAX", none_value = Inf),
-  d$other_score, "OTHER_CUTOFF_MAX"
-)
-
-# The run folder is named by the RESOLVED absolute values, not the specs, so a
-# "q50" run and a hand-written run at the same resolved number correctly share a
-# folder instead of duplicating. The specs as written are recorded alongside
-# them in run_config.csv, so the folder name is never the only record of how the
-# threshold was expressed.
-cfg <- list(
+# prepare_rdd_sample() loads the build (refusing one made under a different
+# window convention or placebo setting), resolves every threshold against the
+# full build, applies them, and returns the resolved cfg that names the run.
+prep <- prepare_rdd_sample(sample_opts(
   instrument = ILLIBERALISM_VAR,
   window = BACKSLIDING_WINDOW_YEARS,
   treatment = TREATMENT_VAR,
-  score_gap_min = score_gap_thr$absolute,
-  illiberal_cutoff = illiberal_thr$absolute,
-  other_cutoff_max = other_thr$absolute,
-  incl_election_year = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
+  incl = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
   placebo = PLACEBO_PRE_WINDOW,
-  score_gap_spec = score_gap_thr$spec,
-  score_gap_form = score_gap_thr$kind,
-  illiberal_cutoff_spec = illiberal_thr$spec,
-  illiberal_cutoff_form = illiberal_thr$kind,
-  other_cutoff_spec = other_thr$spec,
-  other_cutoff_form = other_thr$kind
-)
+  score_gap_min = SCORE_GAP_MIN,
+  illiberal_cutoff = ILLIBERAL_CUTOFF,
+  other_cutoff_max = OTHER_CUTOFF_MAX,
+  threshold_scale = THRESHOLD_SCALE,
+  lr_gap_min = LR_GAP_MIN,
+  lr_gap_max = LR_GAP_MAX,
+  exclude_funke = EXCLUDE_FUNKE,
+  rd_covariates = RD_COVARIATES
+))
+d <- prep$d
+cfg <- prep$cfg
 slug <- run_slug(cfg)
 out_run <- run_dir(cfg)
 plots_dir <- file.path(out_run, "plots")
-
-cat("\nSample restrictions:\n")
-d <- apply_threshold(d, "score_gap_z", score_gap_thr, "SCORE_GAP_MIN", op = ">=")
-d <- apply_threshold(d, "illiberal_score", illiberal_thr, "ILLIBERAL_CUTOFF", op = ">")
-d <- apply_threshold(d, "other_score", other_thr, "OTHER_CUTOFF_MAX", op = "<=")
-cat(sprintf("  %-16s %d elections\n\n", "FINAL SAMPLE", nrow(d)))
 
 if (nrow(d) < RD_MIN_OBS) {
   stop(
@@ -234,19 +210,12 @@ if (nrow(d) < RD_MIN_OBS) {
 # One human-readable sentence describing the sample, reused in every table
 # subtitle so the restriction travels with the output rather than living only in
 # the folder name.
-restriction_label <- {
-  parts <- c(
-    if (score_gap_thr$kind != "none") {
-      sprintf("score_gap_z >= %.4g [%s]", score_gap_thr$absolute, score_gap_thr$spec)
-    },
-    if (illiberal_thr$kind != "none") {
-      sprintf("illiberal_score > %.4g [%s]", illiberal_thr$absolute, illiberal_thr$spec)
-    },
-    if (other_thr$kind != "none") {
-      sprintf("other_score <= %.4g [%s]", other_thr$absolute, other_thr$spec)
-    }
+restriction_label <- prep$label
+if (RD_COVARIATES == "lp") {
+  restriction_label <- paste0(
+    restriction_label,
+    "; covariate-adjusted: each outcome's leave-country-out local projection, entered linearly"
   )
-  if (length(parts) == 0) "all scored elections" else paste(parts, collapse = ", ")
 }
 
 sample_label <- sprintf("%s, N = %d", slug, nrow(d))
@@ -311,15 +280,38 @@ run_spec <- function(data, spec_label, treatment_col = TREATMENT_VAR) {
     first_stage_bandwidth = fs$bw
   )
 
+  # Covariate adjustment (Calonico et al. 2019): each outcome is adjusted by
+  # its OWN local projection, entered linearly and not interacted with
+  # treatment. The first stage above stays unadjusted, so it is the same
+  # object in every run; the adjusted first stage for the headline outcome's
+  # covariate is reported alongside it.
+  covs_for <- function(oc) {
+    if (RD_COVARIATES == "lp") data[[paste0("Z_", oc)]] else NULL
+  }
+  if (RD_COVARIATES == "lp") {
+    fs_adj <- extract_rd(safe_rdrobust(
+      data[[treatment_col]], data$running_var, covs = covs_for("Y_gdp_growth")
+    ))
+    first_stage <- first_stage |>
+      mutate(
+        first_stage_covs = "Z_Y_gdp_growth",
+        first_stage_coef_adj = fs_adj$coef,
+        first_stage_se_adj = fs_adj$se,
+        first_stage_pval_adj = fs_adj$pval,
+        n_first_stage_adj = fs_adj$N
+      )
+  }
+
   outcomes <- map_dfr(outcome_vars, function(oc) {
-    rf <- extract_rd(safe_rdrobust(data[[oc]], data$running_var))
+    rf <- extract_rd(safe_rdrobust(data[[oc]], data$running_var, covs = covs_for(oc)))
     late <- extract_rd(safe_rdrobust(
       data[[oc]],
       data$running_var,
-      fuzzy = data[[treatment_col]]
+      fuzzy = data[[treatment_col]],
+      covs = covs_for(oc)
     ))
 
-    tibble(
+    row <- tibble(
       outcome = oc,
       outcome_label = unname(outcome_labels[oc]),
       panel = names(OUTCOME_PANELS)[
@@ -335,7 +327,7 @@ run_spec <- function(data, spec_label, treatment_col = TREATMENT_VAR) {
       # Per outcome, not per spec: outcomes differ in missingness, so the
       # treated count in each estimation sample differs too.
       n_outcome_treated = rd_n_treated(
-        data[[oc]], data$running_var, data[[treatment_col]]
+        data[[oc]], data$running_var, data[[treatment_col]], covs = covs_for(oc)
       ),
       rd_estimate = rf$coef,
       rd_se = rf$se,
@@ -345,6 +337,8 @@ run_spec <- function(data, spec_label, treatment_col = TREATMENT_VAR) {
       late_pval = late$pval,
       bandwidth = late$bw
     )
+    if (RD_COVARIATES == "lp") row$covariates <- paste0("Z_", oc)
+    row
   })
 
   list(first_stage = first_stage, outcomes = outcomes)

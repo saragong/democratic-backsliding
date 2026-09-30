@@ -50,6 +50,13 @@ if (!exists("SWEEP_ILLIBERAL_CUTOFF")) {
 if (!exists("SWEEP_OTHER_CUTOFF_MAX")) {
   SWEEP_OTHER_CUTOFF_MAX <- DEFAULT_OTHER_CUTOFF_MAX
 }
+# The Sep 29 axes, held fixed across the sweep like the three thresholds:
+# floor / ceiling on the top-2 left-right gap, the Funke exclusion, and the
+# local-projection covariate adjustment. All default to no-ops.
+if (!exists("SWEEP_LR_GAP_MIN")) SWEEP_LR_GAP_MIN <- DEFAULT_LR_GAP_MIN
+if (!exists("SWEEP_LR_GAP_MAX")) SWEEP_LR_GAP_MAX <- DEFAULT_LR_GAP_MAX
+if (!exists("SWEEP_EXCLUDE_FUNKE")) SWEEP_EXCLUDE_FUNKE <- DEFAULT_EXCLUDE_FUNKE
+if (!exists("SWEEP_RD_COVARIATES")) SWEEP_RD_COVARIATES <- DEFAULT_RD_COVARIATES
 # Passed explicitly into every child script below. run_script_with() builds a
 # FRESH environment per call, so a toggle merely set in this script's own scope
 # would not reach 11 or 12 -- they would silently fall back to their own default
@@ -91,16 +98,26 @@ local({
   )
   resolved <- resolve_restrictions(
     ref, SWEEP_SCORE_GAP_MIN, SWEEP_ILLIBERAL_CUTOFF, SWEEP_OTHER_CUTOFF_MAX,
-    prefix = "SWEEP_"
+    prefix = "SWEEP_",
+    lr_gap_min = SWEEP_LR_GAP_MIN, lr_gap_max = SWEEP_LR_GAP_MAX
   )
   SWEEP_SCORE_GAP_MIN <<- resolved$score_gap_min
   SWEEP_ILLIBERAL_CUTOFF <<- resolved$illiberal_cutoff
   SWEEP_OTHER_CUTOFF_MAX <<- resolved$other_cutoff_max
+  SWEEP_LR_GAP_MIN <<- resolved$lr_gap_min
+  SWEEP_LR_GAP_MAX <<- resolved$lr_gap_max
+  # Travels with the resolved numbers: a within-country-percentile cut is a
+  # plain number by now, and 12 would otherwise read it as a raw score.
+  SWEEP_THRESHOLD_SCALE <<- resolved$threshold_scale
 })
 cat(sprintf(
-  "Sweep restrictions (resolved): score_gap_z >= %s, illiberal_score > %s, other_score <= %s\n",
-  format(SWEEP_SCORE_GAP_MIN), format(SWEEP_ILLIBERAL_CUTOFF),
-  format(SWEEP_OTHER_CUTOFF_MAX)
+  "Sweep restrictions (resolved): %s\n",
+  restriction_sentence(
+    SWEEP_SCORE_GAP_MIN, SWEEP_ILLIBERAL_CUTOFF, SWEEP_OTHER_CUTOFF_MAX,
+    threshold_scale = SWEEP_THRESHOLD_SCALE,
+    lr_gap_min = SWEEP_LR_GAP_MIN, lr_gap_max = SWEEP_LR_GAP_MAX,
+    exclude_funke = SWEEP_EXCLUDE_FUNKE
+  )
 ))
 
 # Re-pool an existing sweep without re-running anything. The per-run output is
@@ -150,6 +167,11 @@ for (n in if (SWEEP_REESTIMATE) WINDOWS else integer(0)) {
         SCORE_GAP_MIN = SWEEP_SCORE_GAP_MIN,
         ILLIBERAL_CUTOFF = SWEEP_ILLIBERAL_CUTOFF,
         OTHER_CUTOFF_MAX = SWEEP_OTHER_CUTOFF_MAX,
+        THRESHOLD_SCALE = SWEEP_THRESHOLD_SCALE,
+        LR_GAP_MIN = SWEEP_LR_GAP_MIN,
+        LR_GAP_MAX = SWEEP_LR_GAP_MAX,
+        EXCLUDE_FUNKE = SWEEP_EXCLUDE_FUNKE,
+        RD_COVARIATES = SWEEP_RD_COVARIATES,
         # Only the main treatment definition gets the full figure set; the other
         # two contribute numbers to the sweep plots below.
         MAKE_PLOTS = identical(trt, SWEEP_TREATMENTS[1])
@@ -171,6 +193,11 @@ spec_cfg <- list(
   score_gap_min = SWEEP_SCORE_GAP_MIN,
   illiberal_cutoff = SWEEP_ILLIBERAL_CUTOFF,
   other_cutoff_max = SWEEP_OTHER_CUTOFF_MAX,
+  threshold_scale = SWEEP_THRESHOLD_SCALE,
+  lr_gap_min = SWEEP_LR_GAP_MIN,
+  lr_gap_max = SWEEP_LR_GAP_MAX,
+  exclude_funke = SWEEP_EXCLUDE_FUNKE,
+  rd_covariates = SWEEP_RD_COVARIATES,
   incl_election_year = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
   placebo = PLACEBO_PRE_WINDOW
 )
@@ -224,8 +251,14 @@ write_csv(results, file.path(out_dir, "window_sweep_results.csv"))
 write_csv(first_stage, file.path(out_dir, "window_sweep_first_stage.csv"))
 
 restriction_label <- restriction_sentence(
-  SWEEP_SCORE_GAP_MIN, SWEEP_ILLIBERAL_CUTOFF, SWEEP_OTHER_CUTOFF_MAX
+  SWEEP_SCORE_GAP_MIN, SWEEP_ILLIBERAL_CUTOFF, SWEEP_OTHER_CUTOFF_MAX,
+  threshold_scale = SWEEP_THRESHOLD_SCALE,
+  lr_gap_min = SWEEP_LR_GAP_MIN, lr_gap_max = SWEEP_LR_GAP_MAX,
+  exclude_funke = SWEEP_EXCLUDE_FUNKE
 )
+if (SWEEP_RD_COVARIATES == "lp") {
+  restriction_label <- paste0(restriction_label, "; covariate-adjusted (local projection)")
+}
 # Every figure and table this sweep writes carries this string, so a placebo
 # sweep says so on its face rather than only in its folder name.
 window_label <- if (PLACEBO_PRE_WINDOW) {
