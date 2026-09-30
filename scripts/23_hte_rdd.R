@@ -26,8 +26,11 @@
 #   country levels at t-1 and 5-year pre-trends of every outcome series
 #   design  OECD, decade, presidential, prior backsliding
 # Continuous W is standardised within the estimation sample, so tau is the
-# effect at the sample mean and d is per standard deviation. Binary W is a
-# factor, giving one effect per group and their difference. Decade is a
+# effect at the sample mean and d is per standard deviation. Binary W stays
+# 0/1: d is the change in the effect from W = 0 to W = 1. rdhte treats any 0/1
+# covariate as two groups, so it is fitted that way with bw.joint = TRUE -- one
+# bandwidth for both groups, which makes the group difference exactly eq. 2.5's
+# d for a dummy (with separate bandwidths it would not be). Decade is a
 # factor too: one effect per decade (dated t-1, like every W), plus a Wald test
 # that they are all equal. A decade with fewer than HTE_MIN_GROUP elections, or
 # fewer than HTE_MIN_GROUP_H inside its bandwidth, is left out of that fit and
@@ -145,7 +148,7 @@ fit_one_w <- function(dd, w, covs_eff, cluster) {
   binary <- is_binary(wv[ok])
   covs <- if (binary || is_factor) factor(wv[ok]) else as.numeric(scale(wv[ok]))
   fit <- tryCatch(
-    rdhte(y, x, covs.hte = covs, covs.eff = ce, cluster = cl),
+    rdhte(y, x, covs.hte = covs, covs.eff = ce, cluster = cl, bw.joint = binary),
     error = function(e) e
   )
   if (is_factor && !inherits(fit, "error")) {
@@ -174,10 +177,15 @@ fit_one_w <- function(dd, w, covs_eff, cluster) {
   if (inherits(fit, "error")) {
     return(tibble(w = w, term = NA_character_, note = conditionMessage(fit)))
   }
-  grouped <- binary || is_factor
   base <- tibble(
     w = w, binary = binary, n = sum(ok),
-    term = if (grouped) paste0("group ", fit$W.lev) else c("effect at mean W", "slope per SD of W"),
+    term = if (is_factor) {
+      paste0("group ", fit$W.lev)
+    } else if (binary) {
+      paste0("effect at W = ", fit$W.lev)
+    } else {
+      c("effect at mean W", "slope per SD of W")
+    },
     estimate = unname(fit$Estimate), estimate_bc = unname(fit$Estimate.bc),
     se_rb = unname(fit$se.rb), ci_lo = fit$ci.rb[, 1], ci_hi = fit$ci.rb[, 2],
     pval = unname(fit$pv.rb),
@@ -185,14 +193,15 @@ fit_one_w <- function(dd, w, covs_eff, cluster) {
     note = dropped_note
   )
   if (binary && nrow(base) == 2) {
-    # The heterogeneity for a binary W is the difference between the two
-    # group effects, from rdhte's own group-level covariance matrix.
+    # The heterogeneity for a binary W: the change in the effect from W = 0 to
+    # W = 1, from rdhte's own group-level covariance matrix. With one joint
+    # bandwidth this is eq. 2.5's d for a 0/1 W.
     v <- fit$vcov
     diff <- base$estimate_bc[2] - base$estimate_bc[1]
     se <- sqrt(v[1, 1] + v[2, 2] - 2 * v[1, 2])
     z <- qnorm(0.975)
     base <- bind_rows(base, tibble(
-      w = w, binary = TRUE, n = sum(ok), term = "difference (1 - 0)",
+      w = w, binary = TRUE, n = sum(ok), term = "change from W = 0 to 1",
       estimate = base$estimate[2] - base$estimate[1], estimate_bc = diff,
       se_rb = se, ci_lo = diff - z * se, ci_hi = diff + z * se,
       pval = 2 * pnorm(-abs(diff / se)), note = NA_character_
@@ -315,7 +324,7 @@ for (samp_name in names(HTE_SAMPLES)) {
   # ---- forest plot: the heterogeneity terms only ----------------------------
   plot_dat <- res |>
     filter(
-      term %in% c("slope per SD of W", "difference (1 - 0)") |
+      term %in% c("slope per SD of W", "change from W = 0 to 1") |
         (w %in% FACTOR_W & str_starts(term, "group ")),
       !is.na(estimate_bc)
     ) |>
@@ -347,7 +356,7 @@ for (samp_name in names(HTE_SAMPLES)) {
         paste(
           "Sample: %s. w%d. Each row is its own rdhte fit (Calonico et al. 2025, eq. 2.5):",
           "continuous W standardised, so the estimate is the change in the RD effect per SD of W;",
-          "binary W, the difference between the two group effects. Pooled effect %.3f (robust SE %.3f).",
+          "binary W as 0/1, the change in the effect from W = 0 to W = 1 (one bandwidth). Pooled effect %.3f (robust SE %.3f).",
           "Bias-corrected estimates, robust 95%% CIs; orange = p < 0.05.%s"
         ),
         prep$label, HTE_WINDOW, pooled$Estimate.bc, pooled$se.rb,
