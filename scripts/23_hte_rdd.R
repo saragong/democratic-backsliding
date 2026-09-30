@@ -424,12 +424,14 @@ for (samp_name in names(HTE_SAMPLES)) {
       family = if_else(w %in% FACTOR_W, "Decade: effect in each", family),
       label = case_when(
         w %in% FACTOR_W ~ paste0(str_remove(term, "^group "), "s"),
+        # Name on the first line(s), close-election mean and SD beneath it, so
+        # the labels do not squeeze the data panel.
         !is.na(w_sd_close) ~ sprintf(
-          "%s  [close: mean %s, SD %s]", label,
+          "%s\n[close elections: mean %s, SD %s]", str_wrap(label, 60),
           formatC(signif(w_mean_close, 2), format = "fg", digits = 2),
           formatC(signif(w_sd_close, 2), format = "fg", digits = 2)
         ),
-        TRUE ~ label
+        TRUE ~ str_wrap(label, 60)
       ),
       family = factor(family, levels = c(
         "Party scores", "Country history (pre-election)", "Design",
@@ -453,7 +455,7 @@ for (samp_name in names(HTE_SAMPLES)) {
     prep$label, HTE_WINDOW, pooled$Estimate.bc, pooled$se.rb,
     headline$coef, headline$se,
     if (HTE_CLUSTER) " SEs clustered by country." else ""
-  ), 150), collapse = "\n")
+  ), 170), collapse = "\n")
   FAMILY_FILES <- c(
     "Party scores" = "party_scores",
     "Country history (pre-election)" = "country_history",
@@ -467,8 +469,8 @@ for (samp_name in names(HTE_SAMPLES)) {
     fd <- plot_dat |> filter(family == fam) |> mutate(label = fct_drop(label))
     p <- ggplot(fd, aes(x = estimate_bc, y = label, colour = sig)) +
       geom_vline(xintercept = 0, colour = "grey50", linewidth = 0.4) +
-      geom_errorbarh(aes(xmin = ci_lo, xmax = ci_hi), height = 0, linewidth = 0.5) +
-      geom_point(size = 1.6) +
+      geom_errorbarh(aes(xmin = ci_lo, xmax = ci_hi), height = 0, linewidth = 0.7) +
+      geom_point(size = 2.2) +
       scale_colour_manual(values = c(`TRUE` = "#D55E00", `FALSE` = "grey35"), guide = "none") +
       labs(
         title = sprintf(
@@ -484,17 +486,19 @@ for (samp_name in names(HTE_SAMPLES)) {
         },
         y = NULL
       ) +
-      theme_bw(base_size = 9) +
+      theme_bw(base_size = 12) +
       theme(
         panel.grid.minor = element_blank(),
-        plot.subtitle = element_text(size = 7),
+        plot.title = element_text(size = 13),
+        plot.subtitle = element_text(size = 9),
+        axis.text.y = element_text(size = 10.5),
         # Anchored to the whole figure, not the panel: the y labels are long,
         # and a panel-anchored title runs off the right edge.
         plot.title.position = "plot"
       )
     ggsave(
       file.path(out_dir, sprintf("%s_forest_%s.png", stem, FAMILY_FILES[[fam]])), p,
-      width = 10, height = 2.2 + 0.19 * nrow(fd), dpi = 150, limitsize = FALSE
+      width = 12, height = 3.2 + 0.42 * nrow(fd), dpi = 150, limitsize = FALSE
     )
   }
   cat(sprintf("Saved %s (%d W)\n", file.path(out_dir, paste0(stem, ".csv")), length(w_vars)))
