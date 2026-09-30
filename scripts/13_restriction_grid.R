@@ -67,7 +67,7 @@ if (!exists("TREATMENT_VAR")) TREATMENT_VAR <- "backsliding_Nyr"
 # Selects which build to read and is echoed into the sweep folder name -- see
 # 11_build_rdd_data.R for what it does.
 if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
-  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- TRUE
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- FALSE
 }
 # The headline outcome the grids report alongside the first stage.
 if (!exists("GRID_OUTCOME")) GRID_OUTCOME <- "Y_gdp_growth"

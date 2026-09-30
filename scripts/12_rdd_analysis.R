@@ -47,10 +47,10 @@ data_dir <- here::here("data")
 if (!exists("ILLIBERALISM_VAR")) ILLIBERALISM_VAR <- "v2xpa_antiplural"
 if (!exists("BACKSLIDING_WINDOW_YEARS")) BACKSLIDING_WINDOW_YEARS <- 5
 # Selects which build to read, and is echoed into the run slug. Set in
-# 11_build_rdd_data.R -- see the long comment there for what it does and why
-# TRUE is the default.
+# 11_build_rdd_data.R -- see the long comment there for what it does. FALSE is
+# the project convention.
 if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
-  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- TRUE
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- FALSE
 }
 # Selects the PLACEBO build -- outcomes and treatment measured over the window
 # BEFORE the election rather than after it, as a pre-trend check. Set in

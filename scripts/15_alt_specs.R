@@ -60,7 +60,7 @@ if (!exists("ALT_OUTCOME")) ALT_OUTCOME <- "Y_gdp_growth"
 # FRESH environment per call, so a toggle merely set in this script's scope
 # would not reach 11 or 12 and the grid would silently mix conventions.
 if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
-  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- TRUE
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- FALSE
 }
 build_suffix <- if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else "_exclyr"
 

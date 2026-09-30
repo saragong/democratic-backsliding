@@ -56,7 +56,7 @@ if (!exists("NARROW_MARGIN_PP")) {
 # NARROW-election bandwidth does (it comes from the first stage), so the two
 # conventions get separate folders rather than overwriting each other.
 if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
-  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- TRUE
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- FALSE
 }
 build_suffix <- if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else "_exclyr"
 

@@ -131,11 +131,10 @@ fmt_slug_num <- function(x) {
 # function of them, so re-running the same configuration overwrites its own
 # folder rather than creating a near-duplicate.
 run_slug <- function(cfg) {
-  # cfg$incl_election_year is optional: absent means the default (TRUE), so
-  # callers that don't care about the window convention are unaffected. Only the
-  # non-default convention gets a suffix, keeping default slugs clean -- but it
-  # MUST get one, or a run under each convention would share a folder.
-  incl <- cfg$incl_election_year %||% TRUE
+  # cfg$incl_election_year is optional: absent means the project convention
+  # (FALSE). The suffix is keyed on the VALUE, not the default: FALSE writes
+  # "_exclyr" and TRUE writes nothing, so every existing folder keeps its name.
+  incl <- cfg$incl_election_year %||% FALSE
   # Same pattern for the two axes added later. Both are absent from most cfgs
   # and both are omitted at their no-op value, so every slug written before they
   # existed is reproduced byte-identically and no run folder moves.

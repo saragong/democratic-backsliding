@@ -7,8 +7,10 @@ identified by the choices the folder name encodes:
 instr-<instrument>_w<window>_trt-<treatment>_gap<score_gap_min>_illib<illiberal_cutoff>[_opp<other_cutoff_max>][_exclyr][_pre]
 ```
 
-The last three parts appear only when they are not at their default, so every
-folder written before they existed still has exactly the name it had.
+The last three parts are optional. `_opp` and `_pre` appear only when not at
+their default. `_exclyr` appears whenever `TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR
+= FALSE`, which is the project convention, so in practice every current run
+carries it.
 
 | Part | Meaning |
 |---|---|
@@ -104,21 +106,23 @@ subtitle — the folder name is never the only record.
 
 ## The treatment window convention
 
-`TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR` (default `TRUE`) decides whether the
+`TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR` (default `FALSE`) decides whether the
 post-election window opens in the election year or the year after:
 
 | | treatment window | treated (ERT, w=5) |
 |---|---|---|
-| `TRUE` (default) | `[election_year, election_year + N]` | 173 |
-| `FALSE` (legacy) | `(election_year, election_year + N]` | 142 |
+| `FALSE` (default) | `(election_year, election_year + N]` | 142 |
+| `TRUE` | `[election_year, election_year + N]` | 173 |
 
-`TRUE` is the default because it is what aligns treatment with the outcomes:
+`FALSE` is the project convention and should not be changed. It avoids
+counting an episode that ERT/DDCG date to the election year, which may have
+begun before the vote. The case for `TRUE` is that it aligns treatment with the
+outcomes:
 `window_change()` measures every outcome from `election_year - 1` to
 `election_year + N`, so the outcome window always spanned the election year,
 while under `FALSE` the treatment window did not.
 
-`FALSE` is kept so the earlier results reproduce, which they do exactly — the
-unrestricted first stage is `-0.025 (0.058)`, bw 21.08, and the
+Under `FALSE` the unrestricted first stage is `-0.025 (0.058)`, bw 21.08, and the
 `illiberal_score > 0.6` run is `0.181 (0.103)*`, bw 20.86.
 
 Whichever way it is set, `prior_backsliding` is anchored to the same window

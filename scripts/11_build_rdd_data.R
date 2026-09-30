@@ -74,29 +74,31 @@ if (!exists("SAMPLE_YEARS")) SAMPLE_YEARS <- "all"
 # Does the post-election treatment window open IN the election year, or the
 # year after?
 #
-#   TRUE  (default) -- treatment window is [election_year, election_year + N]
-#   FALSE            -- treatment window is (election_year, election_year + N]
+#   FALSE (default) -- treatment window is (election_year, election_year + N]
+#   TRUE            -- treatment window is [election_year, election_year + N]
 #
-# TRUE is the default because it is what actually aligns treatment with the
+# FALSE is the project convention and should not be changed. TRUE is kept only
+# as a toggle for comparison.
+#
+# The argument for TRUE: it aligns treatment with the
 # outcomes. window_change() measures every outcome from (election_year - 1) to
 # (election_year + N), so the outcome window has always spanned the election
 # year; under FALSE the treatment window did not, and the two were a year out of
 # step with each other.
 #
-# The argument for FALSE, which this script used to hardcode: ERT and DDCG both
+# The argument for FALSE: ERT and DDCG both
 # date events to a calendar year only, and elections are spread through the year
 # (48% Jan-Jun, 52% Jul-Dec in this spine), so an episode dated to the election
 # year may well have begun BEFORE the vote -- reverse causation rather than
 # treatment. That ambiguity is real and unresolvable from annual data, but it
 # costs 31 treated elections on the ERT arm (142 -> 173, +22%) and 38 on the
-# union arm, which is a lot to give up on a first stage this underpowered.
-# FALSE is kept so the earlier results stay reproducible.
+# union arm.
 #
 # Whichever way this is set, the pre- and post-election windows stay a clean
 # partition with no overlap and no gap: prior_backsliding covers the N years
 # immediately before the treatment window opens.
 if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
-  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- TRUE
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- FALSE
 }
 stopifnot(is.logical(TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR))
 
