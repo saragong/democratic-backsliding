@@ -23,26 +23,40 @@
 #      illiberal or not.
 #
 # Step 5 is a transfer between two different variables, so the script emits the
-# cutpoint BOTH ways and 12_rdd_analysis.R is run at each:
-#   absolute    the raw number, carried across unchanged. Defensible because
-#               both indices are V-Party aggregates on [0, 1].
-#   percentile  the cutpoint's percentile in the populism distribution, applied
-#               at the same percentile of the anti-pluralism distribution.
-#               What the Aug 24 note actually described ("took the same
-#               percentile").
-# They disagree whenever the two indices are distributed differently, which
-# they are, so neither is obviously right and both are reported.
+# cutpoint three ways and 12_rdd_analysis.R can be run at each:
+#   absolute         the raw number, carried across unchanged. Defensible
+#                    because both indices are V-Party aggregates on [0, 1].
+#                    Spec "popucut".
+#   percentile       the cutpoint's percentile in the GLOBAL populism
+#                    distribution (all V-Party party-years, every country and
+#                    year), applied at the same percentile of the global
+#                    anti-pluralism distribution. What the Aug 24 note
+#                    described ("took the same percentile"). Spec
+#                    "popucut_pct".
+#   within-country   the fit redone with populism ranked within each party's
+#                    own country; the percentile cut is applied to
+#                    anti-pluralism ranked the same way, so it ports to
+#                    countries PopuList never covers (section 4b). Specs
+#                    "popucut_ctry" (accuracy) and "popucut_ctry_youden".
+# They disagree whenever the indices are distributed differently, which they
+# are, so none is obviously right and all are reported.
+#
+# "Party-years" throughout are V-Party observations, and V-Party scores a party
+# at each ELECTION it contests (a median of 2 per party), so they are really
+# party-elections: a party that contested more elections carries more weight in
+# the fit and in every percentile.
 #
 # A CORRECTION TO THE ASK, STATED PLAINLY
 #
 # The brief says "choose the threshold that maximizes the AUC". AUC cannot be
 # maximized over thresholds: it is the area under the whole ROC curve and is
 # the same number whatever cutpoint you pick -- it measures the SCORE, not a
-# cutpoint. What is wanted is the ROC-OPTIMAL cutpoint, and the standard choice
-# is Youden's J (sensitivity + specificity - 1), which is what this script
-# uses. It also reports the accuracy-maximizing and closest-to-(0,1) cutpoints
-# so the choice is visible rather than assumed, and reports the AUC itself as
-# what it actually is: how well the continuous score separates the classes.
+# cutpoint. What is wanted is an ROC-optimal cutpoint. The script computes two:
+# Youden's J (sensitivity + specificity - 1), the standard choice, and the
+# accuracy-maximizing cut, which is the headline (see HEADLINE_METHOD for when
+# and why). Both are reported so the choice is visible rather than assumed,
+# and the AUC is reported as what it actually is: how well the continuous
+# score separates the classes.
 #
 # THE NEGATIVE CLASS IS THE WHOLE DIFFICULTY
 #
@@ -82,9 +96,18 @@
 #   Rscript --no-init-file scripts/01g_populist_threshold.R
 #
 # Output: data/populist_4.0.csv          cached download
-#         data/populist_threshold.rds    the cutpoints, for 12_rdd_analysis.R
+#         data/populist_threshold.rds    every cutpoint, for 12_rdd_analysis.R
 #         output/sweeps/populist_threshold/
-#           thresholds.csv, roc.png, score_distributions.png, merge_audit.csv
+#           thresholds.csv                  raw-score cuts and their transfers
+#           thresholds_ctry_pct.csv         within-country percentile cuts
+#           thresholds_sensitivity.csv      cuts with the ambiguous match recoded
+#           merge_audit.csv                 every PopuList party and its V-Party id
+#           unmatched_populists_audit.csv   populists with no V-Party id, nearest name
+#           full_sample_cutpoint_counts.csv parties either side of each cut, globally
+#           roc.png, score_distributions.png, score_distributions_full_sample.png,
+#           score_distribution_ctry_pct.png
+#         The side-by-side comparison of every cut on the RDD sample is
+#         11c_threshold_summary.R's cutpoint_summary.html, which needs the build.
 # ==============================================================================
 
 # Numbered into the loader tier, not after the RDD scripts, because
@@ -97,9 +120,11 @@
 # and the V-Party zip -- so it genuinely belongs at this stage rather than
 # merely being moved to satisfy the ordering.
 #
-# Deliberately few dependencies: this is a calibration step, not part of the
-# RDD pipeline, and it must not inherit the pipeline's toggles. It does not
-# source rdd_helpers.R.
+# A calibration step, not part of the RDD pipeline, so it has no toggles of its
+# own and reads none of the pipeline's. It sources rdd_helpers.R for two
+# functions only: sweep_dir(), for where the output goes, and country_pct(),
+# so the within-country percentile here is computed by exactly the code that
+# computes it in 11_build_rdd_data.R.
 library(readr)
 library(dplyr)
 library(tidyr)
@@ -186,6 +211,31 @@ popu_matched <- popu |>
   mutate(pfid = as.numeric(partyfacts_id)) |>
   left_join(pf_to_vdem, by = "pfid", relationship = "many-to-many")
 
+# PopuList populists that V-Party DOES score but that no Party Facts link
+# reaches. Found by name-matching every unmatched populist against V-Party
+# party names in the same country (the audit below re-runs that check each
+# time). Left unmatched, such a party is imputed a ZERO in the calibration
+# universe -- a populist labelled non-populist, high on the populism scale,
+# exactly where the cutpoint is decided. Only confident matches go here:
+#
+#   Norway Sp   Senterpartiet, populist (borderline) from 2017. PopuList gives
+#               it no Party Facts id at all; V-Party 1072 is the Centre
+#               [Agrarian] Party, same country, scored through 2017.
+#
+# Deliberately NOT here: Romania "PSD" (PopuList pf 1078, 1990-2025). Its Party
+# Facts id is the PSoDR, a minor socialist party dissolved in 1993, while its
+# dates fit the large Partidul Social Democrat (V-Party 120). Which party
+# PopuList means cannot be settled from the files, so it is left as PopuList
+# coded it, and section 4c reports how much the cutpoint moves if it is the PSD.
+MANUAL_VPARTY_MATCHES <- tibble::tribble(
+  ~country_name, ~party_name_short, ~vdem_id_manual,
+  "Norway",      "Sp",              1072
+)
+popu_matched <- popu_matched |>
+  left_join(MANUAL_VPARTY_MATCHES, by = c("country_name", "party_name_short")) |>
+  mutate(vdem_id_1 = coalesce(vdem_id_1, vdem_id_manual)) |>
+  select(-vdem_id_manual)
+
 n_pf <- sum(!is.na(popu_matched$pfid))
 n_vdem <- sum(!is.na(popu_matched$vdem_id_1))
 cat(sprintf(
@@ -240,6 +290,61 @@ if (length(unmatched) > 0) {
   )
 }
 
+# ---- unmatched-populist audit ------------------------------------------------
+#
+# Every PopuList populist still without a V-Party id, with the closest V-Party
+# party name in the same country (Jaro-Winkler on accent- and
+# punctuation-stripped names, over the original, English and short names).
+# Written on every run so a new PopuList or V-Party release gets the same check.
+# Nothing is recoded automatically: most unmatched populists are simply parties
+# V-Party does not score, and a close name is often a different party (France's
+# 1968 UDR vs the 2024 UDR). Confident matches go in MANUAL_VPARTY_MATCHES.
+local({
+  norm <- function(x) {
+    gsub("[^a-z0-9]", "", stringi::stri_trans_general(tolower(x), "Latin-ASCII"))
+  }
+  vnames <- read_csv(
+    unz(
+      file.path(data_dir, "elections_database", "CPD_V-Party_CSV_v2.zip"),
+      "CPD_V-Party_CSV_v2/V-Dem-CPD-Party-V2.csv"
+    ),
+    show_col_types = FALSE
+  ) |>
+    filter(!is.na(.data[[FIT_SCORE]])) |>
+    distinct(v2paid, country_name, v2paenname, v2paorname, v2pashname) |>
+    pivot_longer(c(v2paenname, v2paorname, v2pashname), values_to = "vparty_name") |>
+    filter(!is.na(vparty_name)) |>
+    mutate(vkey = norm(vparty_name)) |>
+    distinct(v2paid, country_name, vparty_name, vkey)
+  unmatched_pop <- popu_matched |>
+    filter(populist == 1, is.na(vdem_id_1)) |>
+    select(country_name, party_name, party_name_english, party_name_short,
+           partyfacts_id, populist_start, populist_end, populist_bl) |>
+    mutate(.row = row_number())
+  cand <- unmatched_pop |>
+    pivot_longer(c(party_name, party_name_english, party_name_short),
+                 names_to = "popu_field", values_to = "popu_name") |>
+    filter(!is.na(popu_name)) |>
+    mutate(key = norm(popu_name)) |>
+    filter(nchar(key) >= 2) |>
+    inner_join(vnames, by = "country_name", relationship = "many-to-many") |>
+    mutate(similarity = 1 - stringdist::stringdist(key, vkey, method = "jw", p = 0.1)) |>
+    group_by(.row) |>
+    slice_max(similarity, n = 1, with_ties = FALSE) |>
+    ungroup() |>
+    select(.row, matched_on = popu_name,
+           best_vparty_name = vparty_name, best_v2paid = v2paid, similarity)
+  audit <- unmatched_pop |>
+    left_join(cand, by = ".row") |>
+    select(-.row) |>
+    arrange(desc(similarity))
+  write_csv(audit, file.path(out_dir, "unmatched_populists_audit.csv"))
+  cat(sprintf(
+    "Unmatched-populist audit: %d PopuList populists without a V-Party id; %d with a same-country V-Party name at Jaro-Winkler >= 0.9 (review unmatched_populists_audit.csv)\n",
+    nrow(unmatched_pop), sum(audit$similarity >= 0.9, na.rm = TRUE)
+  ))
+})
+
 # PopuList's own coverage window, so the imputed zeros are not asserted for
 # years the classification never looked at. The start/end columns use 1900 and
 # 2100 as open-ended sentinels.
@@ -279,8 +384,14 @@ popu_years <- popu_matched |>
 # The cost is real and is reported: countries dropped this way had parties
 # that might legitimately have been zeros, so the negative class is smaller
 # and slightly more concentrated in populist-heavy countries.
+# Counted inside the coverage window: a populist matched only in years the
+# calibration never uses would otherwise keep its country's imputed zeros
+# without contributing a single positive.
 countries_with_matched_populist <- vparty |>
-  filter(v2paid %in% unique(popu_years$vdem_id_1)) |>
+  filter(
+    v2paid %in% unique(popu_years$vdem_id_1),
+    year >= COVERAGE_MIN, year <= COVERAGE_MAX
+  ) |>
   pull(country_name) |>
   unique()
 
@@ -309,6 +420,7 @@ UNIVERSE_LABEL <- paste(
   "All V-Party parties in PopuList's countries;",
   "unlisted = not populist"
 )
+# (The unit is the V-Party observation: one per party per election contested.)
 
 # ------------------------------------------------------------------------------
 # 4. Logit, ROC, cutpoint
@@ -352,13 +464,16 @@ fit_one <- function(df, label, score = FIT_SCORE) {
     co <- coords(roc_obj, "best", best.method = method,
                  ret = c("threshold", "sensitivity", "specificity"),
                  transpose = FALSE)
-    # Ties can return several equally good cutpoints; take the median so the
-    # answer does not depend on pROC's internal ordering.
+    # Ties can return several equally good cutpoints. Take the tied cutpoint
+    # nearest their median, so the answer does not depend on pROC's internal
+    # ordering and is itself one of the optima -- a plain median of disjoint
+    # optima can land between them, at a cut that is not optimal.
+    i <- which.min(abs(co$threshold - median(co$threshold)))
     tibble(
       method = method,
-      threshold = median(co$threshold),
-      sensitivity = median(co$sensitivity),
-      specificity = median(co$specificity)
+      threshold = co$threshold[i],
+      sensitivity = co$sensitivity[i],
+      specificity = co$specificity[i]
     )
   }
 
@@ -366,12 +481,16 @@ fit_one <- function(df, label, score = FIT_SCORE) {
     x <- df[[score]]
     y <- df$populist == 1
     # Midpoints between adjacent observed values, so every distinct split of
-    # the data is considered exactly once.
+    # the data is considered exactly once -- plus both extremes ("everyone
+    # populist" below the minimum, "no one" above the maximum), so the
+    # degenerate solutions are in the candidate set and the guard below can
+    # catch them.
     u <- sort(unique(x))
-    cands <- if (length(u) < 2) u else c(u[1] - 1e-9, (head(u, -1) + tail(u, -1)) / 2)
+    cands <- c(u[1] - 1e-9, if (length(u) > 1) (head(u, -1) + tail(u, -1)) / 2, u[length(u)] + 1e-9)
     acc <- vapply(cands, function(t) mean((x > t) == y), numeric(1))
     best <- cands[acc == max(acc)]
-    t0 <- median(best)
+    # The optimal cut nearest the median of the tied optima (see grab_roc).
+    t0 <- best[which.min(abs(best - median(best)))]
     tibble(
       method = "accuracy",
       threshold = t0,
@@ -423,8 +542,10 @@ fit_one <- function(df, label, score = FIT_SCORE) {
 
 # The percentile transfer: where the cutpoint sits in the populism
 # distribution, then the anti-pluralism value at that same percentile. Both are
-# taken over the SAME rows the logit was fitted on, so the two distributions
-# are comparable.
+# taken over ALL scored V-Party party-years -- every country, every year -- not
+# the European calibration sample the logit was fitted on, because that global
+# population is what the threshold is applied to. Both indices are ranked over
+# the same rows, so the two percentiles are comparable.
 apply_scores <- vparty |>
   filter(!is.na(.data[[FIT_SCORE]]), !is.na(.data[[APPLY_SCORE]]))
 
@@ -516,10 +637,55 @@ for (i in seq_len(nrow(thresholds_ctry))) {
   ))
 }
 write_csv(thresholds_ctry, file.path(out_dir, "thresholds_ctry_pct.csv"))
+# The within-country headline uses the SAME criterion as the raw one, by
+# construction rather than by a separate choice: HEADLINE_METHOD was selected
+# on the raw score after the RDD had been run at both criteria (see its
+# comment), and it is inherited here without having been chosen on this scale.
+#
+# On this scale the accuracy criterion is FLAT near its optimum: recoding a
+# single party-year (Norway's Senterpartiet in 2017, the MANUAL_VPARTY_MATCHES
+# fix) moved the cut from the 90.3th to the 86.6th percentile with identical
+# accuracy (0.8839) at both. Where it lands is therefore decided by very few
+# observations. The Youden cut (71.6th) is stable to that recode and travels
+# in the output too; read every within-country run at both.
 headline_ctry <- thresholds_ctry |>
   filter(!degenerate, method == HEADLINE_METHOD) |>
   slice(1)
 stopifnot(nrow(headline_ctry) == 1)
+
+# ------------------------------------------------------------------------------
+# 4c. Sensitivity: the one ambiguous PopuList match
+#
+# Romania "PSD" (see MANUAL_VPARTY_MATCHES) is either the minor PSoDR its Party
+# Facts id names, which V-Party does not score, or the large PSD (V-Party 120),
+# which the calibration then carries as a zero while PopuList calls it
+# populist. Refit both calibrations with the PSD coded populist over PopuList's
+# stated years, and report how far each cut moves. Nothing downstream reads
+# this; it says whether the ambiguity matters.
+# ------------------------------------------------------------------------------
+
+psd <- popu |> filter(country_name == "Romania", party_name_short == "PSD", populist == 1)
+universe_psd <- universe_imputed |>
+  mutate(populist = if_else(
+    v2paid == 120 & year >= max(psd$populist_start, COVERAGE_MIN) &
+      year <= min(psd$populist_end, COVERAGE_MAX),
+    1L, populist
+  ))
+n_recoded <- sum(universe_psd$populist != universe_imputed$populist)
+fit_psd <- fit_one(universe_psd, "sensitivity: Romania PSD coded populist")
+fit_psd_ctry <- fit_one(universe_psd, "sensitivity: Romania PSD coded populist", score = "popul_pct_ctry")
+sensitivity <- bind_rows(
+  tibble(scale = "raw", method = fit$cuts$method, baseline = fit$cuts$threshold),
+  tibble(scale = "within-country percentile", method = fit_ctry$cuts$method, baseline = fit_ctry$cuts$threshold)
+) |>
+  mutate(
+    with_romania_psd = c(fit_psd$cuts$threshold, fit_psd_ctry$cuts$threshold),
+    change = with_romania_psd - baseline,
+    party_years_recoded = n_recoded
+  )
+write_csv(sensitivity, file.path(out_dir, "thresholds_sensitivity.csv"))
+cat(sprintf("\nSensitivity, Romania PSD coded populist (%d party-years recoded):\n", n_recoded))
+print(as.data.frame(sensitivity |> mutate(across(where(is.numeric), \(x) round(x, 4)))), row.names = FALSE)
 
 # ------------------------------------------------------------------------------
 # 5. The headline numbers, for 12_rdd_analysis.R
@@ -565,8 +731,8 @@ out <- list(
   # The within-country percentile cut (0-1), for the "popucut_ctry" spec. It is
   # applied to illiberal_pct_ctry / other_pct_ctry, never to a raw score.
   threshold_pct_ctry = headline_ctry$percentile_cut,
-  # The Youden cut on the same scale, carried because the accuracy criterion
-  # lands strictly (sensitivity ~0.5) and the question is precisely whether the
+  # The Youden cut on the same scale, carried because the accuracy criterion is
+  # flat here (see headline_ctry) and the question is precisely whether the
   # PopuList cut is too conservative. "popucut_ctry_youden" reads it.
   threshold_pct_ctry_youden = thresholds_ctry |>
     filter(!degenerate, method == "youden") |>

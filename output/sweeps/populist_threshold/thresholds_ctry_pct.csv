@@ -1,3 +1,3 @@
 universe_label,n,n_populist,auc,method,percentile_cut,sensitivity,specificity,accuracy,youden_j,degenerate
-All V-Party parties in PopuList's countries; unlisted = not populist (populism as a within-country percentile),1378,271,0.885675523421901,youden,0.715633423180593,0.8265682656826568,0.8112014453477868,0.8142235123367199,0.6377697110304437,FALSE
-All V-Party parties in PopuList's countries; unlisted = not populist (populism as a within-country percentile),1378,271,0.885675523421901,accuracy,0.9026269010468102,0.5239852398523985,0.971996386630533,0.8838896952104499,0.49598162648293154,FALSE
+All V-Party parties in PopuList's countries; unlisted = not populist (populism as a within-country percentile),1378,272,0.8861324593128379,youden,0.715633423180593,0.8272058823529411,0.8119349005424955,0.8149492017416545,0.6391407828954367,FALSE
+All V-Party parties in PopuList's countries; unlisted = not populist (populism as a within-country percentile),1378,272,0.8861324593128379,accuracy,0.8655367231638418,0.6507352941176471,0.9412296564195298,0.8838896952104499,0.5919649505371769,FALSE

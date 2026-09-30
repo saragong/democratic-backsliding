@@ -143,10 +143,12 @@ each party's own country** (its rank among every V-Party party-year in that
 country, all years), then applies the same percentile to anti-pluralism ranked
 the same way. The build carries `illiberal_pct_ctry` / `other_pct_ctry` for it
 (1,340 of 1,347 elections; the rest are in countries with under 10 V-Party
-party-years). The accuracy criterion cuts at the 90.3th percentile and the
+party-years). The accuracy criterion cuts at the 86.6th percentile and the
 Youden criterion (`"popucut_ctry_youden"`) at the 71.6th; the implied raw cut
-differs by country (France 0.486 under accuracy, just at Front National's
-0.486). `scripts/11c_threshold_summary.R` puts every candidate cut side by side
+differs by country (France 0.410 under accuracy, below Front National's 0.486).
+The accuracy criterion is flat on this scale: before Norway's Senterpartiet
+was matched to V-Party (Sep 30), the same fit cut at the 90.3th percentile,
+with identical accuracy. Read within-country results at both cuts. `scripts/11c_threshold_summary.R` puts every candidate cut side by side
 in `output/sweeps/populist_threshold/cutpoint_summary.html`.
 
 ## The treatment window convention

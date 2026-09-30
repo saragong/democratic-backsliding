@@ -1,0 +1,98 @@
+country_name,party_name,party_name_english,party_name_short,partyfacts_id,populist_start,populist_end,populist_bl,matched_on,best_vparty_name,best_v2paid,similarity
+France,Union des droites pour la République,Union of the Right for the Republic,UDR,NA,1900,2100,0,UDR,UDR,8041,1
+Lithuania,Nacionalinis susivienijimas,National Alliance,NS,NA,1900,2100,1,NS,NS,1800,1
+Romania,Partidul Socialist Democrat,Social Democratic Party,PSD,1078,1990,2025,1,Social Democratic Party,Social Democratic Party,120,1
+Bulgaria,Bulgarski Vazhod,Bulgarian Rise,BV,NA,1900,2100,0,Bulgarian Rise,Bulgarian: Българска Евролевица,149,0.9384615384615385
+Romania,Partidul Național Conservator Român,Romanian National Conservative Party,PNCR,NA,1900,2100,0,PNCR,PCR,5773,0.9249999999999999
+Slovakia,Pravá Slovenská Národná Strana,Real Slovak National Party,PSNS,129,1900,2100,0,PSNS,SNS,730,0.9166666666666666
+Croatia,Hrvatski Suverenisti,Croatian Sovereigntists,HS,9086,1900,2100,0,HS,HSS,72,0.911111111111111
+Netherlands,Centrum Democraten,Centre Democrats,CD,1472,1900,2100,0,CD,CDA,1157,0.911111111111111
+Poland,Suwerenna Polska,Sovereign Poland,SP,328,1900,2100,0,SP,Spr,7356,0.911111111111111
+Greece,Dimokratiko Koinoniko Kinima,Democratic Social Movement,DIKKI,1682,1900,2100,0,Democratic Social Movement,Democratic Left,1160,0.8940476190476191
+Latvia,Latvija Pirmajā Vietā,Latvia First,LPV,9078,1900,2100,0,Latvia First,Latvia's First Party,1778,0.893048128342246
+Croatia,Hrvatska Konzervativna Stranka,Croatian Conservative Party,HKS,9085,1900,2100,0,Croatian Conservative Party,Croatian Peasant Party,72,0.8906666666666667
+Romania,Patriotii Poporului Roman,Romanian People's Patriots,PPR,NA,1900,2100,0,Romanian People's Patriots,Romanian Ecologist Party,1373,0.890576242978989
+Croatia,Hrvatski rast,Croatian Growth,Hrast,3138,1900,2100,0,Croatian Growth,Croatian Party of Rights,253,0.8864468864468865
+Lithuania,Lietuvos Centro Partija,Lithuanian Centre Party,LCP,5455,1900,2100,0,Lithuanian Centre Party,Lithuanian Social Democratic Party,64,0.8824803945347238
+Croatia,Hrvatski demokratski savez Slavonije i Baranje,Croatian Democratic Alliance of Slavonia and Baranja,HDSSB,2347,1900,2100,0,HDSSB,HSS,72,0.88
+Greece,Elliniki Lisi,Greek Solution,EL,7347,1900,2100,0,Greek Solution,Greek: Συνασπισμός Ριζοσπαστικής Αριστεράς,301,0.8769230769230769
+Switzerland,Schweizer Demokraten,Swiss Democrats,SD,1819,1900,2100,0,Swiss Democrats,Swiss People's Party,308,0.8592818945760122
+Slovenia,Slovenija Je Naša,Slovenia Is Ours,SJN,740,1900,2100,0,Slovenia Is Ours,Slovenian National Party,96,0.8571428571428571
+Italy,De Luca Sindaco d’Italia,De Luca Mayor of Italy,DLSI,NA,1900,2100,0,DLSI,DS,878,0.85
+Greece,"Δημοκρατικό Πατριωτικό Κίνημα ""ΝΙΚΗ""",Democratic Patriotic Movement NIKI,NIKI,NA,1900,2100,0,Democratic Patriotic Movement NIKI,Democratic Left,1160,0.8321812596006144
+Czech Republic,Strana Práv Občanů,Party of Civic Rights,SPO,NA,1900,2100,0,SPO,SPD,6125,0.8222222222222221
+Switzerland,Lega dei Ticinesi,Ticino League,LdT,1661,1900,2100,0,LdT,LdU,1194,0.8222222222222221
+Belgium,Parti populaire,People's Party,PP,639,1900,2100,0,PP,PA-PTB,1753,0.82
+Romania,Alianța pentru Unirea Românilor,Alliance for the Union of Romanians,AUR,8983,1900,2100,0,Alliance for the Union of Romanians,Alliance of Liberals and Democrats,5662,0.8116666666666666
+Spain,Sumar,Unite,SMR,NA,1900,2100,1,Unite,Union of the Democratic Centre,1271,0.8115384615384615
+Cyprus,Movement of Hunters,Movement of Hunters,Hunters,NA,1900,2100,0,Movement of Hunters,Movement for Social Democracy EDEK,1028,0.8011463046757165
+Romania,Partidul Oamenilor Tineri,Party of Young People,POT,NA,1900,2100,0,Partidul Oamenilor Tineri,Party of the Civic Alliance,645,0.8008695652173913
+Latvia,Dzimtene (now Jaunā Saskaņa),Motherland (now New Harmony),New Harmony,897,1900,2100,0,New Harmony,New Era,1531,0.7977777777777778
+Czech Republic,Volný Blok,Free Bloc,VB,980,1900,2100,0,Free Bloc,Freedom Union / Democratic Union,104,0.7944444444444444
+Greece,Laiki Enotita-Anypotakti Aristera,Popular Unity- Insubordinate Left,LAE,4512,1900,2100,0,Popular Unity- Insubordinate Left,Popular Orthodox Rally,965,0.7865517241379311
+Czech Republic,Prisaha,Oath,Prisaha,9002,1900,2100,0,Prisaha,Pi,2047,0.7857142857142856
+Italy,La Rete,The Network,LR,131,1900,2100,0,The Network,The Olive Tree,1737,0.7827777777777777
+Italy,Rivoluzione Civile,Civil Revolution,RC,2277,1900,2100,0,Rivoluzione Civile,RiI,259,0.7803921568627451
+Cyprus,New Horizons,New Horizons,NH,1191,1900,2100,0,NH,KINHMA,4883,0.7777777777777777
+Iceland,Sósíalistaflokkur Íslands,Icelandic Socialist Party,SFI,9004,1900,2100,0,SFI,Sfvm,1517,0.7777777777777777
+Italy,Movimento Sociale Fiamma Tricolore,Social Movement Tricolour Flame,MSFT,1101,1900,2100,1,MSFT,MSI,1696,0.7777777777777777
+Netherlands,Forum voor Democratie,Forum for Democracy,FVD,5855,1900,2100,0,FVD,VVD,828,0.7777777777777777
+Belgium,Front National,National Front,FN,191,1900,2100,0,Front National,Front Démocratique des Francophones / DéFI,698,0.7757964257964258
+Finland,Liike Nyt,Movement Now,Liik,8639,1900,2100,0,Liik,L,249,0.7749999999999999
+Denmark,Danmarksdemokraterne,Denmark Democrats,DD,NA,1900,2100,0,Denmark Democrats,Centre Democrats,800,0.7666666666666666
+Slovakia,Vlasť,Homeland,Vlast,8643,1900,2100,0,Homeland,OĽaNO,2130,0.7666666666666666
+Norway,Kystpartiet,Coastal Party,Kp,677,1900,2100,1,Coastal Party,Conservative Party,503,0.7657516339869281
+Latvia,Katram un Katrai,For Each and Every One,KuK,9076,1900,2100,0,For Each and Every One,For Fatherland and Freedom,671,0.7651771336553945
+Lithuania,Nemuno Aušra,Dawn of Nemunas,NA,NA,1900,2100,0,Nemuno Aušra,New Union (Social Liberals),1800,0.7643097643097643
+Denmark,Borgernes Parti,Citizens' Party,BP,NA,1900,2100,0,Borgernes Parti,Progress Party,1601,0.7611721611721611
+Greece,Politiki Anixi,Political Spring,POLAN,312,1900,2100,1,POLAN,People’s Association / Golden Dawn,1660,0.7535714285714286
+Czech Republic,Motoristé Sobe,Motorists for Themselves,AUTO,NA,1900,2100,0,AUTO,ANO,2141,0.75
+Greece,Νέα Αριστερά,New Left,NA,NA,1900,2100,0,New Left,New Democracy,794,0.7444444444444445
+Bulgaria,Ima Takav Narod,There Is Such a People,ITN,8992,1900,2100,0,Ima Takav Narod,ATA,1793,0.7435897435897436
+Greece,Πλεύση Ελευθερίας - Ζωή Κωνσταντοπούλου,Course of Freedom-Zoe Konstantopoulou,Course of Freedom,NA,1900,2100,0,Course of Freedom,Communist Party of Greece,48,0.7389898989898989
+France,Debout la république | Debout la France,Republic Arise | France Arise,DLR / DLF,3207,1900,2100,0,Republic Arise | France Arise,RPR,509,0.7375
+Latvia,Stabilitāte!,For Stability!,ST!,NA,1900,2100,0,For Stability!,For Latvia from the Heart,3193,0.7340277777777777
+Cyprus,Ethniko Laiko Metopo,National Popular Front,ELAM,1013,1900,2100,1,Ethniko Laiko Metopo,EK,1817,0.7333333333333333
+Denmark,Nye Borgerlige,The New Right,NB,7339,1900,2100,1,NB,[New] Liberal Alliance,212,0.7333333333333333
+Italy,Lega d'Azione Meridionale,Southern Action League,LAM,8647,1900,2100,0,Southern Action League,SC,2281,0.73
+Croatia,Dom i Nacionalno Okupljanje,Home and National Rally,DOMiNO,NA,1900,2100,0,Dom i Nacionalno Okupljanje,DC,78,0.7249999999999999
+Bulgaria,Izpravi se.BG,Stand Up.BG,ISBG,8991,1900,2100,0,ISBG,DSB,1195,0.7222222222222221
+Croatia,Blok za Hrvatsku,Bloc for Croatia,BzH,NA,1900,2100,0,BzH,SBHS,8037,0.7222222222222221
+United Kingdom,Democratic Unionist Party,Democratic Unionist Party,DUP,335,1900,2100,1,DUP,UKIP,601,0.7222222222222221
+France,Reconquete,Reconquest,Reconquete,9064,1900,2100,0,Reconquest,Reformers Movement,167,0.7207843137254901
+Greece,European Realistic Disobedience Front,European Realistic Disobedience Front,MeRa25,7348,1900,2100,0,European Realistic Disobedience Front,EP,943,0.7176470588235293
+Slovakia,Republika,Republic,REP,NA,1900,2100,1,REP,Green Party [in Slovakia],1569,0.7166666666666666
+Slovenia,Povežimo Slovenijo,Let’s Connect Slovenia,PoS,NA,1900,2100,1,Let’s Connect Slovenia,L,6131,0.7157894736842104
+Romania,S.O.S Romǎnia,S.O.S Romania,SOS,NA,1900,2100,0,S.O.S Romǎnia,Social Democratic Party,120,0.714920634920635
+Austria,JETZT - Liste Pilz,NOW – Pilz List,Pilz,6137,1900,2100,1,JETZT - Liste Pilz,TS,1971,0.7142857142857142
+Croatia,Radnička Fronta,Workers' Front,RF,NA,1900,2100,0,Radnička Fronta,DC,78,0.7142857142857142
+Bulgaria,"Red, Zakonnost i Spravedlivost","Order, Law and Justice",RZS,272,1900,2100,0,"Red, Zakonnost i Spravedlivost",ONS,1765,0.7051282051282051
+Bulgaria,Vazrazhdane,Revival,Vazrazhdane,5862,1900,2100,0,Revival,Reformist Bloc,3189,0.701098901098901
+Croatia,Domovinski Pokret,Homeland Movement,DP,8981,1900,2100,0,DP,DC,78,0.7
+Latvia,Suverēnā Vara,Sovereign Power,SV,NA,1900,2100,0,SV,SC,1056,0.7
+Poland,Partia X,Party X,X,146,1900,2100,0,Partia X,Patriotic Movement for National Rebirth,6154,0.6965079365079365
+Croatia,Mozemo!,We Can!,Mozemo,8980,1900,2100,0,Mozemo!,Most,4865,0.6888888888888889
+Croatia,Bandić Milan 365 – Stranka Rada i Solidarnosti,Bandić Milan 365 – Labour and Solidarity Party,BM365,5452,1900,2100,0,Bandić Milan 365 – Labour and Solidarity Party,Slavonia-Baranja Croatian Party,8037,0.685708837310668
+Bulgaria,MECh,"Morality, Unity, Honour",MECh,NA,1900,2100,0,"Morality, Unity, Honour",Bulgarian Euro-Left Coalition,149,0.6776878092667565
+Slovenia,Resni.ca,Truth,Resni.ca,9069,1900,2100,0,Resni.ca,Zares,474,0.6761904761904761
+Austria,Liste Hans-Peter Martin,Hans-Peter Martin's List,Martin,1708,1900,2100,0,Liste Hans-Peter Martin,LIF,605,0.6711111111111111
+United Kingdom,Respect – The Unity Coalition,Respect -- The Unity Coalition,R,1082,1900,2100,0,Respect – The Unity Coalition,Scottish National Party,986,0.6686507936507936
+Bulgaria,Прогресивна България,Progressive Bulgaria,PB,NA,1900,2100,0,PB,RB,3189,0.6666666666666666
+Germany,Bündnis Sahra Wagenknecht,Sahra Wagenknecht Alliance,BSW,NA,1900,2100,0,Sahra Wagenknecht Alliance,Greens,10,0.6666666666666666
+Netherlands,Leefbaar Nederland,Livable Netherlands,LN,1420,1900,2100,0,Livable Netherlands,Labour,1234,0.6666666666666666
+Bulgaria,Левицата!,The Left!,Левицата!,NA,1900,2100,0,The Left!,BEL,149,0.6507936507936507
+United Kingdom,Brexit Party / Reform,Brexit Party / Reform,BRX / Reform,7364,1900,2100,0,Brexit Party / Reform,Liberal Party,540,0.6486928104575163
+Norway,Rødt,Red Party,Rodt,44,2012,2100,1,Red Party,Liberal Party of Norway,1173,0.6464285714285715
+Ireland,Independent Ireland,Independent Ireland,Independent Ireland,NA,1900,2100,0,Independent Ireland,Sinn Fein (Provisional),4,0.639110402268297
+Bulgaria,Velichie,Greatness,Velichie,NA,1900,2100,1,Velichie,BEL,149,0.6388888888888888
+Switzerland,Mouvement Citoyens Genevois,Geneva Citizens' Movement,MCG,8176,1900,2100,0,Mouvement Citoyens Genevois,Conservative Democratic Party of Switzerland,1415,0.625
+Croatia,Pravo i Pravda,Law and Justice,PiP,NA,1900,2100,0,Pravo i Pravda,Croatian Civic Party,6620,0.6203703703703703
+Bulgaria,Volya,Will,Volya,5863,1900,2100,0,Will,National Front for the Salvation of Bulgaria,2057,0.6096491228070176
+Belgium,Lijst Dedecker ,List Dedecker,LDD,43,1900,2100,0,List Dedecker,Flemish Interest,1968,0.6083333333333333
+Malta,Imperium Europa,Imperium Europa,Imperium Europa,NA,1900,2100,0,Imperium Europa,MLP,808,0.6031746031746031
+Norway,Pasientfokus,Patient Focus,PF,NA,2012,2100,1,Patient Focus,Socialist Left Party,719,0.6018518518518519
+Greece,Σπαρτιάτες,Spartans,Spartans,NA,1900,2100,1,Spartans,People’s Association / Golden Dawn,1660,0.5892857142857142
+Netherlands,BoerBurgerBeweging,Farmer–Citizen Movement,BBB,9010,1900,2100,0,Farmer–Citizen Movement,ARP,163,0.5873015873015872
+Germany,Republikaner,Republicans,Republikaner,720,1900,2100,0,Republikaner,Greens,10,0.5833333333333333
+Portugal,Chega,Enough,Chega,8182,1900,2100,0,Enough,National Union,4753,0.5769230769230769
+Netherlands,Juiste Antwoord 21,Right Answer 21,JA21,9011,1900,2100,0,Right Answer 21,Fortuyn List,1528,0.557109557109557
