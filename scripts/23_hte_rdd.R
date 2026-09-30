@@ -87,6 +87,15 @@ if (!exists("HTE_CLUSTER")) HTE_CLUSTER <- FALSE
 # A W with fewer usable elections than this, or a group smaller than this
 # within the bandwidth, is reported but not estimated.
 if (!exists("HTE_MIN_N")) HTE_MIN_N <- 100
+# A continuous W with more than this share of its elections at ONE value is
+# reported but not estimated. It carries almost no variation to identify a
+# slope from, and standardising it blows the few other values up into huge
+# z-scores: suffrage (98% at one value) gave a CI of about -3 to +5 that
+# flattened every other row of the forest plot, and the V-Dem executive-power
+# pre-trends (93-94%) returned no standard errors at all. 0.9 sits in a clean
+# gap: the next most concentrated W is at 0.85.
+if (!exists("HTE_MAX_MODE_SHARE")) HTE_MAX_MODE_SHARE <- 0.9
+
 # Categorical W estimated as one effect per level rather than as a slope.
 FACTOR_W <- c("W_decade")
 # A level of a categorical W with fewer elections than this is dropped from
@@ -169,6 +178,15 @@ fit_one_w <- function(dd, w, covs_eff, cluster, h_pooled) {
     }
   }
   binary <- is_binary(wv[ok])
+  if (!binary && !is_factor) {
+    mode_share <- max(table(wv[ok])) / sum(ok)
+    if (mode_share > HTE_MAX_MODE_SHARE) {
+      return(tibble(w = w, term = NA_character_, note = sprintf(
+        "not estimated: %.0f%% of elections at one value (limit %.0f%%)",
+        100 * mode_share, 100 * HTE_MAX_MODE_SHARE
+      )))
+    }
+  }
   covs <- if (binary || is_factor) factor(wv[ok]) else center_at_cutoff(wv[ok], x, h_pooled)
   fit <- tryCatch(
     rdhte(y, x, covs.hte = covs, covs.eff = ce, cluster = cl, bw.joint = binary),
