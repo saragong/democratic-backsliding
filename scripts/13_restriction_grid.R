@@ -51,8 +51,6 @@ library(gt)
 
 source(here::here("scripts", "rdd_helpers.R"))
 
-data_dir <- here::here("data")
-
 # What this script holds FIXED. The sample restrictions are deliberately absent:
 # they are the axes being swept (see AXES below), which is exactly why this
 # script must not build a `cfg` and call run_dir(). An earlier version did, with
@@ -61,49 +59,41 @@ data_dir <- here::here("data")
 # varies it, and parked the output inside a folder 12_rdd_analysis.R
 # legitimately owns for that configuration. This is a sweep, so it writes to
 # _sweeps/ and records its fixed/swept axes in sweep_config.csv.
-if (!exists("ILLIBERALISM_VAR")) ILLIBERALISM_VAR <- "v2xpa_antiplural"
-if (!exists("BACKSLIDING_WINDOW_YEARS")) BACKSLIDING_WINDOW_YEARS <- 5
-if (!exists("TREATMENT_VAR")) TREATMENT_VAR <- "backsliding_Nyr"
+if (!exists("ILLIBERALISM_VAR")) ILLIBERALISM_VAR <- DEFAULT_INSTRUMENT
+if (!exists("BACKSLIDING_WINDOW_YEARS")) BACKSLIDING_WINDOW_YEARS <- DEFAULT_WINDOW
+if (!exists("TREATMENT_VAR")) TREATMENT_VAR <- DEFAULT_TREATMENT
 # Selects which build to read and is echoed into the sweep folder name -- see
 # 11_build_rdd_data.R for what it does.
 if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
-  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- FALSE
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- DEFAULT_INCL_ELECTION_YEAR
 }
+# The pre-election placebo build. Part of the build's and the folder's identity
+# exactly like the convention above; an earlier version of this script left it
+# out of the build path and so could not select a placebo build at all.
+if (!exists("PLACEBO_PRE_WINDOW")) PLACEBO_PRE_WINDOW <- DEFAULT_PLACEBO
 # The headline outcome the grids report alongside the first stage.
 if (!exists("GRID_OUTCOME")) GRID_OUTCOME <- "Y_gdp_growth"
 
-build_suffix <- if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else "_exclyr"
-build_path <- file.path(
-  data_dir, "rdd_build",
-  sprintf(
-    "rdd_%s_w%d%s.rds",
-    ILLIBERALISM_VAR, BACKSLIDING_WINDOW_YEARS, build_suffix
-  )
+build_sfx <- build_suffix(TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW)
+d_full <- load_build(
+  ILLIBERALISM_VAR, BACKSLIDING_WINDOW_YEARS,
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW
 )
-if (!file.exists(build_path)) {
-  stop("No build at ", build_path, " -- run 11_build_rdd_data.R first.")
-}
-d_full <- readRDS(build_path)
-# Same check 12_rdd_analysis.R makes: a build written before the window toggle
-# existed carries no attribute and used the old convention, so a missing
-# attribute means FALSE rather than the current default.
-build_incl <- attr(d_full, "includes_election_year") %||% FALSE
-if (!identical(build_incl, TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR)) {
-  stop(
-    "Build at ", build_path, " was made with ",
-    "TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR = ", build_incl,
-    " but this sweep asked for ", TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
-    ". Rebuild it with 11_build_rdd_data.R."
-  )
-}
-cat(sprintf("Loaded %s (%d elections)\n", basename(build_path), nrow(d_full)))
+cat(sprintf(
+  "Loaded %s (%d elections)\n",
+  basename(build_path(
+    ILLIBERALISM_VAR, BACKSLIDING_WINDOW_YEARS,
+    TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW
+  )),
+  nrow(d_full)
+))
 
 grid_dir <- sweep_dir(sprintf(
   "restriction_grid_%s_w%d_trt-%s%s",
   INSTRUMENT_LABELS[[ILLIBERALISM_VAR]],
   BACKSLIDING_WINDOW_YEARS,
   TREATMENT_LABELS[[TREATMENT_VAR]],
-  build_suffix
+  build_sfx
 ))
 
 # ------------------------------------------------------------------------------
@@ -252,6 +242,7 @@ write_sweep_config(
     window = BACKSLIDING_WINDOW_YEARS,
     treatment = TREATMENT_VAR,
     treatment_window_includes_election_year = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
+    placebo_pre_window = PLACEBO_PRE_WINDOW,
     grid_outcome = GRID_OUTCOME,
     n_elections_unrestricted = nrow(d_full)
   ),
@@ -377,7 +368,7 @@ composition_dir <- sweep_dir(sprintf(
   "sample_composition_%s_w%d%s",
   INSTRUMENT_LABELS[[ILLIBERALISM_VAR]],
   BACKSLIDING_WINDOW_YEARS,
-  build_suffix
+  build_sfx
 ))
 write_sweep_config(
   composition_dir,
@@ -385,6 +376,7 @@ write_sweep_config(
     instrument = ILLIBERALISM_VAR,
     window = BACKSLIDING_WINDOW_YEARS,
     treatment_window_includes_election_year = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
+    placebo_pre_window = PLACEBO_PRE_WINDOW,
     depends_on_treatment = FALSE,
     depends_on_outcome = FALSE,
     n_elections_unrestricted = nrow(d_full)

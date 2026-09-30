@@ -40,13 +40,11 @@ library(patchwork)
 source(here::here("scripts", "rdd_helpers.R"))
 source(here::here("scripts", "vparty_helpers.R"))
 
-data_dir <- here::here("data")
-
 if (!exists("OVERLAP_INSTRUMENT_BUILD")) {
-  OVERLAP_INSTRUMENT_BUILD <- "v2xpa_antiplural"
+  OVERLAP_INSTRUMENT_BUILD <- DEFAULT_INSTRUMENT
 }
 if (!exists("OVERLAP_WINDOW")) {
-  OVERLAP_WINDOW <- 5
+  OVERLAP_WINDOW <- DEFAULT_WINDOW
 }
 if (!exists("NARROW_MARGIN_PP")) {
   NARROW_MARGIN_PP <- 5
@@ -56,40 +54,27 @@ if (!exists("NARROW_MARGIN_PP")) {
 # NARROW-election bandwidth does (it comes from the first stage), so the two
 # conventions get separate folders rather than overwriting each other.
 if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
-  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- FALSE
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- DEFAULT_INCL_ELECTION_YEAR
 }
-build_suffix <- if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else "_exclyr"
+# The pre-election placebo build. Part of the build's and the folder's identity
+# exactly like the convention above; an earlier version of this script left it
+# out of the build path and so could not select a placebo build at all.
+if (!exists("PLACEBO_PRE_WINDOW")) PLACEBO_PRE_WINDOW <- DEFAULT_PLACEBO
+build_sfx <- build_suffix(TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW)
 
-out_dir <- sweep_dir(paste0("instrument_overlap", build_suffix))
+out_dir <- sweep_dir(paste0("instrument_overlap", build_sfx))
 
-build_path <- file.path(
-  data_dir,
-  "rdd_build",
-  sprintf(
-    "rdd_%s_w%d%s.rds",
-    OVERLAP_INSTRUMENT_BUILD,
-    OVERLAP_WINDOW,
-    build_suffix
-  )
+d <- load_build(
+  OVERLAP_INSTRUMENT_BUILD, OVERLAP_WINDOW,
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW
 )
-parties_path <- sub("\\.rds$", "_parties.rds", build_path)
-stopifnot(file.exists(build_path), file.exists(parties_path))
-
-d <- readRDS(build_path)
+parties_path <- build_path(
+  OVERLAP_INSTRUMENT_BUILD, OVERLAP_WINDOW,
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW,
+  parties = TRUE
+)
+stopifnot(file.exists(parties_path))
 parties <- readRDS(parties_path)
-build_incl <- attr(d, "includes_election_year") %||% FALSE
-if (!identical(build_incl, TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR)) {
-  stop(
-    "Build at ",
-    build_path,
-    " was made with ",
-    "TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR = ",
-    build_incl,
-    " but this sweep asked for ",
-    TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
-    "."
-  )
-}
 
 # ------------------------------------------------------------------------------
 # Which instruments to include

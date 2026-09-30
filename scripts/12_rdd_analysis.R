@@ -32,32 +32,32 @@ library(gt)
 
 source(here::here("scripts", "rdd_helpers.R"))
 
-data_dir <- here::here("data")
-
 # ------------------------------------------------------------------------------
 # Toggles
 #
 # All set with `if (!exists(...))` so a driver script (14_window_sweep.R,
-# 15_alt_specs.R) can source() this file into an environment that already
-# defines some of them. Running standalone uses the defaults.
+# 15_alt_specs.R) can run_script_with() this file into an environment that
+# already defines some of them. Running standalone uses the defaults in
+# scripts/config.R: the unrestricted sample, so a standalone run reproduces the
+# headline window sweep's w5 run.
 # ------------------------------------------------------------------------------
 
 # Which build to read: these two must match a build produced by
 # 11_build_rdd_data.R (they select the file, they don't re-derive anything).
-if (!exists("ILLIBERALISM_VAR")) ILLIBERALISM_VAR <- "v2xpa_antiplural"
-if (!exists("BACKSLIDING_WINDOW_YEARS")) BACKSLIDING_WINDOW_YEARS <- 5
+if (!exists("ILLIBERALISM_VAR")) ILLIBERALISM_VAR <- DEFAULT_INSTRUMENT
+if (!exists("BACKSLIDING_WINDOW_YEARS")) BACKSLIDING_WINDOW_YEARS <- DEFAULT_WINDOW
 # Selects which build to read, and is echoed into the run slug. Set in
 # 11_build_rdd_data.R -- see the long comment there for what it does. FALSE is
 # the project convention.
 if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
-  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- FALSE
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- DEFAULT_INCL_ELECTION_YEAR
 }
 # Selects the PLACEBO build -- outcomes and treatment measured over the window
 # BEFORE the election rather than after it, as a pre-trend check. Set in
 # 11_build_rdd_data.R; see the long comment there. Like the convention above it
 # selects a build, it does not re-derive anything, and a mismatch between what
 # is asked for here and what the build actually is hard-errors below.
-if (!exists("PLACEBO_PRE_WINDOW")) PLACEBO_PRE_WINDOW <- FALSE
+if (!exists("PLACEBO_PRE_WINDOW")) PLACEBO_PRE_WINDOW <- DEFAULT_PLACEBO
 stopifnot(is.logical(PLACEBO_PRE_WINDOW))
 
 # Which treatment the fuzzy RD instruments for:
@@ -72,7 +72,7 @@ stopifnot(is.logical(PLACEBO_PRE_WINDOW))
 #                          handling is needed -- but note the LATE is then "per
 #                          one unit of polyarchy decline", i.e. per a full 0-1
 #                          swing of the index, not per episode.
-if (!exists("TREATMENT_VAR")) TREATMENT_VAR <- "backsliding_Nyr"
+if (!exists("TREATMENT_VAR")) TREATMENT_VAR <- DEFAULT_TREATMENT
 stopifnot(TREATMENT_VAR %in% names(TREATMENT_LABELS))
 
 # ---- Sample restrictions -----------------------------------------------------
@@ -113,14 +113,14 @@ stopifnot(TREATMENT_VAR %in% names(TREATMENT_LABELS))
 # 0.05, i.e. the two parties are barely distinguishable in illiberalism, so
 # crossing the vote-share cutoff there isn't a real treatment contrast.
 # Compared with `>=` (a gap of exactly the threshold is kept).
-if (!exists("SCORE_GAP_MIN")) SCORE_GAP_MIN <- 0
+if (!exists("SCORE_GAP_MIN")) SCORE_GAP_MIN <- DEFAULT_SCORE_GAP_MIN
 
 # Minimum illiberal_score -- the more-illiberal top-2 member's raw LEVEL, not
 # the gap between the two. Restricting to elections where that party clears an
 # ideological bar in absolute terms, rather than merely edging out the other
 # top-2 member, is the restriction that most moves the first stage.
 # Compared with `>` (strictly above the threshold).
-if (!exists("ILLIBERAL_CUTOFF")) ILLIBERAL_CUTOFF <- 0.6
+if (!exists("ILLIBERAL_CUTOFF")) ILLIBERAL_CUTOFF <- DEFAULT_ILLIBERAL_CUTOFF
 
 # Maximum other_score -- a CEILING on the LESS-illiberal top-2 member, the
 # mirror of ILLIBERAL_CUTOFF's floor on the more-illiberal one. Same three
@@ -140,7 +140,7 @@ if (!exists("ILLIBERAL_CUTOFF")) ILLIBERAL_CUTOFF <- 0.6
 # a quantile ("q50") or a hand-picked value are equally valid ways to set it,
 # and 13_restriction_grid.R sweeps it as axis R6.
 # Compared with `<=` (a score exactly at the threshold is kept).
-if (!exists("OTHER_CUTOFF_MAX")) OTHER_CUTOFF_MAX <- Inf
+if (!exists("OTHER_CUTOFF_MAX")) OTHER_CUTOFF_MAX <- DEFAULT_OTHER_CUTOFF_MAX
 
 # Driver scripts that only need the numbers (14_window_sweep.R's secondary
 # treatment definitions, 15_alt_specs.R's grid) can set this FALSE to skip the
@@ -151,61 +151,24 @@ if (!exists("MAKE_PLOTS")) MAKE_PLOTS <- TRUE
 # Load + restrict
 # ------------------------------------------------------------------------------
 
-build_suffix <- paste0(
-  if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else "_exclyr",
-  if (PLACEBO_PRE_WINDOW) "_pre" else ""
+# load_build() refuses a build made under a different window convention or
+# placebo setting than the one asked for.
+build_file <- build_path(
+  ILLIBERALISM_VAR, BACKSLIDING_WINDOW_YEARS,
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW
 )
-build_path <- file.path(
-  data_dir,
-  "rdd_build",
-  sprintf(
-    "rdd_%s_w%d%s.rds",
-    ILLIBERALISM_VAR, BACKSLIDING_WINDOW_YEARS, build_suffix
-  )
+d <- load_build(
+  ILLIBERALISM_VAR, BACKSLIDING_WINDOW_YEARS,
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW
 )
-if (!file.exists(build_path)) {
-  stop(
-    "No build at ", build_path, ".\n",
-    "Run 11_build_rdd_data.R with ILLIBERALISM_VAR = '", ILLIBERALISM_VAR,
-    "', BACKSLIDING_WINDOW_YEARS = ", BACKSLIDING_WINDOW_YEARS,
-    ", TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR = ",
-    TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
-    " and PLACEBO_PRE_WINDOW = ", PLACEBO_PRE_WINDOW, " first."
-  )
-}
-d <- readRDS(build_path)
-# Builds written before this toggle existed carry no attribute; they all used
-# the old exclude-the-election-year convention, so treat a missing attribute as
-# FALSE rather than assuming it matches the current default.
-build_incl <- attr(d, "includes_election_year") %||% FALSE
-if (!identical(build_incl, TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR)) {
-  stop(
-    "Build at ", build_path, " was made with ",
-    "TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR = ", build_incl,
-    " but this run asked for ", TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
-    ". Rebuild it with 11_build_rdd_data.R."
-  )
-}
-# Same guard for the placebo, and it matters more: a placebo build estimated as
-# though it were the real one would report a pre-election correlation as the
-# headline post-election effect, and nothing in the numbers would look wrong.
-# Builds predating the attribute are all real (non-placebo) ones.
-build_placebo <- attr(d, "placebo_pre_window") %||% FALSE
-if (!identical(build_placebo, PLACEBO_PRE_WINDOW)) {
-  stop(
-    "Build at ", build_path, " was made with PLACEBO_PRE_WINDOW = ",
-    build_placebo, " but this run asked for ", PLACEBO_PRE_WINDOW,
-    ". Rebuild it with 11_build_rdd_data.R."
-  )
-}
 if (!TREATMENT_VAR %in% names(d)) {
   stop(
-    "Build at ", build_path, " has no column '", TREATMENT_VAR,
+    "Build at ", build_file, " has no column '", TREATMENT_VAR,
     "'. It predates that treatment definition -- rebuild it with ",
     "11_build_rdd_data.R."
   )
 }
-cat(sprintf("Loaded %s (%d elections)\n", basename(build_path), nrow(d)))
+cat(sprintf("Loaded %s (%d elections)\n", basename(build_file), nrow(d)))
 
 # Both specs are parsed and resolved against the FULL loaded build, before
 # either filter is applied. That ordering is load-bearing: resolving a quantile

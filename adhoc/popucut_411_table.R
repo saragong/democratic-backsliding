@@ -40,10 +40,10 @@ source(here::here("scripts", "vparty_helpers.R"))
 # ---- toggles -----------------------------------------------------------------
 
 if (!exists("T411_INSTRUMENT")) {
-  T411_INSTRUMENT <- "v2xpa_antiplural"
+  T411_INSTRUMENT <- DEFAULT_INSTRUMENT
 }
 if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
-  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- FALSE
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- DEFAULT_INCL_ELECTION_YEAR
 }
 # The horizons shown as change columns. The sample itself does not depend on
 # them -- the same 411 elections appear at every window.
@@ -56,32 +56,20 @@ if (!exists("T411_SAMPLE_WINDOW")) {
   T411_SAMPLE_WINDOW <- 5
 }
 
-build_suffix <- if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else "_exclyr"
-build_path <- function(n) {
-  here::here(
-    "data",
-    "rdd_build",
-    sprintf(
-      "rdd_%s_w%d%s.rds",
-      T411_INSTRUMENT,
-      n,
-      build_suffix
-    )
-  )
+t411_load_build <- function(n) {
+  load_build(T411_INSTRUMENT, n, TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR)
 }
-parties_path <- here::here(
-  "data",
-  "rdd_build",
-  sprintf(
-    "rdd_%s_w%d%s_parties.rds",
-    T411_INSTRUMENT,
-    T411_SAMPLE_WINDOW,
-    build_suffix
-  )
+parties_path <- build_path(
+  T411_INSTRUMENT, T411_SAMPLE_WINDOW, TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
+  parties = TRUE
 )
 
 needed <- unique(c(T411_SAMPLE_WINDOW, T411_HORIZONS))
-missing <- needed[!file.exists(vapply(needed, build_path, character(1)))]
+missing <- needed[!file.exists(vapply(
+  needed,
+  function(n) build_path(T411_INSTRUMENT, n, TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR),
+  character(1)
+))]
 if (length(missing) > 0 || !file.exists(parties_path)) {
   stop(
     "Missing build(s) for window(s) ",
@@ -106,7 +94,7 @@ SCORE_SHORT <- sub(" \\(.*$", "", PARTY_SCORE_DISPLAY[[T411_INSTRUMENT]])
 
 cut_abs <- resolve_threshold_abs("popucut", "popucut", NULL)
 
-d <- readRDS(build_path(T411_SAMPLE_WINDOW))
+d <- t411_load_build(T411_SAMPLE_WINDOW)
 sample_ids <- d |>
   filter(illiberal_score > cut_abs, other_score <= cut_abs) |>
   pull(election_id)
@@ -226,7 +214,7 @@ tbl_dat <- base |>
 # estimate in the repo uses. Checked at each horizon on the rows where both
 # are observed, rather than asserted in a comment.
 for (h in T411_HORIZONS) {
-  b <- readRDS(build_path(h)) |>
+  b <- t411_load_build(h) |>
     filter(election_id %in% sample_ids) |>
     select(election_id, Y_gdp_growth, Y_polyarchy)
   chk <- tbl_dat |>
@@ -494,7 +482,7 @@ canon_path <- function(h) {
 # the fuzzy bandwidths disagree while the reduced form matched exactly --
 # which is what a window-mismatched treatment looks like.
 trt_at <- function(h) {
-  readRDS(build_path(h)) |>
+  t411_load_build(h) |>
     filter(election_id %in% sample_ids) |>
     arrange(match(election_id, tbl_dat$election_id)) |>
     pull(backsliding_Nyr)

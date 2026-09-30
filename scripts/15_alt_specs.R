@@ -34,20 +34,15 @@ library(gt)
 
 source(here::here("scripts", "rdd_helpers.R"))
 
-data_dir <- here::here("data")
-scripts_dir <- here::here("scripts")
-
 if (!exists("ALT_INSTRUMENTS")) {
   ALT_INSTRUMENTS <- c(
     "v2xpa_antiplural", "v2xpa_popul", "v2pariglef_neg", "v2paanteli", "ep_galtan"
   )
 }
 if (!exists("ALT_TREATMENTS")) {
-  ALT_TREATMENTS <- c(
-    "backsliding_Nyr", "backsliding_union_Nyr", "polyarchy_decline"
-  )
+  ALT_TREATMENTS <- DEFAULT_SWEEP_TREATMENTS
 }
-if (!exists("ALT_WINDOW")) ALT_WINDOW <- 5
+if (!exists("ALT_WINDOW")) ALT_WINDOW <- DEFAULT_WINDOW
 # Sample definitions to run the whole grid at. Each entry is either the literal
 # "all" (no restriction) or a threshold spec that parse_threshold() understands
 # -- in practice a quantile such as "q50", which is the only form that means the
@@ -60,24 +55,24 @@ if (!exists("ALT_OUTCOME")) ALT_OUTCOME <- "Y_gdp_growth"
 # FRESH environment per call, so a toggle merely set in this script's scope
 # would not reach 11 or 12 and the grid would silently mix conventions.
 if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
-  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- FALSE
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- DEFAULT_INCL_ELECTION_YEAR
 }
-build_suffix <- if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else "_exclyr"
+if (!exists("PLACEBO_PRE_WINDOW")) PLACEBO_PRE_WINDOW <- DEFAULT_PLACEBO
+build_sfx <- build_suffix(TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW)
 
-# Every read of a build goes through this, so the suffix can never be forgotten
-# at one of the three call sites below.
+# Every read of a build goes through these, so neither convention can be
+# forgotten at one of the call sites below.
 alt_build_path <- function(instr) {
-  file.path(
-    data_dir, "rdd_build",
-    sprintf("rdd_%s_w%d%s.rds", instr, ALT_WINDOW, build_suffix)
+  build_path(
+    instr, ALT_WINDOW,
+    TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW
   )
 }
-
-run_script_with <- function(script, overrides) {
-  env <- new.env(parent = globalenv())
-  for (nm in names(overrides)) assign(nm, overrides[[nm]], envir = env)
-  sys.source(file.path(scripts_dir, script), envir = env)
-  invisible(env)
+alt_load_build <- function(instr) {
+  load_build(
+    instr, ALT_WINDOW,
+    TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW
+  )
 }
 
 # ------------------------------------------------------------------------------
@@ -86,8 +81,7 @@ run_script_with <- function(script, overrides) {
 # ------------------------------------------------------------------------------
 
 for (instr in ALT_INSTRUMENTS) {
-  build_path <- alt_build_path(instr)
-  if (file.exists(build_path)) {
+  if (file.exists(alt_build_path(instr))) {
     cat(sprintf("[%s] build cached\n", instr))
     next
   }
@@ -96,7 +90,8 @@ for (instr in ALT_INSTRUMENTS) {
     ILLIBERALISM_VAR = instr,
     BACKSLIDING_WINDOW_YEARS = ALT_WINDOW,
     TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR =
-      TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR
+      TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
+    PLACEBO_PRE_WINDOW = PLACEBO_PRE_WINDOW
   ))
 }
 
@@ -118,8 +113,10 @@ for (samp in ALT_SAMPLES) {
         TREATMENT_VAR = trt,
         TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR =
           TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
+        PLACEBO_PRE_WINDOW = PLACEBO_PRE_WINDOW,
         SCORE_GAP_MIN = -Inf,
         ILLIBERAL_CUTOFF = cutoff_spec,
+        OTHER_CUTOFF_MAX = Inf,
         # Only the reference cell gets figures; the rest contribute numbers.
         MAKE_PLOTS = identical(instr, ALT_INSTRUMENTS[1]) &&
           identical(trt, ALT_TREATMENTS[1])
@@ -130,15 +127,15 @@ for (samp in ALT_SAMPLES) {
   # --- pool -------------------------------------------------------------------
   # 12_rdd_analysis.R names its folder by the RESOLVED absolute threshold, not
   # the spec, so re-resolve each instrument's spec here to find the run again.
-  # This goes through the same parse_threshold()/resolve_threshold() pair that
-  # script 12 uses -- a second, local copy of the quantile arithmetic would be
-  # free to drift out of step with it and send us looking in the wrong folder.
+  # This goes through the same resolve_restrictions() the other drivers use --
+  # a second, local copy of the quantile arithmetic would be free to drift out
+  # of step with script 12 and send us looking in the wrong folder.
   resolved_cutoff <- function(instr) {
-    d <- readRDS(alt_build_path(instr))
-    resolve_threshold(
-      parse_threshold(cutoff_spec, "ILLIBERAL_CUTOFF"),
-      d$illiberal_score, "ILLIBERAL_CUTOFF"
-    )$absolute
+    resolve_restrictions(
+      alt_load_build(instr),
+      score_gap_min = -Inf, illiberal_cutoff = cutoff_spec,
+      other_cutoff_max = Inf
+    )$illiberal_cutoff
   }
   cutoffs <- setNames(vapply(ALT_INSTRUMENTS, resolved_cutoff, numeric(1)), ALT_INSTRUMENTS)
 
@@ -148,7 +145,9 @@ for (samp in ALT_SAMPLES) {
         cfg <- list(
           instrument = instr, window = ALT_WINDOW, treatment = trt,
           score_gap_min = -Inf, illiberal_cutoff = cutoffs[[instr]],
-          incl_election_year = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR
+          other_cutoff_max = Inf,
+          incl_election_year = TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
+          placebo = PLACEBO_PRE_WINDOW
         )
         path <- file.path(RUNS_ROOT, run_slug(cfg), file_name)
         if (!file.exists(path)) {
@@ -161,7 +160,7 @@ for (samp in ALT_SAMPLES) {
     })
   }
 
-  out_dir <- sweep_dir(paste0("alt_specs_", samp, build_suffix))
+  out_dir <- sweep_dir(paste0("alt_specs_", samp, build_sfx))
   results <- collect("rdd_results.csv")
   first_stage <- collect("rdd_first_stage_results.csv")
   write_csv(results, file.path(out_dir, "alt_specs_results.csv"))
@@ -279,7 +278,7 @@ for (samp in ALT_SAMPLES) {
 # ------------------------------------------------------------------------------
 
 ddcg_rows <- map_dfr(ALT_INSTRUMENTS, function(instr) {
-  d <- readRDS(alt_build_path(instr))
+  d <- alt_load_build(instr)
   tibble(
     instrument = unname(INSTRUMENT_DISPLAY[instr]),
     n_elections = nrow(d),
@@ -294,7 +293,7 @@ ddcg_rows <- map_dfr(ALT_INSTRUMENTS, function(instr) {
   )
 })
 
-ddcg_dir <- sweep_dir(paste0("alt_specs_", ALT_SAMPLES[1], build_suffix))
+ddcg_dir <- sweep_dir(paste0("alt_specs_", ALT_SAMPLES[1], build_sfx))
 write_csv(ddcg_rows, file.path(ddcg_dir, "ddcg_contribution.csv"))
 save_table_html(
   ddcg_rows |>

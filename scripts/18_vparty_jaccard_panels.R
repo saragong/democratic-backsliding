@@ -38,6 +38,8 @@
 library(tidyverse)
 library(here)
 
+# build_path() and sweep_dir().
+source(here::here("scripts", "rdd_helpers.R"))
 source(here::here("scripts", "vparty_helpers.R"))
 
 # ---- toggles -----------------------------------------------------------------
@@ -69,9 +71,7 @@ MIN_CELL_N <- 100
 # Where the build's top-2 parties come from, for the ever_top2 universe. Any
 # window works -- the top-2 membership does not depend on the outcome window --
 # so this just picks the one that exists.
-TOP2_BUILD <- here::here(
-  "data", "rdd_build", "rdd_v2xpa_antiplural_w5_exclyr_parties.rds"
-)
+TOP2_BUILD <- build_path(DEFAULT_INSTRUMENT, DEFAULT_WINDOW, parties = TRUE)
 
 out_dir <- here::here("output", "runs", "_sweeps", "vparty_jaccard_panels")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)

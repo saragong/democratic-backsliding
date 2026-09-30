@@ -89,17 +89,19 @@ source(here::here("scripts", "rdd_helpers.R"))
 # country code and a year, not anything V-Party-specific.
 source(here::here("scripts", "vparty_helpers.R"))
 
-data_dir <- here::here("data")
-
 # ---- toggles -----------------------------------------------------------------
 
-if (!exists("ILLIBERALISM_VAR")) ILLIBERALISM_VAR <- "v2xpa_antiplural"
+if (!exists("ILLIBERALISM_VAR")) ILLIBERALISM_VAR <- DEFAULT_INSTRUMENT
 # Any window gives the same answer -- see the header -- so this only selects
 # which build file to open.
-if (!exists("BACKSLIDING_WINDOW_YEARS")) BACKSLIDING_WINDOW_YEARS <- 5
+if (!exists("BACKSLIDING_WINDOW_YEARS")) BACKSLIDING_WINDOW_YEARS <- DEFAULT_WINDOW
 if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
-  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- FALSE
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- DEFAULT_INCL_ELECTION_YEAR
 }
+# The pre-election placebo build. Part of the build's and the folder's identity
+# exactly like the convention above; an earlier version of this script left it
+# out of the build path and so could not select a placebo build at all.
+if (!exists("PLACEBO_PRE_WINDOW")) PLACEBO_PRE_WINDOW <- DEFAULT_PLACEBO
 
 # Every party score except two.
 #
@@ -163,27 +165,24 @@ if (!exists("CELL_YEAR_MAX")) CELL_YEAR_MAX <- VPARTY_YEAR_MAX
 # makes adding a thinly-coded score back safe.
 if (!exists("CELL_MIN_N")) CELL_MIN_N <- 40
 
-build_suffix <- if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else "_exclyr"
-build_path <- file.path(
-  data_dir, "rdd_build",
-  sprintf(
-    "rdd_%s_w%d%s.rds",
-    ILLIBERALISM_VAR, BACKSLIDING_WINDOW_YEARS, build_suffix
-  )
+build_sfx <- build_suffix(TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW)
+build_file <- build_path(
+  ILLIBERALISM_VAR, BACKSLIDING_WINDOW_YEARS,
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW
 )
-if (!file.exists(build_path)) {
-  stop("No build at ", build_path, ". Run 11_build_rdd_data.R first.")
-}
-d_full <- readRDS(build_path)
+d_full <- load_build(
+  ILLIBERALISM_VAR, BACKSLIDING_WINDOW_YEARS,
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW
+)
 
 out_dir <- sweep_dir(sprintf(
   "party_outcome_rdd_%s_w%d%s",
-  INSTRUMENT_LABELS[[ILLIBERALISM_VAR]], BACKSLIDING_WINDOW_YEARS, build_suffix
+  INSTRUMENT_LABELS[[ILLIBERALISM_VAR]], BACKSLIDING_WINDOW_YEARS, build_sfx
 ))
 plots_dir <- file.path(out_dir, "plots")
 dir.create(plots_dir, recursive = TRUE, showWarnings = FALSE)
 
-cat(sprintf("Loaded %s (%d elections)\n", basename(build_path), nrow(d_full)))
+cat(sprintf("Loaded %s (%d elections)\n", basename(build_file), nrow(d_full)))
 
 # ---- outcomes ----------------------------------------------------------------
 
@@ -287,7 +286,7 @@ write_csv(results, file.path(out_dir, "party_outcome_results.csv"))
 
 subtitle_base <- sprintf(
   "Instrument: %s | Running variable and cutoff exactly as in the headline RD | Build: %s",
-  INSTRUMENT_DISPLAY[[ILLIBERALISM_VAR]], basename(build_path)
+  INSTRUMENT_DISPLAY[[ILLIBERALISM_VAR]], basename(build_file)
 )
 
 # Anti-elitism correlates 0.966 with populism in this sample, so its two rows

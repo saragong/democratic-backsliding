@@ -42,16 +42,14 @@ source(here::here("scripts", "rdd_helpers.R"))
 # them first.
 source(here::here("scripts", "vparty_helpers.R"))
 
-data_dir <- here::here("data")
-
 # ---- toggles -----------------------------------------------------------------
 
-if (!exists("CELL_INSTRUMENT")) CELL_INSTRUMENT <- "v2xpa_antiplural"
-if (!exists("CELL_WINDOWS")) CELL_WINDOWS <- 1:10
+if (!exists("CELL_INSTRUMENT")) CELL_INSTRUMENT <- DEFAULT_INSTRUMENT
+if (!exists("CELL_WINDOWS")) CELL_WINDOWS <- DEFAULT_WINDOWS
 if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
-  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- FALSE
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- DEFAULT_INCL_ELECTION_YEAR
 }
-if (!exists("PLACEBO_PRE_WINDOW")) PLACEBO_PRE_WINDOW <- FALSE
+if (!exists("PLACEBO_PRE_WINDOW")) PLACEBO_PRE_WINDOW <- DEFAULT_PLACEBO
 
 # The samples to cut each cell to. Each is a (score_gap, illiberal, other)
 # triple in the same spec vocabulary 12_rdd_analysis.R accepts, so "popucut"
@@ -82,23 +80,20 @@ if (!exists("CELL_YEAR_MAX")) CELL_YEAR_MAX <- VPARTY_YEAR_MAX
 # caught in 17, where ep_galtan had 0-21 usable inside cells of 66-236.
 if (!exists("CELL_MIN_N")) CELL_MIN_N <- 40
 
-build_suffix <- paste0(
-  if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else "_exclyr",
-  if (PLACEBO_PRE_WINDOW) "_pre" else ""
-)
+build_sfx <- build_suffix(TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW)
 
 out_dir <- sweep_dir(sprintf(
-  "cell_rdd_%s%s", INSTRUMENT_LABELS[[CELL_INSTRUMENT]], build_suffix
+  "cell_rdd_%s%s", INSTRUMENT_LABELS[[CELL_INSTRUMENT]], build_sfx
 ))
 
-build_path <- function(n) {
-  file.path(
-    data_dir, "rdd_build",
-    sprintf("rdd_%s_w%d%s.rds", CELL_INSTRUMENT, n, build_suffix)
+cell_build_path <- function(n) {
+  build_path(
+    CELL_INSTRUMENT, n,
+    TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW
   )
 }
 
-missing_builds <- CELL_WINDOWS[!file.exists(vapply(CELL_WINDOWS, build_path, character(1)))]
+missing_builds <- CELL_WINDOWS[!file.exists(vapply(CELL_WINDOWS, cell_build_path, character(1)))]
 if (length(missing_builds) > 0) {
   stop(
     "No build for window(s) ", paste(missing_builds, collapse = ", "),
@@ -153,7 +148,10 @@ counts <- list()
 for (samp in names(CELL_SAMPLES)) {
   spec <- CELL_SAMPLES[[samp]]
   for (n in CELL_WINDOWS) {
-    d <- readRDS(build_path(n))
+    d <- load_build(
+      CELL_INSTRUMENT, n,
+      TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW
+    )
     cat(sprintf("\n[%s | w=%d]\n", samp, n))
     d <- apply_sample(d, spec)
     res <- attr(d, "resolved")

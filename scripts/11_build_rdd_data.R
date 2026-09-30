@@ -52,7 +52,7 @@ out_dir <- here::here("output")
 # "presidential" | "parliamentary" | "both" -- "both" unions the two spines (see Step 1)
 if (!exists("ELECTION_TYPE")) ELECTION_TYPE <- "both"
 # years post-election to look for a backsliding start
-if (!exists("BACKSLIDING_WINDOW_YEARS")) BACKSLIDING_WINDOW_YEARS <- 5
+if (!exists("BACKSLIDING_WINDOW_YEARS")) BACKSLIDING_WINDOW_YEARS <- DEFAULT_WINDOW
 # Which party-level score defines "the illiberal one" of the top 2, and so the
 # sign of the running variable. All five are V-Party party-year variables:
 #   v2xpa_antiplural  anti-pluralism index          [0,1]
@@ -64,7 +64,7 @@ if (!exists("BACKSLIDING_WINDOW_YEARS")) BACKSLIDING_WINDOW_YEARS <- 5
 # NOT [0,1] indices like the v2xpa_* ones, so any absolute cutoff on the score
 # (12_rdd_analysis.R's ILLIBERAL_CUTOFF) has to be set per instrument -- see
 # the quantile-based option there.
-if (!exists("ILLIBERALISM_VAR")) ILLIBERALISM_VAR <- "v2xpa_antiplural"
+if (!exists("ILLIBERALISM_VAR")) ILLIBERALISM_VAR <- DEFAULT_INSTRUMENT
 # "ert" | "ddcg" | "llm" -- see Step 4b below
 if (!exists("START_YEAR_SOURCE")) START_YEAR_SOURCE <- "ert"
 # "all" | "ddcg_comparable" -- restrict elections to DDCG's coverage window (see
@@ -98,7 +98,7 @@ if (!exists("SAMPLE_YEARS")) SAMPLE_YEARS <- "all"
 # partition with no overlap and no gap: prior_backsliding covers the N years
 # immediately before the treatment window opens.
 if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
-  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- FALSE
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- DEFAULT_INCL_ELECTION_YEAR
 }
 stopifnot(is.logical(TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR))
 
@@ -128,7 +128,7 @@ stopifnot(is.logical(TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR))
 # identity: the file gets a _pre suffix, the attribute below records it, and
 # 12_rdd_analysis.R refuses to estimate a placebo build as though it were a
 # real one.
-if (!exists("PLACEBO_PRE_WINDOW")) PLACEBO_PRE_WINDOW <- FALSE
+if (!exists("PLACEBO_PRE_WINDOW")) PLACEBO_PRE_WINDOW <- DEFAULT_PLACEBO
 stopifnot(is.logical(PLACEBO_PRE_WINDOW))
 
 stopifnot(ELECTION_TYPE %in% c("presidential", "parliamentary", "both"))
@@ -1087,25 +1087,13 @@ cat(sprintf(
 # every outcome are all computed in a single pass, so this is the only axis the
 # build actually varies along -- 12_rdd_analysis.R and the driver scripts read
 # these files back rather than rebuilding.
-build_dir <- file.path(data_dir, "rdd_build")
-dir.create(build_dir, showWarnings = FALSE, recursive = TRUE)
-# The window convention changes the treatment columns, so it has to be part of
-# the build's identity or a TRUE build and a FALSE build would silently
-# overwrite each other. Only the non-default (FALSE) convention gets a suffix,
-# keeping the default filenames clean.
-# The placebo window changes every outcome column and the treatment, so it is
-# part of the build's identity for the same reason -- and it composes with the
-# window convention, hence two suffixes rather than one switch.
-build_suffix <- paste0(
-  if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else "_exclyr",
-  if (PLACEBO_PRE_WINDOW) "_pre" else ""
-)
-build_path <- file.path(
-  build_dir,
-  sprintf(
-    "rdd_%s_w%d%s.rds",
-    ILLIBERALISM_VAR, BACKSLIDING_WINDOW_YEARS, build_suffix
-  )
+dir.create(BUILD_ROOT, showWarnings = FALSE, recursive = TRUE)
+# The window convention and the placebo window both change the build's
+# contents, so both are part of its filename -- see build_suffix() in
+# rdd_helpers.R, which every reader goes through too.
+build_file <- build_path(
+  ILLIBERALISM_VAR, BACKSLIDING_WINDOW_YEARS,
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW
 )
 # Record both conventions on the object itself, so 12_rdd_analysis.R can read
 # them back and label its run folder accordingly rather than having to be told
@@ -1114,8 +1102,8 @@ build_path <- file.path(
 attr(elections_final, "includes_election_year") <-
   TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR
 attr(elections_final, "placebo_pre_window") <- PLACEBO_PRE_WINDOW
-saveRDS(elections_final, build_path)
-message("Saved ", build_path)
+saveRDS(elections_final, build_file)
+message("Saved ", build_file)
 
 # Party-level companion: the two top-2 finishers of every scored election, with
 # every party score. 16_instrument_overlap.R needs this grain (a party-year
@@ -1126,7 +1114,11 @@ message("Saved ", build_path)
 # vdem_id_1 is carried because 18_vparty_jaccard_panels.R restricts raw V-Party
 # to parties that reached a top 2 at some point, and raw V-Party is keyed on
 # v2paid -- which IS vdem_id_1. party_id (Party Facts) cannot make that join.
-parties_path <- sub("\\.rds$", "_parties.rds", build_path)
+parties_path <- build_path(
+  ILLIBERALISM_VAR, BACKSLIDING_WINDOW_YEARS,
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW,
+  parties = TRUE
+)
 saveRDS(
   top2_for_scoring |>
     select(
@@ -1351,7 +1343,7 @@ miss_dir <- file.path(out_dir, "runs", "_builds", sprintf(
   "%s_w%d%s",
   ILLIBERALISM_VAR,
   BACKSLIDING_WINDOW_YEARS,
-  build_suffix
+  build_suffix(TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW)
 ))
 dir.create(miss_dir, showWarnings = FALSE, recursive = TRUE)
 write_csv(ert_miss_table, file.path(miss_dir, "ert_miss_table.csv"))

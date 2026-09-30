@@ -49,17 +49,15 @@ library(gt)
 
 source(here::here("scripts", "rdd_helpers.R"))
 
-data_dir <- here::here("data")
-
 # ---- toggles -----------------------------------------------------------------
 
-if (!exists("SPLIT_INSTRUMENT")) SPLIT_INSTRUMENT <- "v2xpa_antiplural"
-if (!exists("SPLIT_WINDOWS")) SPLIT_WINDOWS <- 1:10
-if (!exists("SPLIT_TREATMENT")) SPLIT_TREATMENT <- "backsliding_Nyr"
+if (!exists("SPLIT_INSTRUMENT")) SPLIT_INSTRUMENT <- DEFAULT_INSTRUMENT
+if (!exists("SPLIT_WINDOWS")) SPLIT_WINDOWS <- DEFAULT_WINDOWS
+if (!exists("SPLIT_TREATMENT")) SPLIT_TREATMENT <- DEFAULT_TREATMENT
 if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
-  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- FALSE
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- DEFAULT_INCL_ELECTION_YEAR
 }
-if (!exists("PLACEBO_PRE_WINDOW")) PLACEBO_PRE_WINDOW <- FALSE
+if (!exists("PLACEBO_PRE_WINDOW")) PLACEBO_PRE_WINDOW <- DEFAULT_PLACEBO
 
 # The dimension the sample is split on. Carried in the build as the NEGATED
 # variable (see 11_build_rdd_data.R Step 2), so higher = more LEFT.
@@ -95,20 +93,24 @@ if (!exists("SPLIT_OTHER_CUTOFF_MAX")) {
   SPLIT_OTHER_CUTOFF_MAX <- SPLIT_SAMPLES[[SPLIT_SAMPLE]]$other_cutoff_max
 }
 
-build_suffix <- paste0(
-  if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else "_exclyr",
-  if (PLACEBO_PRE_WINDOW) "_pre" else ""
-)
+build_sfx <- build_suffix(TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW)
 
-build_path <- function(n) {
-  file.path(
-    data_dir, "rdd_build",
-    sprintf("rdd_%s_w%d%s.rds", SPLIT_INSTRUMENT, n, build_suffix)
+split_load_build <- function(n) {
+  load_build(
+    SPLIT_INSTRUMENT, n,
+    TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW
   )
 }
-missing_builds <- SPLIT_WINDOWS[
-  !file.exists(vapply(SPLIT_WINDOWS, build_path, character(1)))
-]
+missing_builds <- SPLIT_WINDOWS[!file.exists(vapply(
+  SPLIT_WINDOWS,
+  function(n) {
+    build_path(
+      SPLIT_INSTRUMENT, n,
+      TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW
+    )
+  },
+  character(1)
+))]
 if (length(missing_builds) > 0) {
   stop(
     "No build for window(s) ", paste(missing_builds, collapse = ", "),
@@ -127,31 +129,15 @@ if (length(missing_builds) > 0) {
 # Resolving per window instead would let a quantile spec mean a different
 # sample in each panel of one figure.
 local({
-  ref_path <- build_path(5L)
-  if (!file.exists(ref_path)) {
-    stop(
-      "Cannot resolve the sample restrictions: no reference build at ",
-      ref_path, ". Build w5 first.",
-      call. = FALSE
-    )
-  }
-  ref <- readRDS(ref_path)
-  SPLIT_SCORE_GAP_MIN <<- resolve_threshold_abs(
-    SPLIT_SCORE_GAP_MIN, "SPLIT_SCORE_GAP_MIN", ref$score_gap_z
+  resolved <- resolve_restrictions(
+    split_load_build(5L),
+    SPLIT_SCORE_GAP_MIN, SPLIT_ILLIBERAL_CUTOFF, SPLIT_OTHER_CUTOFF_MAX,
+    prefix = "SPLIT_"
   )
-  SPLIT_ILLIBERAL_CUTOFF <<- resolve_threshold_abs(
-    SPLIT_ILLIBERAL_CUTOFF, "SPLIT_ILLIBERAL_CUTOFF", ref$illiberal_score
-  )
-  SPLIT_OTHER_CUTOFF_MAX <<- resolve_threshold_abs(
-    SPLIT_OTHER_CUTOFF_MAX, "SPLIT_OTHER_CUTOFF_MAX", ref$other_score,
-    none_value = Inf
-  )
+  SPLIT_SCORE_GAP_MIN <<- resolved$score_gap_min
+  SPLIT_ILLIBERAL_CUTOFF <<- resolved$illiberal_cutoff
+  SPLIT_OTHER_CUTOFF_MAX <<- resolved$other_cutoff_max
 })
-stopifnot(
-  is.numeric(SPLIT_SCORE_GAP_MIN),
-  is.numeric(SPLIT_ILLIBERAL_CUTOFF),
-  is.numeric(SPLIT_OTHER_CUTOFF_MAX)
-)
 
 # Now that the three are plain numbers, parsing them again yields only "none"
 # (non-finite) or "absolute", never "quantile" or "external" -- which is why
@@ -198,7 +184,7 @@ restriction_slug <- paste0(
 
 out_dir <- sweep_dir(sprintf(
   "econleft_split_rdd_%s%s%s",
-  INSTRUMENT_LABELS[[SPLIT_INSTRUMENT]], restriction_slug, build_suffix
+  INSTRUMENT_LABELS[[SPLIT_INSTRUMENT]], restriction_slug, build_sfx
 ))
 cat("Sample within which the split is taken: ", restriction_label, "\n", sep = "")
 
@@ -252,7 +238,7 @@ for (n in SPLIT_WINDOWS) {
   # Restrict first, split second. The other order would compute the tie and
   # missing counts on elections the sample does not contain, so the accounting
   # printed below would not add up to the sample actually estimated on.
-  d <- add_split(apply_restrictions(readRDS(build_path(n))))
+  d <- add_split(apply_restrictions(split_load_build(n)))
 
   n_tie <- sum(
     !is.na(d$ap_leftscore) & !is.na(d$other_leftscore) &

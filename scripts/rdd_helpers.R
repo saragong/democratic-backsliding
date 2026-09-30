@@ -31,6 +31,7 @@
 # ------------------------------------------------------------------------------
 
 source(here::here("scripts", "vdem_indices.R"))
+source(here::here("scripts", "config.R"))
 
 RUNS_ROOT <- here::here("output", "runs")
 
@@ -250,6 +251,131 @@ write_sweep_config <- function(dir, fixed = list(), swept = list()) {
 }
 
 # ------------------------------------------------------------------------------
+# 1b. Builds and driver plumbing
+#
+# Every script that reads a build used to construct its path inline -- ten
+# copies, six of which dropped the "_pre" suffix and so could not select a
+# placebo build at all -- and only 12 checked that the build it loaded was the
+# one it asked for. One path function, one loader.
+# ------------------------------------------------------------------------------
+
+BUILD_ROOT <- here::here("data", "rdd_build")
+
+# The build's identity beyond instrument and window. Both conventions change
+# what the build contains (the treatment columns; every outcome column), so
+# each must be part of the filename or builds under different conventions
+# would overwrite each other. Keyed on the VALUE: FALSE -> "_exclyr".
+build_suffix <- function(incl = DEFAULT_INCL_ELECTION_YEAR,
+                         placebo = DEFAULT_PLACEBO) {
+  stopifnot(is.logical(incl), length(incl) == 1, is.logical(placebo), length(placebo) == 1)
+  paste0(if (incl) "" else "_exclyr", if (placebo) "_pre" else "")
+}
+
+# data/rdd_build/rdd_<instr>_w<N><suffix>.rds, or the _parties.rds companion
+# 11_build_rdd_data.R writes alongside it.
+build_path <- function(instr, window,
+                       incl = DEFAULT_INCL_ELECTION_YEAR,
+                       placebo = DEFAULT_PLACEBO,
+                       parties = FALSE) {
+  file.path(
+    BUILD_ROOT,
+    sprintf(
+      "rdd_%s_w%d%s%s.rds",
+      instr, as.integer(window), build_suffix(incl, placebo),
+      if (parties) "_parties" else ""
+    )
+  )
+}
+
+# readRDS() a build and refuse it unless it was made under the conventions the
+# caller asked for. A placebo build estimated as though it were the real one
+# would report a pre-election correlation as the headline effect, and nothing
+# in the numbers would look wrong.
+#
+# Builds written before either attribute existed carry none; they all used the
+# exclude-the-election-year convention and none were placebos, so a missing
+# attribute reads as FALSE rather than as the current default.
+load_build <- function(instr, window,
+                       incl = DEFAULT_INCL_ELECTION_YEAR,
+                       placebo = DEFAULT_PLACEBO) {
+  path <- build_path(instr, window, incl, placebo)
+  if (!file.exists(path)) {
+    stop(
+      "No build at ", path, ".\n",
+      "Run 11_build_rdd_data.R with ILLIBERALISM_VAR = '", instr,
+      "', BACKSLIDING_WINDOW_YEARS = ", window,
+      ", TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR = ", incl,
+      " and PLACEBO_PRE_WINDOW = ", placebo, " first.",
+      call. = FALSE
+    )
+  }
+  d <- readRDS(path)
+  build_incl <- attr(d, "includes_election_year") %||% FALSE
+  if (!identical(build_incl, incl)) {
+    stop(
+      "Build at ", path, " was made with ",
+      "TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR = ", build_incl,
+      " but this run asked for ", incl,
+      ". Rebuild it with 11_build_rdd_data.R.",
+      call. = FALSE
+    )
+  }
+  build_placebo <- attr(d, "placebo_pre_window") %||% FALSE
+  if (!identical(build_placebo, placebo)) {
+    stop(
+      "Build at ", path, " was made with PLACEBO_PRE_WINDOW = ",
+      build_placebo, " but this run asked for ", placebo,
+      ". Rebuild it with 11_build_rdd_data.R.",
+      call. = FALSE
+    )
+  }
+  d
+}
+
+# Run one pipeline script in a FRESH environment with the given toggles
+# pre-defined. The scripts guard every toggle with `if (!exists(...))`, so
+# anything set here wins and everything else falls back to config.R. A fresh
+# env per call means no state leaks between iterations -- and also that a
+# toggle merely set in the DRIVER's scope does not reach the child, so a
+# driver must pass every axis it holds fixed explicitly.
+run_script_with <- function(script, overrides) {
+  env <- new.env(parent = globalenv())
+  for (nm in names(overrides)) {
+    assign(nm, overrides[[nm]], envir = env)
+  }
+  sys.source(here::here("scripts", script), envir = env)
+  invisible(env)
+}
+
+# Resolve the three sample-restriction specs to NUMBERS against one build.
+#
+# The specs accept every form parse_threshold() does ("q50", "popucut", ...),
+# but a folder name, a cfg and a subtitle all need the resolved number, and a
+# driver and its children must agree on it or the pooling step reads a folder
+# the estimation step never wrote. Drivers resolve once, against a fixed
+# reference build (w5 by convention), BEFORE any filter bites.
+resolve_restrictions <- function(build,
+                                 score_gap_min = DEFAULT_SCORE_GAP_MIN,
+                                 illiberal_cutoff = DEFAULT_ILLIBERAL_CUTOFF,
+                                 other_cutoff_max = DEFAULT_OTHER_CUTOFF_MAX,
+                                 prefix = "") {
+  out <- list(
+    score_gap_min = resolve_threshold_abs(
+      score_gap_min, paste0(prefix, "SCORE_GAP_MIN"), build$score_gap_z
+    ),
+    illiberal_cutoff = resolve_threshold_abs(
+      illiberal_cutoff, paste0(prefix, "ILLIBERAL_CUTOFF"), build$illiberal_score
+    ),
+    other_cutoff_max = resolve_threshold_abs(
+      other_cutoff_max, paste0(prefix, "OTHER_CUTOFF_MAX"), build$other_score,
+      none_value = Inf
+    )
+  )
+  stopifnot(vapply(out, is.numeric, logical(1)))
+  out
+}
+
+# ------------------------------------------------------------------------------
 # 2. Tables
 # ------------------------------------------------------------------------------
 
@@ -257,8 +383,8 @@ write_sweep_config <- function(dir, fixed = list(), swept = list()) {
 # rows x 8 columns and is set a point smaller so it fits. That used to be a
 # second, shadowing copy of this whole function in script 11, which meant any
 # change here silently failed to reach that table.
-apply_table_style <- function(gt_tbl, font_size = 12) {
-  gt_tbl |>
+apply_table_style <- function(gt_tbl, font_size = 12, row_group_borders = FALSE) {
+  out <- gt_tbl |>
     gt::tab_options(
       table.font.size = gt::px(font_size),
       table.border.top.style = "solid",
@@ -277,6 +403,21 @@ apply_table_style <- function(gt_tbl, font_size = 12) {
       table_body.hlines.width = gt::px(0.5),
       table_body.hlines.color = "#cccccc"
     )
+  # The overlap tables (07-10) group their rows by definition family and rule
+  # each group off; they used to carry four identical local copies of this
+  # function to get it.
+  if (row_group_borders) {
+    out <- out |>
+      gt::tab_options(
+        row_group.border.top.style = "solid",
+        row_group.border.top.width = gt::px(1),
+        row_group.border.top.color = "#666666",
+        row_group.border.bottom.style = "solid",
+        row_group.border.bottom.width = gt::px(0.5),
+        row_group.border.bottom.color = "#666666"
+      )
+  }
+  out
 }
 
 # "-0.679 [-0.802, -0.555]***" -- estimate, robust 95% CI, significance. For

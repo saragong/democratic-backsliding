@@ -11,6 +11,9 @@ library(fixest)
 library(patchwork)
 library(here)
 
+# EP_COLORS, shared with the country plots in 03 and 04.
+source(here::here("scripts", "plot_helpers.R"))
+
 data_dir <- here::here("data")
 fig_dir  <- here::here("figures")
 dir.create(fig_dir, showWarnings = FALSE)
@@ -35,11 +38,6 @@ OUTCOME_LABELS <- c(
   trade_pct_gdp_chg     = "Trade/GDP (pp vs t=-1)",
   top10_share_chg       = "Top 10% share (pp vs t=-1)",
   gini_disp_chg         = "Gini, disposable (pp vs t=-1)"
-)
-
-EP_COLORS <- c(
-  "Democratization" = "#2ca25f",
-  "Autocratization" = "#e34a33"
 )
 
 # --- Estimate -----------------------------------------------------------------

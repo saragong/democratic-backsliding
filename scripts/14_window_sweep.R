@@ -25,43 +25,36 @@ library(gt)
 
 source(here::here("scripts", "rdd_helpers.R"))
 
-data_dir <- here::here("data")
-scripts_dir <- here::here("scripts")
-
 if (!exists("WINDOWS")) {
-  WINDOWS <- 1:10
+  WINDOWS <- DEFAULT_WINDOWS
 }
 if (!exists("SWEEP_INSTRUMENT")) {
-  SWEEP_INSTRUMENT <- "v2xpa_antiplural"
+  SWEEP_INSTRUMENT <- DEFAULT_INSTRUMENT
 }
 if (!exists("SWEEP_TREATMENTS")) {
-  SWEEP_TREATMENTS <- c(
-    "backsliding_Nyr",
-    "backsliding_union_Nyr",
-    "polyarchy_decline"
-  )
+  SWEEP_TREATMENTS <- DEFAULT_SWEEP_TREATMENTS
 }
 # The sample restrictions held fixed across the sweep. -Inf on both keeps the
 # full sample, so the only thing varying is the window.
 if (!exists("SWEEP_SCORE_GAP_MIN")) {
-  SWEEP_SCORE_GAP_MIN <- -Inf
+  SWEEP_SCORE_GAP_MIN <- DEFAULT_SCORE_GAP_MIN
 }
 if (!exists("SWEEP_ILLIBERAL_CUTOFF")) {
-  SWEEP_ILLIBERAL_CUTOFF <- -Inf
+  SWEEP_ILLIBERAL_CUTOFF <- DEFAULT_ILLIBERAL_CUTOFF
 }
 # The ceiling on the less-illiberal party. Inf = no restriction (a ceiling's
 # no-op sentinel is +Inf, not -Inf). Present so this axis is held fixed
 # EXPLICITLY rather than by both the child and the pooling step happening to
 # fall back to the same default.
 if (!exists("SWEEP_OTHER_CUTOFF_MAX")) {
-  SWEEP_OTHER_CUTOFF_MAX <- Inf
+  SWEEP_OTHER_CUTOFF_MAX <- DEFAULT_OTHER_CUTOFF_MAX
 }
 # Passed explicitly into every child script below. run_script_with() builds a
 # FRESH environment per call, so a toggle merely set in this script's own scope
 # would not reach 11 or 12 -- they would silently fall back to their own default
 # and the sweep would mix conventions.
 if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
-  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- FALSE
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- DEFAULT_INCL_ELECTION_YEAR
 }
 # The placebo sweep: the same w = 1..10 sweep run on the PRE-election window,
 # so the pre-trend check is available at every window length rather than only
@@ -69,11 +62,8 @@ if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
 # the convention above is -- run_script_with() builds a fresh environment, so a
 # toggle only set in this script's scope would not reach 11 or 12 and the
 # "placebo" sweep would silently be a second copy of the real one.
-if (!exists("PLACEBO_PRE_WINDOW")) PLACEBO_PRE_WINDOW <- FALSE
-build_suffix <- paste0(
-  if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else "_exclyr",
-  if (PLACEBO_PRE_WINDOW) "_pre" else ""
-)
+if (!exists("PLACEBO_PRE_WINDOW")) PLACEBO_PRE_WINDOW <- DEFAULT_PLACEBO
+build_sfx <- build_suffix(TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW)
 
 # ------------------------------------------------------------------------------
 # Resolve the restriction specs to NUMBERS, once, before anything uses them.
@@ -95,53 +85,23 @@ build_suffix <- paste0(
 # SOME build; a quantile of score_gap_z barely moves across windows because the
 # window changes the outcomes, not the top-2 scores. Flagged rather than hidden.
 local({
-  ref_path <- file.path(
-    data_dir, "rdd_build",
-    sprintf("rdd_%s_w%d%s.rds", SWEEP_INSTRUMENT, 5L, build_suffix)
+  ref <- load_build(
+    SWEEP_INSTRUMENT, 5L,
+    TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW
   )
-  if (!file.exists(ref_path)) {
-    stop(
-      "Cannot resolve the sweep's restriction thresholds: no reference build ",
-      "at ", ref_path, ". Build w5 first.",
-      call. = FALSE
-    )
-  }
-  ref <- readRDS(ref_path)
-  SWEEP_SCORE_GAP_MIN <<- resolve_threshold_abs(
-    SWEEP_SCORE_GAP_MIN, "SWEEP_SCORE_GAP_MIN", ref$score_gap_z
+  resolved <- resolve_restrictions(
+    ref, SWEEP_SCORE_GAP_MIN, SWEEP_ILLIBERAL_CUTOFF, SWEEP_OTHER_CUTOFF_MAX,
+    prefix = "SWEEP_"
   )
-  SWEEP_ILLIBERAL_CUTOFF <<- resolve_threshold_abs(
-    SWEEP_ILLIBERAL_CUTOFF, "SWEEP_ILLIBERAL_CUTOFF", ref$illiberal_score
-  )
-  SWEEP_OTHER_CUTOFF_MAX <<- resolve_threshold_abs(
-    SWEEP_OTHER_CUTOFF_MAX, "SWEEP_OTHER_CUTOFF_MAX", ref$other_score,
-    none_value = Inf
-  )
+  SWEEP_SCORE_GAP_MIN <<- resolved$score_gap_min
+  SWEEP_ILLIBERAL_CUTOFF <<- resolved$illiberal_cutoff
+  SWEEP_OTHER_CUTOFF_MAX <<- resolved$other_cutoff_max
 })
-stopifnot(
-  is.numeric(SWEEP_SCORE_GAP_MIN),
-  is.numeric(SWEEP_ILLIBERAL_CUTOFF),
-  is.numeric(SWEEP_OTHER_CUTOFF_MAX)
-)
 cat(sprintf(
   "Sweep restrictions (resolved): score_gap_z >= %s, illiberal_score > %s, other_score <= %s\n",
   format(SWEEP_SCORE_GAP_MIN), format(SWEEP_ILLIBERAL_CUTOFF),
   format(SWEEP_OTHER_CUTOFF_MAX)
 ))
-
-# Run one of the pipeline scripts in a fresh environment with the given toggle
-# overrides pre-defined. The scripts all guard their toggles with
-# `if (!exists(...))`, so anything set here wins and everything else falls back
-# to that script's own default. A fresh env per call also means no state leaks
-# between windows.
-run_script_with <- function(script, overrides) {
-  env <- new.env(parent = globalenv())
-  for (nm in names(overrides)) {
-    assign(nm, overrides[[nm]], envir = env)
-  }
-  sys.source(file.path(scripts_dir, script), envir = env)
-  invisible(env)
-}
 
 # Re-pool an existing sweep without re-running anything. The per-run output is
 # deterministic (verified: rebuilding a build gives a byte-identical file), so
@@ -159,12 +119,10 @@ if (!exists("SWEEP_REESTIMATE")) {
 # ------------------------------------------------------------------------------
 
 for (n in if (SWEEP_REESTIMATE) WINDOWS else integer(0)) {
-  build_path <- file.path(
-    data_dir,
-    "rdd_build",
-    sprintf("rdd_%s_w%d%s.rds", SWEEP_INSTRUMENT, n, build_suffix)
-  )
-  if (file.exists(build_path)) {
+  if (file.exists(build_path(
+    SWEEP_INSTRUMENT, n,
+    TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR, PLACEBO_PRE_WINDOW
+  ))) {
     cat(sprintf("[w=%d] build cached, skipping\n", n))
   } else {
     cat(sprintf("[w=%d] building...\n", n))
@@ -221,7 +179,7 @@ sweep_name <- paste0(
   } else {
     ""
   },
-  build_suffix
+  build_sfx
 )
 out_dir <- sweep_dir(sweep_name)
 
@@ -309,11 +267,8 @@ label_treatment <- function(x) {
 
 # Okabe-Ito, same fixed order as 12_rdd_analysis.R so a treatment definition
 # keeps its colour across every figure in the project.
-TRT_COLORS <- setNames(
-  c("#0072B2", "#D55E00", "#009E73")[seq_along(SWEEP_TREATMENTS)],
-  trt_display
-)
-TRT_SHAPES <- setNames(c(16, 17, 15)[seq_along(SWEEP_TREATMENTS)], trt_display)
+TRT_COLORS <- setNames(SERIES_COLORS[seq_along(SWEEP_TREATMENTS)], trt_display)
+TRT_SHAPES <- setNames(SERIES_SHAPES[seq_along(SWEEP_TREATMENTS)], trt_display)
 
 # ---- first stage by window ---------------------------------------------------
 # polyarchy_decline is a CONTINUOUS treatment, so its first-stage coefficient is

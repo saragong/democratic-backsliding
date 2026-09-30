@@ -32,6 +32,9 @@ library(tidyverse)
 library(gt)
 library(here)
 
+# apply_table_style(), shared with the RDD scripts.
+source(here::here("scripts", "rdd_helpers.R"))
+
 data_dir <- here::here("data")
 out_dir <- here::here("output")
 dir.create(out_dir, showWarnings = FALSE)
@@ -309,34 +312,6 @@ print(timing, n = Inf)
 # Publication-ready gt tables
 # ------------------------------------------------------------------------------
 
-apply_table_style <- function(gt_tbl) {
-  gt_tbl |>
-    tab_options(
-      table.font.size = px(11),
-      table.border.top.style = "solid",
-      table.border.top.width = px(2),
-      table.border.top.color = "black",
-      table.border.bottom.style = "solid",
-      table.border.bottom.width = px(2),
-      table.border.bottom.color = "black",
-      column_labels.border.top.style = "solid",
-      column_labels.border.top.width = px(2),
-      column_labels.border.top.color = "black",
-      column_labels.border.bottom.style = "solid",
-      column_labels.border.bottom.width = px(1.5),
-      column_labels.border.bottom.color = "black",
-      table_body.hlines.style = "solid",
-      table_body.hlines.width = px(0.5),
-      table_body.hlines.color = "#cccccc",
-      row_group.border.top.style = "solid",
-      row_group.border.top.width = px(1),
-      row_group.border.top.color = "#666666",
-      row_group.border.bottom.style = "solid",
-      row_group.border.bottom.width = px(0.5),
-      row_group.border.bottom.color = "#666666"
-    )
-}
-
 # ---- gt summary table -------------------------------------------------------
 
 gt_summary <- summary_table |>
@@ -380,7 +355,7 @@ gt_summary <- summary_table |>
     pct_ert_in_ddcg ~ px(75),
     pct_ert_not_in_ddcg ~ px(90)
   ) |>
-  apply_table_style()
+  apply_table_style(font_size = 11, row_group_borders = TRUE)
 
 # ---- gt miss table -----------------------------------------------------------
 
@@ -440,7 +415,7 @@ gt_miss_table <- ert_miss_table |>
     locations = cells_column_labels(columns = ddcg_event_years)
   ) |>
   opt_row_striping() |>
-  apply_table_style()
+  apply_table_style(font_size = 11, row_group_borders = TRUE)
 
 # ---- gt unmatched-events table ------------------------------------------------
 # DDCG revevent years with no ERT autocratization episode within ± EP_MATCH_TOL.
@@ -472,7 +447,7 @@ gt_unmatched_events <- unmatched_events |>
     year ~ px(90)
   ) |>
   opt_row_striping() |>
-  apply_table_style()
+  apply_table_style(font_size = 11, row_group_borders = TRUE)
 
 # ------------------------------------------------------------------------------
 # Save outputs

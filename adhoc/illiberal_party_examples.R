@@ -35,10 +35,10 @@ source(here::here("scripts", "vparty_helpers.R"))
 
 # ---- toggles -----------------------------------------------------------------
 
-if (!exists("EXAMPLES_INSTRUMENT")) EXAMPLES_INSTRUMENT <- "v2xpa_antiplural"
-if (!exists("EXAMPLES_WINDOW")) EXAMPLES_WINDOW <- 5
+if (!exists("EXAMPLES_INSTRUMENT")) EXAMPLES_INSTRUMENT <- DEFAULT_INSTRUMENT
+if (!exists("EXAMPLES_WINDOW")) EXAMPLES_WINDOW <- DEFAULT_WINDOW
 if (!exists("TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR")) {
-  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- FALSE
+  TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR <- DEFAULT_INCL_ELECTION_YEAR
 }
 
 # "Narrow" for illustration only. The RDD's own bandwidth is about 18 pp, so
@@ -49,20 +49,18 @@ if (!exists("EXAMPLES_NARROW_MARGIN")) EXAMPLES_NARROW_MARGIN <- 5
 
 if (!exists("EXAMPLES_N")) EXAMPLES_N <- 15
 
-build_suffix <- if (TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR) "" else "_exclyr"
-stem <- sprintf(
-  "rdd_%s_w%d%s", EXAMPLES_INSTRUMENT, EXAMPLES_WINDOW, build_suffix
+parties_path <- build_path(
+  EXAMPLES_INSTRUMENT, EXAMPLES_WINDOW, TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR,
+  parties = TRUE
 )
-build_path <- here::here("data", "rdd_build", paste0(stem, ".rds"))
-parties_path <- here::here("data", "rdd_build", paste0(stem, "_parties.rds"))
-if (!file.exists(build_path) || !file.exists(parties_path)) {
-  stop("No build at ", build_path, ". Run 11_build_rdd_data.R first.", call. = FALSE)
+if (!file.exists(parties_path)) {
+  stop("No build at ", parties_path, ". Run 11_build_rdd_data.R first.", call. = FALSE)
 }
 
 
 # ---- party names -------------------------------------------------------------
 
-d <- readRDS(build_path)
+d <- load_build(EXAMPLES_INSTRUMENT, EXAMPLES_WINDOW, TREATMENT_WINDOW_INCLUDES_ELECTION_YEAR)
 parties <- readRDS(parties_path)
 
 # Names as of the election year -- see vparty_names_at() in vparty_helpers.R
