@@ -2006,6 +2006,68 @@ rd_n_treated <- function(y, x, treatment, covs = NULL) {
   as.integer(sum(vals > 0))
 }
 
+# The same RD at a grid of bandwidths narrower than the data-driven one, to
+# show whether a result comes from the closest races or from elections far
+# from the cutoff. The grid is RELATIVE to the fit's own MSE-optimal h (a fixed
+# 5 or 15 points would mean different things in different samples), and the
+# bias-correction bandwidth b is held at the data-driven b/h ratio, so only
+# the bandwidth changes. mult = 1 reproduces the default fit exactly.
+BW_SENSITIVITY_MULTS <- c(1, 0.75, 0.5, 0.35, 0.25)
+
+rd_bandwidth_sensitivity <- function(y, x, fuzzy = NULL, covs = NULL,
+                                     mults = BW_SENSITIVITY_MULTS) {
+  keep <- rd_keep(y, x, fuzzy, covs)
+  if (sum(keep) < RD_MIN_OBS) {
+    return(NULL)
+  }
+  cv <- if (is.null(covs)) NULL else as.matrix(as.data.frame(covs)[keep, , drop = FALSE])
+  fz <- if (is.null(fuzzy) || length(unique(fuzzy[keep])) < 2) NULL else fuzzy[keep]
+  # Each estimand on a grid relative to ITS OWN data-driven bandwidths, as in
+  # the main fits: the fuzzy LATE selects a different h from the reduced form.
+  grid_for <- function(fuzzy_arg) {
+    base <- tryCatch(
+      rdrobust::rdrobust(y[keep], x[keep], fuzzy = fuzzy_arg, covs = cv, bwselect = RD_BWSELECT),
+      error = function(e) NULL
+    )
+    if (is.null(base)) {
+      return(NULL)
+    }
+    h0 <- base$bws[1, 1]
+    rho <- base$bws[2, 1] / h0
+    dplyr::bind_rows(lapply(mults, function(m) {
+      h <- m * h0
+      f <- tryCatch(
+        rdrobust::rdrobust(y[keep], x[keep], fuzzy = fuzzy_arg, covs = cv, h = h, b = rho * h),
+        error = function(e) NULL
+      )
+      pick <- function(what, row) if (is.null(f)) NA_real_ else unname(f[[what]][row, 1])
+      tibble::tibble(
+        h_mult = m, h = h, b = rho * h, n_in_h = sum(abs(x[keep]) < h),
+        conventional = pick("coef", 1), estimate = pick("coef", 2),
+        se = pick("se", 3), pval = pick("pv", 3)
+      )
+    }))
+  }
+  rf <- grid_for(NULL)
+  if (is.null(rf)) {
+    return(NULL)
+  }
+  out <- rf |>
+    dplyr::rename(rd_conventional = conventional, rd_estimate = estimate, rd_se = se, rd_pval = pval)
+  late <- if (is.null(fz)) NULL else grid_for(fz)
+  if (is.null(late)) {
+    out$late_h <- NA_real_
+    out$late_estimate <- out$late_se <- out$late_pval <- NA_real_
+  } else {
+    out <- dplyr::left_join(
+      out,
+      late |> dplyr::transmute(h_mult, late_h = h, late_estimate = estimate, late_se = se, late_pval = pval),
+      by = "h_mult"
+    )
+  }
+  out
+}
+
 # Pull the robust bias-corrected coefficient/SE/p-value/bandwidth out of an
 # rdrobust fit (or NA placeholders if the fit is NULL/failed).
 extract_rd <- function(fit) {

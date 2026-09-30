@@ -528,6 +528,56 @@ if (MAKE_PLOTS) {
   make_rd_plots(d)
 }
 
+# ------------------------------------------------------------------------------
+# Bandwidth sensitivity
+#
+# Every outcome's reduced form and fuzzy LATE re-estimated at 1, 0.75, 0.5,
+# 0.35 and 0.25 times its own data-driven bandwidth, holding the bias-
+# correction bandwidth at the data-driven b/h ratio (rd_bandwidth_sensitivity()
+# in rdd_helpers.R). The h_mult = 1 row reproduces rdd_results.csv. It answers
+# whether a result comes from the closest races or leans on elections far from
+# the cutoff: at the data-driven h (~20 vote-margin points in the full sample)
+# the fit still uses races decided by 15-20 points.
+#
+# Written for every run: bandwidth_sensitivity.csv (all outcomes) and
+# bandwidth_sensitivity.html (the GDP-growth outcomes).
+# ------------------------------------------------------------------------------
+
+bw_sens <- map_dfr(outcome_vars, function(oc) {
+  covs <- if (RD_COVARIATES == "lp") d[[paste0("Z_", oc)]] else NULL
+  out <- rd_bandwidth_sensitivity(d[[oc]], d$running_var, fuzzy = d[[TREATMENT_VAR]], covs = covs)
+  if (is.null(out)) {
+    return(NULL)
+  }
+  tibble(outcome = oc, outcome_label = unname(outcome_labels[oc]), treatment = TREATMENT_VAR) |>
+    bind_cols(out)
+})
+write_csv(bw_sens, file.path(out_run, "bandwidth_sensitivity.csv"))
+
+growth_vars <- intersect(names(OUTCOME_PANELS$growth), outcome_vars)
+save_table_html(
+  bw_sens |>
+    filter(outcome %in% growth_vars) |>
+    transmute(
+      Outcome = vapply(outcome, outcome_full_label, character(1)),
+      `Bandwidth (x data-driven)` = sprintf("%.2f", h_mult),
+      `h (vote-margin pp)` = round(h, 1),
+      `Elections in h` = n_in_h,
+      Conventional = round(rd_conventional, 3),
+      `Reduced form` = fmt_est(rd_estimate, rd_se, rd_pval),
+      `Fuzzy LATE` = fmt_est(late_estimate, late_se, late_pval)
+    ),
+  file.path(out_run, "bandwidth_sensitivity.html"),
+  "Bandwidth sensitivity: the RD at narrower bandwidths",
+  paste0(
+    sample_label, " | ", restriction_label,
+    " | Bias-correction bandwidth held at the data-driven b/h ratio; the 1.00 row is the headline estimate.",
+    " h is the reduced form's; the fuzzy LATE is scaled from its own data-driven bandwidth the same way (late_h in the CSV)."
+  )
+)
+cat(sprintf("Saved bandwidth_sensitivity.csv/.html (%d outcomes x %d bandwidths)\n",
+            n_distinct(bw_sens$outcome), length(BW_SENSITIVITY_MULTS)))
+
 write_csv(results$outcomes, file.path(out_run, "rdd_results.csv"))
 write_csv(results$first_stage, file.path(out_run, "rdd_first_stage_results.csv"))
 
